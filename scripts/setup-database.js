@@ -43,6 +43,13 @@ async function waitForAttribute(collectionId, key) {
 
 async function ensureDatabase() {
   try {
+    await databases.get(DATABASE_ID);
+    console.log('[skip] Database already exists:', DATABASE_ID);
+    return;
+  } catch {
+    // Database doesn't exist, create it
+  }
+  try {
     await databases.create(DATABASE_ID, 'OpenGet', true);
     console.log('[ok] Created database', DATABASE_ID);
   } catch (err) {
@@ -177,10 +184,10 @@ async function setupRepos() {
   await addStringAttribute(id, 'full_name', 300, true);
   await addStringAttribute(id, 'description', 1000, false);
   await addStringAttribute(id, 'language', 50, false);
-  await addIntegerAttribute(id, 'stars', true, 0);
-  await addIntegerAttribute(id, 'forks', true, 0);
+  await addIntegerAttribute(id, 'stars', false, 0);
+  await addIntegerAttribute(id, 'forks', false, 0);
   await addStringAttribute(id, 'listed_by', 100, true);
-  await addIntegerAttribute(id, 'contributor_count', true, 0);
+  await addIntegerAttribute(id, 'contributor_count', false, 0);
   await addStringAttribute(id, 'contributors_fetched_at', 50, false);
 }
 
@@ -191,8 +198,8 @@ async function setupContributors() {
   await addStringAttribute(id, 'github_id', 50, false);
   await addStringAttribute(id, 'avatar_url', 500, false);
   await addStringAttribute(id, 'user_id', 100, false);
-  await addFloatAttribute(id, 'total_score', true, 0);
-  await addIntegerAttribute(id, 'repo_count', true, 0);
+  await addFloatAttribute(id, 'total_score', false, 0);
+  await addIntegerAttribute(id, 'repo_count', false, 0);
 }
 
 async function setupRepoContributions() {
@@ -201,13 +208,13 @@ async function setupRepoContributions() {
   await addStringAttribute(id, 'contributor_id', 100, true);
   await addStringAttribute(id, 'repo_id', 100, true);
   await addStringAttribute(id, 'repo_full_name', 300, true);
-  await addIntegerAttribute(id, 'commits', true, 0);
-  await addIntegerAttribute(id, 'prs_merged', true, 0);
-  await addIntegerAttribute(id, 'lines_added', true, 0);
-  await addIntegerAttribute(id, 'lines_removed', true, 0);
-  await addIntegerAttribute(id, 'reviews', true, 0);
-  await addIntegerAttribute(id, 'issues_closed', true, 0);
-  await addFloatAttribute(id, 'score', true, 0);
+  await addIntegerAttribute(id, 'commits', false, 0);
+  await addIntegerAttribute(id, 'prs_merged', false, 0);
+  await addIntegerAttribute(id, 'lines_added', false, 0);
+  await addIntegerAttribute(id, 'lines_removed', false, 0);
+  await addIntegerAttribute(id, 'reviews', false, 0);
+  await addIntegerAttribute(id, 'issues_closed', false, 0);
+  await addFloatAttribute(id, 'score', false, 0);
   await addStringAttribute(id, 'last_contribution_at', 50, false);
 }
 
@@ -216,10 +223,10 @@ async function setupPools() {
   await ensureCollection(id, 'Pools');
   await addStringAttribute(id, 'name', 200, true);
   await addStringAttribute(id, 'description', 1000, false);
-  await addIntegerAttribute(id, 'total_amount_cents', true, 0);
-  await addIntegerAttribute(id, 'platform_fee_cents', true, 0);
-  await addIntegerAttribute(id, 'distributable_amount_cents', true, 0);
-  await addIntegerAttribute(id, 'donor_count', true, 0);
+  await addIntegerAttribute(id, 'total_amount_cents', false, 0);
+  await addIntegerAttribute(id, 'platform_fee_cents', false, 0);
+  await addIntegerAttribute(id, 'distributable_amount_cents', false, 0);
+  await addIntegerAttribute(id, 'donor_count', false, 0);
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'round_start', 50, true);
   await addStringAttribute(id, 'round_end', 50, true);
@@ -232,7 +239,7 @@ async function setupDonations() {
   await addStringAttribute(id, 'donor_id', 100, true);
   await addIntegerAttribute(id, 'amount_cents', true);
   await addStringAttribute(id, 'message', 500, false);
-  await addStringAttribute(id, 'status', 20, true, 'pending');
+  await addStringAttribute(id, 'status', 20, false, 'pending');
   await addStringAttribute(id, 'stripe_session_id', 200, false);
 }
 
@@ -242,7 +249,7 @@ async function setupPayouts() {
   await addStringAttribute(id, 'pool_id', 100, true);
   await addStringAttribute(id, 'contributor_id', 100, true);
   await addIntegerAttribute(id, 'amount_cents', true);
-  await addFloatAttribute(id, 'score_snapshot', true, 0);
+  await addFloatAttribute(id, 'score_snapshot', false, 0);
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'stripe_transfer_id', 200, false);
   await addStringAttribute(id, 'completed_at', 50, false);

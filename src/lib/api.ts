@@ -1,8 +1,39 @@
-import { Query, type Models } from "appwrite";
-import { account, databases, DATABASE_ID, COLLECTION } from "@/lib/appwrite";
-import type { Repo, Contributor, ContributorDetail, Pool, Donation, Payout, GitHubRepoInfo } from "@/types";
+import { Query, Functions, ExecutionMethod, type Models } from "appwrite";
+import { client, databases, DATABASE_ID, COLLECTION } from "@/lib/appwrite";
+import type {
+  Repo,
+  Contributor,
+  ContributorDetail,
+  Pool,
+  Payout,
+  GitHubRepoInfo,
+  RepoContribution,
+} from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const functions = new Functions(client);
+
+const FUNCTION_ID = "openget-api";
+
+async function executeFunction<T>(action: string, body?: Record<string, unknown>): Promise<T> {
+  try {
+    const execution = await functions.createExecution(
+      FUNCTION_ID,
+      JSON.stringify(body != null ? { action, ...body } : { action }),
+      false,
+      undefined,
+      ExecutionMethod.POST,
+      { "content-type": "application/json" },
+    );
+    if (execution.responseStatusCode >= 400) {
+      const err = JSON.parse(execution.responseBody || "{}") as { error?: string };
+      throw new Error(err.error || `Function error: ${execution.responseStatusCode}`);
+    }
+    return JSON.parse(execution.responseBody) as T;
+  } catch (e) {
+    if (e instanceof Error) throw e;
+    throw new Error("Function execution failed");
+  }
+}
 
 function docAttrs(doc: Models.Document): Record<string, unknown> {
   return doc as unknown as Record<string, unknown>;
@@ -43,6 +74,22 @@ function mapContributor(doc: Models.Document): Contributor {
   };
 }
 
+function mapContributorFromFunctionPayload(data: Record<string, unknown>): Contributor {
+  const id = String(data.$id ?? data.id ?? "");
+  const userId = (data.user_id as string | null) ?? null;
+  return {
+    id,
+    github_username: String(data.github_username ?? ""),
+    github_id: (data.github_id as string | null) ?? null,
+    avatar_url: (data.avatar_url as string | null) ?? null,
+    user_id: userId,
+    total_score: Number(data.total_score ?? 0),
+    repo_count: Number(data.repo_count ?? 0),
+    is_registered: Boolean(data.is_registered) || (userId != null && userId !== ""),
+    created_at: String(data.$createdAt ?? data.created_at ?? ""),
+  };
+}
+
 function mapPool(doc: Models.Document): Pool {
   const d = docAttrs(doc);
   const total = Number(d.total_amount_cents ?? 0);
@@ -63,36 +110,20 @@ function mapPool(doc: Models.Document): Pool {
   };
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  try {
-    const { jwt } = await account.createJWT();
-    return { Authorization: `Bearer ${jwt}` };
-  } catch {
-    // Not authenticated
-  }
-  return {};
-}
-
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-      ...options?.headers,
-    },
-    ...options,
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: "Request failed" }));
-    const detail = Array.isArray(error.detail)
-      ? error.detail.map((x: { msg?: string } | string) => (typeof x === "object" && x?.msg ? x.msg : x)).join(", ")
-      : error.detail || `API error: ${res.status}`;
-    throw new Error(detail);
-  }
-
-  return res.json();
+function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
+  const d = docAttrs(doc);
+  return {
+    repo_id: String(d.repo_id ?? ""),
+    repo_full_name: String(d.repo_full_name ?? ""),
+    commits: Number(d.commits ?? 0),
+    prs_merged: Number(d.prs_merged ?? 0),
+    lines_added: Number(d.lines_added ?? 0),
+    lines_removed: Number(d.lines_removed ?? 0),
+    reviews: Number(d.reviews ?? 0),
+    issues_closed: Number(d.issues_closed ?? 0),
+    score: Number(d.score ?? 0),
+    last_contribution_at: (d.last_contribution_at as string | null) ?? null,
+  };
 }
 
 // ---- Repos ----
@@ -104,46 +135,33 @@ export async function listRepos(page = 1, perPage = 20): Promise<{ repos: Repo[]
       Query.limit(perPage),
       Query.offset((page - 1) * perPage),
     ]);
-    if (result.documents.length > 0) {
-      return { repos: result.documents.map(mapRepo), total: result.total };
-    }
-  } catch {
-    // fall through to API
-  }
-
-  try {
-    return await fetchAPI<{ repos: Repo[]; total: number }>(`/repos?page=${page}&per_page=${perPage}`);
+    return { repos: result.documents.map(mapRepo), total: result.total };
   } catch {
     return { repos: [], total: 0 };
   }
 }
 
 export async function getRepo(id: string): Promise<Repo> {
-  try {
-    const doc = await databases.getDocument(DATABASE_ID, COLLECTION.REPOS, id);
-    return mapRepo(doc);
-  } catch {
-    return fetchAPI<Repo>(`/repos/${id}`);
-  }
+  const doc = await databases.getDocument(DATABASE_ID, COLLECTION.REPOS, id);
+  return mapRepo(doc);
 }
 
 export async function getRepoContributors(repoId: string) {
   try {
-    return await fetchAPI<{ contributors: unknown[] }>(`/repos/${repoId}/contributors`);
+    return await executeFunction<{ contributors: unknown[] }>("get-repo-contributors", { repoId });
   } catch {
     return { contributors: [] };
   }
 }
 
 export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
-  return fetchAPI<GitHubRepoInfo[]>("/repos/mine");
+  return executeFunction<GitHubRepoInfo[]>("get-my-repos");
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  return fetchAPI<Repo>("/repos", {
-    method: "POST",
-    body: JSON.stringify({ github_url: githubUrl }),
-  });
+  const raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+  const $id = String(raw.$id ?? raw.id ?? "");
+  return mapRepo({ ...raw, $id } as unknown as Models.Document);
 }
 
 // ---- Contributors ----
@@ -155,27 +173,26 @@ export async function listContributors(page = 1, perPage = 50): Promise<{ contri
       Query.limit(perPage),
       Query.offset((page - 1) * perPage),
     ]);
-    if (result.documents.length > 0) {
-      const enriched = result.documents.map(mapContributor);
-      return { contributors: enriched, total: result.total };
-    }
-  } catch {
-    // fall through
-  }
-
-  try {
-    return await fetchAPI<{ contributors: Contributor[]; total: number }>(`/contributors?page=${page}&per_page=${perPage}`);
+    return { contributors: result.documents.map(mapContributor), total: result.total };
   } catch {
     return { contributors: [], total: 0 };
   }
 }
 
 export async function getContributor(id: string): Promise<ContributorDetail> {
-  return fetchAPI<ContributorDetail>(`/contributors/${id}`);
+  const doc = await databases.getDocument(DATABASE_ID, COLLECTION.CONTRIBUTORS, id);
+  const base = mapContributor(doc);
+  const rcResult = await databases.listDocuments(DATABASE_ID, COLLECTION.REPO_CONTRIBUTIONS, [
+    Query.equal("contributor_id", id),
+    Query.limit(500),
+  ]);
+  const repos = rcResult.documents.map(mapRepoContributionDoc);
+  return { ...base, repos };
 }
 
 export async function registerContributor(): Promise<Contributor> {
-  return fetchAPI<Contributor>("/contributors/register", { method: "POST" });
+  const data = await executeFunction<Record<string, unknown>>("register-contributor");
+  return mapContributorFromFunctionPayload(data);
 }
 
 // ---- Pool ----
@@ -191,12 +208,7 @@ export async function getActivePool(): Promise<Pool | null> {
   } catch {
     // fall through
   }
-
-  try {
-    return await fetchAPI<Pool | null>("/pool");
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export async function createCheckoutSession(
@@ -204,15 +216,12 @@ export async function createCheckoutSession(
   message?: string,
   currency?: string,
 ): Promise<{ checkout_url: string; session_id: string }> {
-  return fetchAPI<{ checkout_url: string; session_id: string }>("/pool/create-checkout-session", {
-    method: "POST",
-    body: JSON.stringify({
-      amount_cents: amountCents,
-      currency: currency || undefined,
-      message,
-      success_url: `${window.location.origin}/donate/success`,
-      cancel_url: `${window.location.origin}/donate`,
-    }),
+  return executeFunction<{ checkout_url: string; session_id: string }>("create-checkout", {
+    amount_cents: amountCents,
+    currency: currency || "usd",
+    message: message ?? "",
+    success_url: `${window.location.origin}/donate/success`,
+    cancel_url: `${window.location.origin}/donate`,
   });
 }
 
@@ -220,40 +229,42 @@ export async function createUpiQr(
   amountPaisa: number,
   message?: string,
 ): Promise<{ qr_id: string; image_url: string; amount_paisa: number; status: string }> {
-  return fetchAPI<{ qr_id: string; image_url: string; amount_paisa: number; status: string }>("/pool/create-upi-qr", {
-    method: "POST",
-    body: JSON.stringify({ amount_paisa: amountPaisa, message }),
-  });
+  return executeFunction("upi-payment", { amount_paisa: amountPaisa, message: message ?? "" });
 }
 
 export async function checkUpiQrStatus(
   qrId: string,
 ): Promise<{ qr_id: string; status: string; paid: boolean; payments_count: number }> {
-  return fetchAPI<{ qr_id: string; status: string; paid: boolean; payments_count: number }>(`/pool/upi-qr-status/${qrId}`);
+  return executeFunction("upi-payment", { qr_id: qrId });
 }
 
-export async function donate(amountCents: number, message?: string): Promise<Donation> {
-  return fetchAPI<Donation>("/pool/donate", {
-    method: "POST",
-    body: JSON.stringify({ amount_cents: amountCents, message }),
+export async function donate(
+  amountCents: number,
+  message?: string,
+): Promise<{ checkout_url: string; session_id: string }> {
+  return executeFunction("create-checkout", {
+    amount_cents: amountCents,
+    message: message ?? "",
+    success_url: `${window.location.origin}/donate/success`,
+    cancel_url: `${window.location.origin}/donate`,
   });
 }
 
 // ---- Payouts ----
 
 export async function getEarnings() {
-  return fetchAPI<{
+  return executeFunction<{
     contributor_id: string;
     total_earned_cents: number;
     pending_cents: number;
     payouts: Payout[];
-  }>("/payouts/earnings");
+  }>("get-earnings");
 }
 
 export async function onboardStripeConnect(userId: string, email: string) {
-  return fetchAPI<{ account_id: string; onboarding_url: string }>("/payouts/stripe-connect", {
-    method: "POST",
-    body: JSON.stringify({ user_id: userId, email }),
+  return executeFunction<{ account_id: string; onboarding_url: string }>("stripe-connect", {
+    user_id: userId,
+    email,
   });
 }
 
@@ -271,8 +282,7 @@ export async function getStats(): Promise<{ repos: number; contributors: number;
       ]),
     ]);
 
-    const pool =
-      poolResult.documents.length > 0 ? mapPool(poolResult.documents[0]) : null;
+    const pool = poolResult.documents.length > 0 ? mapPool(poolResult.documents[0]) : null;
 
     return {
       repos: reposResult.total,
