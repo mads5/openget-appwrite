@@ -1,0 +1,71 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Functions dependencies
+functions/*/node_modules/
+
+# Scripts dependencies
+scripts/node_modules/
+
+# Environment
+.env
+.env.local
+
+# Repo root is user profile — exclude everything except this app
+/AppData/
+/Contacts/
+/Downloads/
+/Favorites/
+/Links/
+/Music/
+/Saved Games/
+/Searches/
+/Videos/
+/OneDrive/
+/OneDrive - HCL TECHNOLOGIES LIMITED/
+/cap-applied-ds-ml/
+/flash-framework/
+/.cisco/
+/.claude/
+/.claude.json
+/.cursor/
+/.gnupg/
+/.local/
+/.ollama/
+/.ssh/
+/.git-for-windows-updater
+/.gitconfig
+/NTUSER.DAT*
+/ntuser.dat*
+/ntuser.ini

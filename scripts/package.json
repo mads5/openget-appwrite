@@ -1,0 +1,7 @@
+{
+  "name": "openget-scripts",
+  "type": "module",
+  "dependencies": {
+    "node-appwrite": "^14.0.0"
+  }
+}
