@@ -12,6 +12,8 @@ export const COLLECTION = {
   DONATIONS: "donations",
   PAYOUTS: "payouts",
   PLATFORM_FEES: "platform_fees",
+  MONTHLY_STATS: "monthly_contributor_stats",
+  WEEKLY_DISTRIBUTIONS: "weekly_distributions",
   USERS: "users",
 } as const;
 

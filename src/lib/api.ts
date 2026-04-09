@@ -51,6 +51,7 @@ function mapRepo(doc: Models.Document): Repo {
     language: (d.language as string | null) ?? null,
     stars: Number(d.stars ?? 0),
     forks: Number(d.forks ?? 0),
+    repo_score: Number(d.repo_score ?? 0),
     listed_by: String(d.listed_by ?? ""),
     contributor_count: Number(d.contributor_count ?? 0),
     contributors_fetched_at: (d.contributors_fetched_at as string | null) ?? null,
@@ -69,6 +70,7 @@ function mapContributor(doc: Models.Document): Contributor {
     user_id: userId,
     total_score: Number(d.total_score ?? 0),
     repo_count: Number(d.repo_count ?? 0),
+    total_contributions: Number(d.total_contributions ?? 0),
     is_registered: userId != null && userId !== "",
     created_at: (d.created_at as string) || doc.$createdAt,
   };
@@ -85,6 +87,7 @@ function mapContributorFromFunctionPayload(data: Record<string, unknown>): Contr
     user_id: userId,
     total_score: Number(data.total_score ?? 0),
     repo_count: Number(data.repo_count ?? 0),
+    total_contributions: Number(data.total_contributions ?? 0),
     is_registered: Boolean(data.is_registered) || (userId != null && userId !== ""),
     created_at: String(data.$createdAt ?? data.created_at ?? ""),
   };
@@ -102,6 +105,8 @@ function mapPool(doc: Models.Document): Pool {
     total_amount_cents: total,
     platform_fee_cents: fee,
     distributable_amount_cents: dist,
+    daily_budget_cents: Number(d.daily_budget_cents ?? 0),
+    remaining_cents: Number(d.remaining_cents ?? 0),
     donor_count: Number(d.donor_count ?? 0),
     status: (d.status as Pool["status"]) || "active",
     round_start: String(d.round_start ?? ""),
@@ -201,6 +206,20 @@ export async function getActivePool(): Promise<Pool | null> {
   try {
     const result = await databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
       Query.equal("status", "active"),
+      Query.orderDesc("$createdAt"),
+      Query.limit(1),
+    ]);
+    if (result.documents.length > 0) return mapPool(result.documents[0]);
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
+export async function getCollectingPool(): Promise<Pool | null> {
+  try {
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
+      Query.equal("status", "collecting"),
       Query.orderDesc("$createdAt"),
       Query.limit(1),
     ]);

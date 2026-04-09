@@ -186,6 +186,7 @@ async function setupRepos() {
   await addStringAttribute(id, 'language', 50, false);
   await addIntegerAttribute(id, 'stars', false, 0);
   await addIntegerAttribute(id, 'forks', false, 0);
+  await addIntegerAttribute(id, 'repo_score', false, 0);
   await addStringAttribute(id, 'listed_by', 100, true);
   await addIntegerAttribute(id, 'contributor_count', false, 0);
   await addStringAttribute(id, 'contributors_fetched_at', 50, false);
@@ -200,6 +201,7 @@ async function setupContributors() {
   await addStringAttribute(id, 'user_id', 100, false);
   await addFloatAttribute(id, 'total_score', false, 0);
   await addIntegerAttribute(id, 'repo_count', false, 0);
+  await addIntegerAttribute(id, 'total_contributions', false, 0);
 }
 
 async function setupRepoContributions() {
@@ -226,6 +228,8 @@ async function setupPools() {
   await addIntegerAttribute(id, 'total_amount_cents', false, 0);
   await addIntegerAttribute(id, 'platform_fee_cents', false, 0);
   await addIntegerAttribute(id, 'distributable_amount_cents', false, 0);
+  await addIntegerAttribute(id, 'daily_budget_cents', false, 0);
+  await addIntegerAttribute(id, 'remaining_cents', false, 0);
   await addIntegerAttribute(id, 'donor_count', false, 0);
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'round_start', 50, true);
@@ -263,6 +267,27 @@ async function setupPlatformFees() {
   await addStringAttribute(id, 'source_donation_id', 100, true);
 }
 
+async function setupMonthlyContributorStats() {
+  const id = 'monthly_contributor_stats';
+  await ensureCollection(id, 'Monthly contributor stats');
+  await addStringAttribute(id, 'contributor_id', 100, true);
+  await addStringAttribute(id, 'repo_id', 100, true);
+  await addStringAttribute(id, 'month', 7, true);
+  await addIntegerAttribute(id, 'prs_raised', false, 0);
+  await addIntegerAttribute(id, 'prs_merged', false, 0);
+}
+
+async function setupWeeklyDistributions() {
+  const id = 'weekly_distributions';
+  await ensureCollection(id, 'Weekly distributions');
+  await addStringAttribute(id, 'pool_id', 100, true);
+  await addStringAttribute(id, 'week_start', 50, true);
+  await addStringAttribute(id, 'week_end', 50, true);
+  await addIntegerAttribute(id, 'budget_cents', false, 0);
+  await addIntegerAttribute(id, 'distributed_cents', false, 0);
+  await addIntegerAttribute(id, 'payouts_created', false, 0);
+}
+
 async function setupUsers() {
   const id = 'users';
   await ensureCollection(id, 'Users');
@@ -294,6 +319,8 @@ async function main() {
     ['donations', setupDonations],
     ['payouts', setupPayouts],
     ['platform_fees', setupPlatformFees],
+    ['monthly_contributor_stats', setupMonthlyContributorStats],
+    ['weekly_distributions', setupWeeklyDistributions],
     ['users', setupUsers],
   ];
 
