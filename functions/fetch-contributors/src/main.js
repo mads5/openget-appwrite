@@ -32,11 +32,6 @@ function makeDb() {
   return new Databases(client);
 }
 
-function isSchemaMismatchError(e) {
-  const msg = String(e?.message || "");
-  return /unknown attribute|Attribute not found|Collection with the requested ID could not be found/i.test(msg);
-}
-
 function ghHeaders() {
   const token = process.env.GITHUB_TOKEN;
   if (!token) throw new Error("GITHUB_TOKEN is required");
@@ -158,18 +153,11 @@ export default async ({ req, res, log, error }) => {
         if (ghRes.ok) {
           const gh = await ghRes.json();
           const newScore = (gh.stargazers_count || 0) + (gh.forks_count || 0);
-          const repoPatch = {
+          await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, {
             stars: gh.stargazers_count || 0,
             forks: gh.forks_count || 0,
             repo_score: newScore,
-          };
-          try {
-            await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, repoPatch);
-          } catch (e) {
-            if (!isSchemaMismatchError(e)) throw e;
-            const { repo_score: _rs, ...fallback } = repoPatch;
-            await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, fallback);
-          }
+          });
           repoDoc.stars = gh.stargazers_count || 0;
           repoDoc.forks = gh.forks_count || 0;
           repoDoc.repo_score = newScore;
@@ -219,27 +207,17 @@ export default async ({ req, res, log, error }) => {
           if (existingC.total === 0) {
             const ghUserRes = await fetch(`https://api.github.com/users/${login}`, { headers: ghHeaders() });
             const ghUser = ghUserRes.ok ? await ghUserRes.json() : {};
-            const newContrib = {
-              github_username: login,
-              github_id: ghUser.id != null ? String(ghUser.id) : null,
-              avatar_url: ghUser.avatar_url ?? null,
-              user_id: null,
-              total_score: 0,
-              repo_count: 0,
-              total_contributions: 0,
-            };
-            let created;
-            try {
-              created = await databases.createDocument(
-                DATABASE_ID, COLLECTION_CONTRIBUTORS, ID.unique(), newContrib,
-              );
-            } catch (e) {
-              if (!isSchemaMismatchError(e)) throw e;
-              const { total_contributions: _tc, ...fallback } = newContrib;
-              created = await databases.createDocument(
-                DATABASE_ID, COLLECTION_CONTRIBUTORS, ID.unique(), fallback,
-              );
-            }
+            const created = await databases.createDocument(
+              DATABASE_ID, COLLECTION_CONTRIBUTORS, ID.unique(), {
+                github_username: login,
+                github_id: ghUser.id != null ? String(ghUser.id) : null,
+                avatar_url: ghUser.avatar_url ?? null,
+                user_id: null,
+                total_score: 0,
+                repo_count: 0,
+                total_contributions: 0,
+              }
+            );
             contributorId = created.$id;
             summary.contributors_upserted++;
           } else {
@@ -274,31 +252,26 @@ export default async ({ req, res, log, error }) => {
           }
 
           const monthlyPr = await fetchMonthlyPrStats(owner, repoName, login, monthKey);
-          try {
-            const msQuery = [
-              Query.equal("contributor_id", contributorId),
-              Query.equal("repo_id", repoDoc.$id),
-              Query.equal("month", monthKey),
-              Query.limit(1),
-            ];
-            const existingMs = await databases.listDocuments(DATABASE_ID, COLLECTION_MONTHLY_STATS, msQuery);
-            if (existingMs.total === 0) {
-              await databases.createDocument(DATABASE_ID, COLLECTION_MONTHLY_STATS, ID.unique(), {
-                contributor_id: contributorId,
-                repo_id: repoDoc.$id,
-                month: monthKey,
-                prs_raised: monthlyPr.raised,
-                prs_merged: monthlyPr.merged,
-              });
-            } else {
-              await databases.updateDocument(DATABASE_ID, COLLECTION_MONTHLY_STATS, existingMs.documents[0].$id, {
-                prs_raised: monthlyPr.raised,
-                prs_merged: monthlyPr.merged,
-              });
-            }
-          } catch (e) {
-            if (!isSchemaMismatchError(e)) throw e;
-            log(`monthly_contributor_stats skipped (schema not migrated): ${e.message}`);
+          const msQuery = [
+            Query.equal("contributor_id", contributorId),
+            Query.equal("repo_id", repoDoc.$id),
+            Query.equal("month", monthKey),
+            Query.limit(1),
+          ];
+          const existingMs = await databases.listDocuments(DATABASE_ID, COLLECTION_MONTHLY_STATS, msQuery);
+          if (existingMs.total === 0) {
+            await databases.createDocument(DATABASE_ID, COLLECTION_MONTHLY_STATS, ID.unique(), {
+              contributor_id: contributorId,
+              repo_id: repoDoc.$id,
+              month: monthKey,
+              prs_raised: monthlyPr.raised,
+              prs_merged: monthlyPr.merged,
+            });
+          } else {
+            await databases.updateDocument(DATABASE_ID, COLLECTION_MONTHLY_STATS, existingMs.documents[0].$id, {
+              prs_raised: monthlyPr.raised,
+              prs_merged: monthlyPr.merged,
+            });
           }
         }
 
@@ -327,21 +300,14 @@ export default async ({ req, res, log, error }) => {
         (s, rc) => s + (rc.commits || 0) + (rc.prs_merged || 0) + (rc.reviews || 0) + (rc.issues_closed || 0), 0
       );
 
-      let allMsDocs = [];
-      try {
-        const allMs = await databases.listDocuments(DATABASE_ID, COLLECTION_MONTHLY_STATS, [
-          Query.equal("contributor_id", c.$id),
-          Query.equal("month", monthKey),
-          Query.limit(5000),
-        ]);
-        allMsDocs = allMs.documents;
-      } catch (e) {
-        if (!isSchemaMismatchError(e)) throw e;
-        log(`monthly_contributor_stats list skipped: ${e.message}`);
-      }
+      const allMs = await databases.listDocuments(DATABASE_ID, COLLECTION_MONTHLY_STATS, [
+        Query.equal("contributor_id", c.$id),
+        Query.equal("month", monthKey),
+        Query.limit(5000),
+      ]);
 
       let prsRaisedMonth = 0, prsMergedMonth = 0;
-      for (const ms of allMsDocs) {
+      for (const ms of allMs.documents) {
         prsRaisedMonth += ms.prs_raised || 0;
         prsMergedMonth += ms.prs_merged || 0;
       }
@@ -363,19 +329,11 @@ export default async ({ req, res, log, error }) => {
 
       const score = computeContributorScore(totalContributions, prsRaisedMonth, prsMergedMonth, qualifiedRepoCount);
 
-      try {
-        await databases.updateDocument(DATABASE_ID, COLLECTION_CONTRIBUTORS, c.$id, {
-          total_score: score,
-          total_contributions: totalContributions,
-          repo_count: allRc.total,
-        });
-      } catch (e) {
-        if (!isSchemaMismatchError(e)) throw e;
-        await databases.updateDocument(DATABASE_ID, COLLECTION_CONTRIBUTORS, c.$id, {
-          total_score: score,
-          repo_count: allRc.total,
-        });
-      }
+      await databases.updateDocument(DATABASE_ID, COLLECTION_CONTRIBUTORS, c.$id, {
+        total_score: score,
+        total_contributions: totalContributions,
+        repo_count: allRc.total,
+      });
     }
 
     return res.json(summary);
