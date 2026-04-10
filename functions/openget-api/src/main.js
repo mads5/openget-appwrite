@@ -18,6 +18,17 @@ const COL = {
 
 const MIN_PAYOUT_CENTS = 50;
 
+/**
+ * PR #1 adds new attributes/collections; if `setup-database.js` was not applied yet,
+ * Appwrite rejects writes. Retry with a smaller payload so deploys do not hard-500.
+ */
+function isSchemaMismatchError(e) {
+  const msg = String(e?.message || '');
+  return /unknown attribute|Attribute not found|Collection with the requested ID could not be found|Document with the requested ID could not be found/i.test(
+    msg,
+  );
+}
+
 function initClient() {
   return new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1')
@@ -66,7 +77,7 @@ export default async ({ req, res, log, error }) => {
         if (!ghRes.ok) return res.json({ error: 'GitHub repo not found' }, 404);
         const gh = await ghRes.json();
 
-        const doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), {
+        const repoPayload = {
           github_url: gh.html_url,
           owner: gh.owner.login,
           repo_name: gh.name,
@@ -78,7 +89,15 @@ export default async ({ req, res, log, error }) => {
           repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
           listed_by: userId,
           contributor_count: 0,
-        });
+        };
+        let doc;
+        try {
+          doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), repoPayload);
+        } catch (e) {
+          if (!isSchemaMismatchError(e)) throw e;
+          const { repo_score: _rs, ...fallback } = repoPayload;
+          doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), fallback);
+        }
         return res.json({ id: doc.$id, ...doc });
       }
 
@@ -163,13 +182,21 @@ export default async ({ req, res, log, error }) => {
           }
           return res.json({ ...doc, user_id: userId, is_registered: true });
         }
-        const doc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
+        const contribPayload = {
           github_username: githubUsername,
           user_id: userId,
           total_score: 0,
           repo_count: 0,
           total_contributions: 0,
-        });
+        };
+        let doc;
+        try {
+          doc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), contribPayload);
+        } catch (e) {
+          if (!isSchemaMismatchError(e)) throw e;
+          const { total_contributions: _tc, ...fallback } = contribPayload;
+          doc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), fallback);
+        }
         return res.json({ ...doc, is_registered: true });
       }
 
@@ -395,18 +422,28 @@ export default async ({ req, res, log, error }) => {
           }
         }
 
-        await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-          remaining_cents: Math.max(0, (pool.remaining_cents || 0) - totalDistributed),
-        });
+        try {
+          await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
+            remaining_cents: Math.max(0, (pool.remaining_cents || 0) - totalDistributed),
+          });
+        } catch (e) {
+          if (!isSchemaMismatchError(e)) throw e;
+          log(`pools.remaining_cents update skipped (schema not migrated): ${e.message}`);
+        }
 
-        await db.createDocument(DATABASE_ID, COL.WEEKLY_DISTRIBUTIONS, ID.unique(), {
-          pool_id: pool.$id,
-          week_start: weekStart.toISOString().slice(0, 10),
-          week_end: weekEnd.toISOString().slice(0, 10),
-          budget_cents: budget,
-          distributed_cents: totalDistributed,
-          payouts_created: totalPayouts,
-        });
+        try {
+          await db.createDocument(DATABASE_ID, COL.WEEKLY_DISTRIBUTIONS, ID.unique(), {
+            pool_id: pool.$id,
+            week_start: weekStart.toISOString().slice(0, 10),
+            week_end: weekEnd.toISOString().slice(0, 10),
+            budget_cents: budget,
+            distributed_cents: totalDistributed,
+            payouts_created: totalPayouts,
+          });
+        } catch (e) {
+          if (!isSchemaMismatchError(e)) throw e;
+          log(`weekly_distributions skipped (schema not migrated): ${e.message}`);
+        }
 
         return res.json({ pool_id: pool.$id, distributed_cents: totalDistributed, payouts_created: totalPayouts });
       }
@@ -432,11 +469,18 @@ export default async ({ req, res, log, error }) => {
             const ghInfoRes = await fetch(`https://api.github.com/repos/${repo.full_name}`, { headers: ghHeaders });
             if (ghInfoRes.ok) {
               const ghInfo = await ghInfoRes.json();
-              await db.updateDocument(DATABASE_ID, COL.REPOS, repo.$id, {
+              const patch = {
                 stars: ghInfo.stargazers_count || 0,
                 forks: ghInfo.forks_count || 0,
                 repo_score: (ghInfo.stargazers_count || 0) + (ghInfo.forks_count || 0),
-              });
+              };
+              try {
+                await db.updateDocument(DATABASE_ID, COL.REPOS, repo.$id, patch);
+              } catch (e) {
+                if (!isSchemaMismatchError(e)) throw e;
+                const { repo_score: _rs, ...fallback } = patch;
+                await db.updateDocument(DATABASE_ID, COL.REPOS, repo.$id, fallback);
+              }
             }
 
             const statsRes = await fetch(`https://api.github.com/repos/${repo.full_name}/stats/contributors`, { headers: ghHeaders });
@@ -501,11 +545,19 @@ export default async ({ req, res, log, error }) => {
               const totalContributions = allContribs.documents.reduce(
                 (s, d) => s + (d.commits || 0) + (d.prs_merged || 0) + (d.reviews || 0) + (d.issues_closed || 0), 0
               );
-              await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
-                total_score: totalScore,
-                repo_count: allContribs.total,
-                total_contributions: totalContributions,
-              });
+              try {
+                await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
+                  total_score: totalScore,
+                  repo_count: allContribs.total,
+                  total_contributions: totalContributions,
+                });
+              } catch (e) {
+                if (!isSchemaMismatchError(e)) throw e;
+                await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
+                  total_score: totalScore,
+                  repo_count: allContribs.total,
+                });
+              }
 
               contribCount++;
             }

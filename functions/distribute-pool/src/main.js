@@ -24,6 +24,11 @@ function makeDb() {
   return new Databases(client);
 }
 
+function isSchemaMismatchError(e) {
+  const msg = String(e?.message || "");
+  return /unknown attribute|Attribute not found|Collection with the requested ID could not be found/i.test(msg);
+}
+
 function daysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
 }
@@ -56,7 +61,7 @@ async function ensureCollectingPool(databases) {
     if (p.round_start === roundStart) return p;
   }
 
-  const pool = await databases.createDocument(DATABASE_ID, COLLECTION_POOLS, ID.unique(), {
+  const fullPayload = {
     name: `Pool ${roundStart.slice(0, 7)}`,
     description: `Monthly pool for ${roundStart} to ${roundEnd}`,
     total_amount_cents: 0,
@@ -68,8 +73,14 @@ async function ensureCollectingPool(databases) {
     status: "collecting",
     round_start: roundStart,
     round_end: roundEnd,
-  });
-  return pool;
+  };
+  try {
+    return await databases.createDocument(DATABASE_ID, COLLECTION_POOLS, ID.unique(), fullPayload);
+  } catch (e) {
+    if (!isSchemaMismatchError(e)) throw e;
+    const { daily_budget_cents: _d, remaining_cents: _r, ...fallback } = fullPayload;
+    return await databases.createDocument(DATABASE_ID, COLLECTION_POOLS, ID.unique(), fallback);
+  }
 }
 
 async function activatePool(databases, pool) {
@@ -79,13 +90,20 @@ async function activatePool(databases, pool) {
   const totalDays = daysInMonth(y, m);
   const dailyBudget = Math.floor(distributable / totalDays);
 
-  await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
+  const activatePayload = {
     status: "active",
     platform_fee_cents: fee,
     distributable_amount_cents: distributable,
     daily_budget_cents: dailyBudget,
     remaining_cents: distributable,
-  });
+  };
+  try {
+    await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, activatePayload);
+  } catch (e) {
+    if (!isSchemaMismatchError(e)) throw e;
+    const { daily_budget_cents: _d, remaining_cents: _r, ...fallback } = activatePayload;
+    await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, fallback);
+  }
 
   return { ...pool, status: "active", platform_fee_cents: fee, distributable_amount_cents: distributable, daily_budget_cents: dailyBudget, remaining_cents: distributable };
 }
@@ -144,15 +162,24 @@ export default async ({ req, res, log, error }) => {
 
       const remaining = pool.remaining_cents || 0;
       if (remaining <= 0) {
-        await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, { status: "completed" });
+        try {
+          await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, { status: "completed" });
+        } catch (e) {
+          if (!isSchemaMismatchError(e)) throw e;
+        }
         return res.json({ message: "Pool finalized with no remaining funds", pool_id: pool.$id });
       }
 
       const result = await distributeWeekly(databases, pool, remaining, log, error);
-      await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
-        status: "completed",
-        remaining_cents: 0,
-      });
+      try {
+        await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
+          status: "completed",
+          remaining_cents: 0,
+        });
+      } catch (e) {
+        if (!isSchemaMismatchError(e)) throw e;
+        await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, { status: "completed" });
+      }
 
       await ensureCollectingPool(databases);
       return res.json({ message: "Month finalized", ...result });
@@ -168,9 +195,13 @@ export default async ({ req, res, log, error }) => {
     const result = await distributeWeekly(databases, pool, budget, log, error);
 
     const newRemaining = Math.max(0, (pool.remaining_cents || 0) - result.distributed_cents);
-    await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
-      remaining_cents: newRemaining,
-    });
+    try {
+      await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
+        remaining_cents: newRemaining,
+      });
+    } catch (e) {
+      if (!isSchemaMismatchError(e)) throw e;
+    }
 
     return res.json(result);
   } catch (e) {
@@ -259,14 +290,18 @@ async function distributeWeekly(databases, pool, budget, log, error) {
     }
   }
 
-  await databases.createDocument(DATABASE_ID, COLLECTION_WEEKLY_DISTRIBUTIONS, ID.unique(), {
-    pool_id: pool.$id,
-    week_start: weekStart.toISOString().slice(0, 10),
-    week_end: weekEnd.toISOString().slice(0, 10),
-    budget_cents: budget,
-    distributed_cents: totalDistributed,
-    payouts_created: totalPayouts,
-  });
+  try {
+    await databases.createDocument(DATABASE_ID, COLLECTION_WEEKLY_DISTRIBUTIONS, ID.unique(), {
+      pool_id: pool.$id,
+      week_start: weekStart.toISOString().slice(0, 10),
+      week_end: weekEnd.toISOString().slice(0, 10),
+      budget_cents: budget,
+      distributed_cents: totalDistributed,
+      payouts_created: totalPayouts,
+    });
+  } catch (e) {
+    if (!isSchemaMismatchError(e)) throw e;
+  }
 
   log(`Weekly distribution: ${totalPayouts} payouts, ${totalDistributed} cents from pool ${pool.$id}`);
   return { pool_id: pool.$id, distributed_cents: totalDistributed, payouts_created: totalPayouts };
