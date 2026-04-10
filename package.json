@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:sync": "npm ci --prefix scripts --no-audit --no-fund && npm run db:sync --prefix scripts"
   },
   "dependencies": {
     "next": "14.2.35",

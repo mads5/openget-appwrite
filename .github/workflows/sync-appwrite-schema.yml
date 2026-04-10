@@ -1,0 +1,38 @@
+# Idempotent schema sync: keeps Appwrite collections/attributes in sync with
+# scripts/setup-database.js. Add repo secrets: APPWRITE_API_KEY (required).
+# Optional: APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID (defaults match src/lib/appwrite.ts).
+
+name: Sync Appwrite database schema
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: appwrite-schema-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Apply database schema (idempotent)
+        working-directory: scripts
+        env:
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+        run: node setup-database.js
