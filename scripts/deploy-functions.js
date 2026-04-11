@@ -125,6 +125,13 @@ async function main() {
     return statSync(full).isDirectory() && FUNCTION_CONFIG[d];
   });
 
+  /** Comma-separated IDs (e.g. `openget-api` only) — used by CI when the Appwrite plan cannot create every function. */
+  const only = process.env.DEPLOY_FUNCTION_IDS?.split(',').map((s) => s.trim()).filter(Boolean);
+  if (only?.length) {
+    functionDirs = functionDirs.filter((d) => only.includes(d));
+    console.log(`Limiting deployment to: ${only.join(', ')}`);
+  }
+
   const PRIORITY = ['openget-api'];
   functionDirs = functionDirs.sort((a, b) => {
     const ia = PRIORITY.indexOf(a);

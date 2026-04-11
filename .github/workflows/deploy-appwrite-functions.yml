@@ -35,6 +35,8 @@ jobs:
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
           APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          # Next.js only calls `openget-api`; deploy that first. Full multi-function deploy can hit plan limits — run locally without this if you have capacity.
+          DEPLOY_FUNCTION_IDS: openget-api
         run: |
           if [ -z "${APPWRITE_API_KEY}" ]; then
             echo "APPWRITE_API_KEY not set — skipping function deployment (add the secret to enable)."

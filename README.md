@@ -382,6 +382,8 @@ APPWRITE_API_KEY=your_key node deploy-functions.js
 
 Creates functions (if missing), bundles `node_modules`, and uploads deployments. **`openget-api` is deployed first.** If Appwrite reports **maximum number of functions** for your plan, **creating** a new function can fail, but **uploading** a new deployment to a function that **already exists** still runs—so your router can be updated without adding more function slots.
 
+GitHub Actions sets **`DEPLOY_FUNCTION_IDS=openget-api`** so CI only updates the router the Next app uses (avoids failing the job when other function IDs are not provisioned). To deploy **all** functions from this repo, run locally **without** that variable (and ensure your plan has enough function slots).
+
 </details>
 
 <details>

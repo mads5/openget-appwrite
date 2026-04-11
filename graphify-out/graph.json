@@ -1517,7 +1517,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\deploy-functions.js",
-      "source_location": "L143",
+      "source_location": "L150",
       "weight": 1.0,
       "_src": "deploy_functions_main",
       "_tgt": "deploy_functions_deployfunction",
