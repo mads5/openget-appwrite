@@ -28,6 +28,7 @@ export function RepoTable({ repos }: RepoTableProps) {
         <thead className="bg-muted/50">
           <tr>
             <th className="text-left px-4 py-3 text-sm font-medium">#</th>
+            <th className="text-right px-4 py-3 text-sm font-medium">Score</th>
             <th className="text-left px-4 py-3 text-sm font-medium">Repository</th>
             <th className="text-right px-4 py-3 text-sm font-medium">Stars</th>
             <th className="text-right px-4 py-3 text-sm font-medium hidden sm:table-cell">Forks</th>
@@ -39,6 +40,14 @@ export function RepoTable({ repos }: RepoTableProps) {
           {repos.map((repo, i) => (
             <tr key={repo.id} className="hover:bg-muted/30 transition-colors">
               <td className="px-4 py-3 text-muted-foreground text-sm">{i + 1}</td>
+              <td className="text-right px-4 py-3 text-sm tabular-nums">
+                <span
+                  className="font-medium"
+                  title="Popularity weight (stars + forks) used for payouts and ranking"
+                >
+                  {formatNumber(repo.repo_score)}
+                </span>
+              </td>
               <td className="px-4 py-3">
                 <Link
                   href={`/repos/${repo.id}`}

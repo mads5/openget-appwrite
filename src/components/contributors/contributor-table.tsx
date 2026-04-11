@@ -8,6 +8,21 @@ interface ContributorTableProps {
   contributors: Contributor[];
 }
 
+function contributorScoreLabel(c: Contributor): { text: string; title: string } {
+  if (c.repo_count === 0) {
+    return {
+      text: "Not ranked yet",
+      title:
+        "No contribution records on listed repositories yet, or the ranking job has not synced this account.",
+    };
+  }
+  return {
+    text: "No qualifying score",
+    title:
+      "Aggregate score stays at 0 until you have merged PRs on listed repos that meet OpenGet's minimum repo popularity and contribution rules.",
+  };
+}
+
 export function ContributorTable({ contributors }: ContributorTableProps) {
   if (!contributors.length) {
     return (
@@ -30,7 +45,9 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {contributors.map((c, i) => (
+          {contributors.map((c, i) => {
+            const scoreFallback = c.total_score <= 0 ? contributorScoreLabel(c) : null;
+            return (
             <tr key={c.id} className="hover:bg-muted/30 transition-colors">
               <td className="px-4 py-3">
                 <span
@@ -70,11 +87,15 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
                   <Badge variant={i < 10 ? "default" : "secondary"}>
                     {c.total_score.toFixed(0)}
                   </Badge>
-                ) : (
-                  <Badge variant="secondary" className="bg-orange-500/10 text-orange-400 border-orange-500/20">
-                    Scoring...
+                ) : scoreFallback ? (
+                  <Badge
+                    variant="outline"
+                    className="text-muted-foreground font-normal max-w-[11rem] whitespace-normal text-right leading-snug"
+                    title={scoreFallback.title}
+                  >
+                    {scoreFallback.text}
                   </Badge>
-                )}
+                ) : null}
               </td>
               <td className="text-right px-4 py-3 hidden md:table-cell">
                 {c.is_registered ? (
@@ -86,7 +107,8 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

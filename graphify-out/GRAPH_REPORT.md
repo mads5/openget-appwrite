@@ -1,11 +1,11 @@
-# Graph Report - .  (2026-04-12)
+# Graph Report - c:\Users\Dell\openget-appwrite  (2026-04-12)
 
 ## Corpus Check
-- 45 files · ~32,577 words
+- 45 files · ~33,449 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 122 nodes · 198 edges · 14 communities detected
+- 127 nodes · 205 edges · 14 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
@@ -31,11 +31,11 @@ Cohesion: 0.11
 Nodes (15): activatePool(), daysInMonth(), ensureCollectingPool(), fetchGithubUser(), fetchMonthlyPrStats(), fetchStatsContributors(), getActiveMonthInfo(), getGithubIdentityToken() (+7 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.1
+Cohesion: 0.09
 Nodes (0): 
 
 ### Community 2 - "Community 2"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (22): checkUpiQrStatus(), createCheckoutSession(), createUpiQr(), docAttrs(), donate(), executeFunction(), getActivePool(), getCollectingPool() (+14 more)
 
 ### Community 3 - "Community 3"
@@ -47,12 +47,12 @@ Cohesion: 0.33
 Nodes (0): 
 
 ### Community 5 - "Community 5"
-Cohesion: 0.83
-Nodes (3): createTarGz(), deployFunction(), main()
+Cohesion: 0.7
+Nodes (4): createTarGz(), deployFunction(), main(), syncExecuteFromConfig()
 
 ### Community 6 - "Community 6"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (2): main(), syncOpengetApiExecute()
 
 ### Community 7 - "Community 7"
 Cohesion: 1.0
@@ -83,8 +83,6 @@ Cohesion: 1.0
 Nodes (0): 
 
 ## Knowledge Gaps
-- **Thin community `Community 6`** (2 nodes): `deploy-single-function.js`, `main()`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 7`** (2 nodes): `middleware.ts`, `middleware()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 8`** (2 nodes): `logo.tsx`, `LogoIcon()`
@@ -106,6 +104,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.11 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.1 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.14 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.13 - nodes in this community are weakly interconnected._
