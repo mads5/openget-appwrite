@@ -1,0 +1,25 @@
+# Cursor: indexing-only exclusions (mirrors .cursorignore for predictable behavior).
+
+node_modules/
+dist/
+build/
+.git/
+*.log
+**/logs/
+coverage/
+__pycache__/
+*.pyc
+.env
+*.lock
+data/
+migrations/
+public/assets/
+*.min.js
+*.min.css
+
+.next/
+out/
+.vercel
+
+functions/*/node_modules/
+scripts/node_modules/

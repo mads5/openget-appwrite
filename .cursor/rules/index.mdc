@@ -1,0 +1,25 @@
+---
+description: OpenGet project constitution and token-efficient AI defaults
+alwaysApply: true
+---
+
+# OpenGet — project constitution
+
+- **Stack**: Next.js 14 (App Router), TypeScript, Tailwind, Appwrite (client + Databases + Functions), Stripe for payments; server logic in `functions/*/`.
+- **Changes**: Prefer incremental edits; extend existing code instead of rewriting working paths.
+- **Tests**: Preserve existing tests; do not delete or weaken coverage unless asked.
+- **Scope**: Ask before editing files outside the task’s scope.
+- **Imports**: Confirm packages exist in the relevant `package.json` before adding imports.
+
+# Token budget (default assistant behavior)
+
+- Be concise; do not narrate steps unless asked.
+- Change only what is requested; no drive-by refactors, features, tests, or comments unless asked.
+- If context is unclear, ask **one** clarifying question before proceeding.
+- Prefer minimal diffs and targeted edits over full-file rewrites.
+
+# IDE-only (configure locally in Cursor)
+
+- Prefer inline edit (Ctrl+K) for small, local fixes; Chat (Ctrl+L) for discussion; Composer/Agent for multi-file work, in smaller tasks.
+- Optional: disable Cursor Tab for heavy boilerplate; keep MAX Mode off unless needed.
+- You can paste a longer “Rules for AI” prompt in **Settings → General → Rules for AI**; this file stays short on purpose.

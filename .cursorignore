@@ -1,0 +1,27 @@
+# Cursor: exclude from AI context (indexing + access). Same idea as .gitignore syntax.
+
+node_modules/
+dist/
+build/
+.git/
+*.log
+**/logs/
+coverage/
+__pycache__/
+*.pyc
+.env
+*.lock
+data/
+migrations/
+public/assets/
+*.min.js
+*.min.css
+
+# Next.js / deploy
+.next/
+out/
+.vercel
+
+# Appwrite functions & scripts deps (nested installs)
+functions/*/node_modules/
+scripts/node_modules/

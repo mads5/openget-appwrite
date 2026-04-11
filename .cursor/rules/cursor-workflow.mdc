@@ -1,0 +1,18 @@
+---
+description: Cursor IDE habits to reduce context and token use
+alwaysApply: false
+---
+# Workflow (when working in matched files)
+
+- **Small fix in one place**: use **inline edit (Ctrl+K)** with only the selection — avoid opening full chat when possible.
+- **References**: prefer `@path/to/file` over **@Codebase** unless you need a repo-wide search.
+- **Chats**: start a **new chat** for a new task; long threads re-send full history and burn tokens.
+- **Composer/Agent**: use for multi-file work; split into smaller steps instead of one huge request.
+- **Context**: **Clear Context** (Command Palette) when you want a fresh model turn without losing visible history.
+
+# Context window (biggest cost for most users)
+
+- **Keep files small** — aim ~200 lines per file where practical; past ~300–400 lines, tools often pull the whole file into context even for tiny edits. Prefer splitting components/modules.
+- **`.cursorignore`** — keep `node_modules/`, build output, and generated paths listed so indexing and search do not drag in junk (see repo root `.cursorignore`).
+- **Batch iterative tweaks** — combine spacing, color, and layout changes in **one** prompt when possible; each round-trip re-reads files and burns tokens.
+- **Model choice** — for typical HTML/CSS/JS and Next.js UI work, a capable mid-tier model is usually enough; reserve the largest / “max” tier for hard bugs, security, or architecture — not routine styling.

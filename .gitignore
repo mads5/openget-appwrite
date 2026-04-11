@@ -59,7 +59,10 @@ scripts/node_modules/
 /.cisco/
 /.claude/
 /.claude.json
-/.cursor/
+# Cursor: ignore local IDE state but version shared rules
+/.cursor/*
+!/.cursor/rules/
+!/.cursor/rules/**
 /.gnupg/
 /.local/
 /.ollama/
