@@ -1,0 +1,43 @@
+# Deploy all configured Appwrite Functions (including openget-api) after merge to main.
+# Add repo secret: APPWRITE_API_KEY (required). Optional: APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID.
+# If APPWRITE_API_KEY is unset, the job exits successfully without deploying (forks / local forks).
+
+name: Deploy Appwrite functions
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-functions-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Deploy functions
+        working-directory: scripts
+        env:
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+        run: |
+          if [ -z "${APPWRITE_API_KEY}" ]; then
+            echo "APPWRITE_API_KEY not set — skipping function deployment (add the secret to enable)."
+            exit 0
+          fi
+          node deploy-functions.js

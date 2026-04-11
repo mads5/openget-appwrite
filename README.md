@@ -324,7 +324,7 @@ openget-appwrite/
 
 | Secret | Used By |
 |:-------|:--------|
-| `APPWRITE_API_KEY` | `sync-appwrite-schema.yml` |
+| `APPWRITE_API_KEY` | `sync-appwrite-schema.yml`, `deploy-appwrite-functions.yml` |
 | `APPWRITE_ENDPOINT` | Optional override |
 | `APPWRITE_PROJECT_ID` | Optional override |
 
@@ -357,6 +357,8 @@ APPWRITE_API_KEY=your_key npm run db:sync
 ```
 
 > The script is **idempotent** — safe to run on every deploy. Creates missing collections/attributes, skips existing ones.
+
+After merging schema changes (for example the optional **`github_access_token`** attribute on **`users`**), run **`npm run db:sync`** on `master` (or locally with `APPWRITE_API_KEY`) so new attributes exist before the app or functions rely on them. Pushes to `master` also trigger the [schema sync workflow](.github/workflows/sync-appwrite-schema.yml) if GitHub Actions secrets are configured.
 
 ### Duplicate contributor rows (same GitHub account)
 
@@ -392,6 +394,18 @@ appwrite push functions
 
 </details>
 
+### Deploying the `openget-api` router (required for API fixes)
+
+The Next.js app invokes a **single** function ID, **`openget-api`**, for actions such as `get-my-repos` and `register-contributor` (see [`src/lib/api.ts`](src/lib/api.ts)). **Merging a PR does not update runtime behavior** until a new deployment of that function is active in Appwrite.
+
+After you merge changes under [`functions/openget-api/`](functions/openget-api/):
+
+1. Pull the latest `master` (or check out the commit you want in production).
+2. Run **Option A** or **B** above — the deploy script includes `openget-api` and uploads a new deployment.
+3. In Appwrite Console → **Functions** → **`openget-api`**, confirm the **active deployment** matches the commit you expect.
+
+**PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
+
 ### Scheduled Functions
 
 | Function | Schedule | Purpose |
@@ -402,6 +416,10 @@ appwrite push functions
 ---
 
 ## CI / CD
+
+### Automatic Function Deploy
+
+Pushes to `master` / `main` run [`.github/workflows/deploy-appwrite-functions.yml`](.github/workflows/deploy-appwrite-functions.yml), which executes [`scripts/deploy-functions.js`](scripts/deploy-functions.js) (including **`openget-api`**). Add the **`APPWRITE_API_KEY`** repository secret to enable deployments; optional **`APPWRITE_ENDPOINT`** and **`APPWRITE_PROJECT_ID`** override defaults. If the secret is missing, the workflow skips deployment so forks do not fail CI.
 
 ### Automatic Schema Sync
 
@@ -417,6 +435,10 @@ Every push to `master` triggers `.github/workflows/sync-appwrite-schema.yml`:
 
 The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). Appwrite watches the repo and triggers builds on push. Preview URLs are generated per PR automatically.
 
+**Limitations of PR previews:** Previews rebuild **only the Next.js site**, not Appwrite **Functions** or database data. Testing flows that depend on `openget-api` (GitHub repos, registration, checkout, etc.) requires a **new deployment** of [`functions/openget-api`](functions/openget-api) as described above, then retest on the preview or production URL.
+
+**OAuth on preview hosts:** If **Sign in with GitHub** fails or redirects incorrectly on a `*.appwrite.network` preview but works on your main Site URL, check **Appwrite Console** → **Auth** (allowed platforms / redirect URLs for your Site and OAuth providers) and your **GitHub OAuth App** settings so the preview origin is permitted where Appwrite requires it. The GitHub authorization callback usually remains Appwrite’s endpoint; the **success redirect** back to your app may use the preview hostname and must be allowed by Appwrite Auth configuration.
+
 ---
 
 ## Contributing
@@ -426,7 +448,7 @@ The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). A
 3. Commit your changes
 4. Push and open a PR
 
-All PRs get an Appwrite preview deployment automatically.
+All PRs get an Appwrite preview deployment automatically (frontend only; deploy Functions separately to validate backend changes).
 
 ---
 
