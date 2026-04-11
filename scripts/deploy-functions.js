@@ -1,8 +1,9 @@
-import { Client, Functions, ID } from 'node-appwrite';
-import { readFileSync, readdirSync, statSync, createReadStream } from 'fs';
-import { join, resolve } from 'path';
+import { Client, Functions } from 'node-appwrite';
+import { readdirSync, statSync } from 'fs';
+import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
-import { createWriteStream, unlinkSync, existsSync } from 'fs';
+import { unlinkSync, existsSync } from 'fs';
 
 const client = new Client()
   .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1')
@@ -11,9 +12,12 @@ const client = new Client()
 
 const functions = new Functions(client);
 
-const FUNCTIONS_DIR = resolve(process.cwd(), 'functions');
+/** Repo-root `functions/` (works when `node deploy-functions.js` is run from `scripts/`). */
+const FUNCTIONS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'functions');
 
 const FUNCTION_CONFIG = {
+  /** Central HTTP router used by the Next.js app (`FUNCTION_ID` in `src/lib/api.ts`). Must be deployed for API changes to take effect. */
+  'openget-api': { name: 'OpenGet API', execute: ['any', 'users'], events: [], timeout: 120 },
   'list-repo': { name: 'List Repo', execute: ['users'], events: [], timeout: 30 },
   'get-my-repos': { name: 'Get My Repos', execute: ['users'], events: [], timeout: 30 },
   'get-repo-contributors': { name: 'Get Repo Contributors', execute: ['any'], events: [], timeout: 30 },

@@ -309,11 +309,13 @@ openget-appwrite/
 | `APPWRITE_API_KEY` | **Yes** | — | Server API key (database + users perms) |
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
-| `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for contributor discovery |
+| `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `fetch-contributors`, `list-repo`, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
 | `STRIPE_SECRET_KEY` | **Yes** | — | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | **Yes** | — | Stripe webhook signing secret |
 | `STRIPE_CONNECT_REFRESH_URL` | No | — | Redirect after Connect refresh |
 | `STRIPE_CONNECT_RETURN_URL` | No | — | Redirect after Connect completes |
+
+**GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The `openget-api` function resolves tokens in this order: optional **`github_access_token`** on the `users` collection document (document ID = Appwrite user ID), then the GitHub OAuth **`providerAccessToken`** from Appwrite **user identities**, then **`GITHUB_TOKEN`**.
 
 </details>
 
@@ -322,7 +324,7 @@ openget-appwrite/
 
 | Secret | Used By |
 |:-------|:--------|
-| `APPWRITE_API_KEY` | `sync-appwrite-schema.yml` |
+| `APPWRITE_API_KEY` | `sync-appwrite-schema.yml`, `deploy-appwrite-functions.yml` |
 | `APPWRITE_ENDPOINT` | Optional override |
 | `APPWRITE_PROJECT_ID` | Optional override |
 
@@ -356,6 +358,16 @@ APPWRITE_API_KEY=your_key npm run db:sync
 
 > The script is **idempotent** — safe to run on every deploy. Creates missing collections/attributes, skips existing ones.
 
+After merging schema changes (for example the optional **`github_access_token`** attribute on **`users`**), run **`npm run db:sync`** on `master` (or locally with `APPWRITE_API_KEY`) so new attributes exist before the app or functions rely on them. Pushes to `master` also trigger the [schema sync workflow](.github/workflows/sync-appwrite-schema.yml) if GitHub Actions secrets are configured.
+
+### Duplicate contributor rows (same GitHub account)
+
+If you see two **`contributors`** documents for one person (one with GitHub **login**, one with **display name**), keep the row whose **`github_username`** matches your [GitHub username](https://github.com/settings/admin). Merge data as needed:
+
+1. Prefer the document created by contributor discovery (correct **`github_id`** / **`github_username`** from GitHub).
+2. If the wrong row has **`user_id`** set, copy that value onto the canonical document, then delete the duplicate.
+3. Update **`repo_contributions`** (and **`payouts`**, if any) that reference the duplicate **`contributor_id`** to point at the canonical contributor `$id`, or delete the duplicate only after references are moved.
+
 ---
 
 ## Deploying Functions
@@ -382,6 +394,18 @@ appwrite push functions
 
 </details>
 
+### Deploying the `openget-api` router (required for API fixes)
+
+The Next.js app invokes a **single** function ID, **`openget-api`**, for actions such as `get-my-repos` and `register-contributor` (see [`src/lib/api.ts`](src/lib/api.ts)). **Merging a PR does not update runtime behavior** until a new deployment of that function is active in Appwrite.
+
+After you merge changes under [`functions/openget-api/`](functions/openget-api/):
+
+1. Pull the latest `master` (or check out the commit you want in production).
+2. Run **Option A** or **B** above — the deploy script includes `openget-api` and uploads a new deployment.
+3. In Appwrite Console → **Functions** → **`openget-api`**, confirm the **active deployment** matches the commit you expect.
+
+**PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
+
 ### Scheduled Functions
 
 | Function | Schedule | Purpose |
@@ -392,6 +416,10 @@ appwrite push functions
 ---
 
 ## CI / CD
+
+### Automatic Function Deploy
+
+Pushes to `master` / `main` run [`.github/workflows/deploy-appwrite-functions.yml`](.github/workflows/deploy-appwrite-functions.yml), which executes [`scripts/deploy-functions.js`](scripts/deploy-functions.js) (including **`openget-api`**). Add the **`APPWRITE_API_KEY`** repository secret to enable deployments; optional **`APPWRITE_ENDPOINT`** and **`APPWRITE_PROJECT_ID`** override defaults. If the secret is missing, the workflow skips deployment so forks do not fail CI.
 
 ### Automatic Schema Sync
 
@@ -407,6 +435,10 @@ Every push to `master` triggers `.github/workflows/sync-appwrite-schema.yml`:
 
 The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). Appwrite watches the repo and triggers builds on push. Preview URLs are generated per PR automatically.
 
+**Limitations of PR previews:** Previews rebuild **only the Next.js site**, not Appwrite **Functions** or database data. Testing flows that depend on `openget-api` (GitHub repos, registration, checkout, etc.) requires a **new deployment** of [`functions/openget-api`](functions/openget-api) as described above, then retest on the preview or production URL.
+
+**OAuth on preview hosts:** If **Sign in with GitHub** fails or redirects incorrectly on a `*.appwrite.network` preview but works on your main Site URL, check **Appwrite Console** → **Auth** (allowed platforms / redirect URLs for your Site and OAuth providers) and your **GitHub OAuth App** settings so the preview origin is permitted where Appwrite requires it. The GitHub authorization callback usually remains Appwrite’s endpoint; the **success redirect** back to your app may use the preview hostname and must be allowed by Appwrite Auth configuration.
+
 ---
 
 ## Contributing
@@ -416,7 +448,7 @@ The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). A
 3. Commit your changes
 4. Push and open a PR
 
-All PRs get an Appwrite preview deployment automatically.
+All PRs get an Appwrite preview deployment automatically (frontend only; deploy Functions separately to validate backend changes).
 
 ---
 
