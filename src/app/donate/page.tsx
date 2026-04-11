@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { account, OAuthProvider } from "@/lib/appwrite";
+import { account } from "@/lib/appwrite";
+import { startGithubOAuthSession } from "@/lib/oauth";
 import { getActivePool, createCheckoutSession, createUpiQr, checkUpiQrStatus } from "@/lib/api";
 import { PoolCard } from "@/components/pool/pool-card";
 import { Button } from "@/components/ui/button";
@@ -277,15 +278,13 @@ export default function DonatePage() {
             </div>
           ) : (
             <Button
+              type="button"
               className="w-full"
               size="lg"
-              onClick={() =>
-                account.createOAuth2Session(
-                  OAuthProvider.Github,
-                  `${window.location.origin}/donate`,
-                  `${window.location.origin}/donate?auth_error=true`
-                )
-              }
+              onClick={(e) => {
+                e.preventDefault();
+                startGithubOAuthSession(account, "/donate", "/donate?auth_error=true");
+              }}
             >
               Sign in to Donate
             </Button>

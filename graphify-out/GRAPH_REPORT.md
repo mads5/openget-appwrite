@@ -1,11 +1,11 @@
 # Graph Report - c:\Users\Dell\openget-appwrite  (2026-04-12)
 
 ## Corpus Check
-- 45 files · ~33,449 words
+- 47 files · ~33,904 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 127 nodes · 205 edges · 14 communities detected
+- 134 nodes · 216 edges · 14 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
@@ -43,8 +43,8 @@ Cohesion: 0.32
 Nodes (19): addFloatAttribute(), addIntegerAttribute(), addStringAttribute(), ensureCollection(), ensureDatabase(), isConflict(), main(), setupContributors() (+11 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.33
-Nodes (0): 
+Cohesion: 0.19
+Nodes (2): oauthRedirectUrl(), startGithubOAuthSession()
 
 ### Community 5 - "Community 5"
 Cohesion: 0.7

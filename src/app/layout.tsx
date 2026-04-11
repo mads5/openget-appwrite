@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OAuthCallbackHandler } from "@/components/auth/oauth-callback-handler";
 import { Header } from "@/components/layout/header";
 import "@fontsource-variable/inter/wght.css";
 import "./globals.css";
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-sans antialiased">
+        <OAuthCallbackHandler />
         <Header />
         <main className="min-h-[calc(100vh-4rem)]">{children}</main>
         <footer className="border-t border-border/50 py-8">

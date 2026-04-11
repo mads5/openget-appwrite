@@ -262,7 +262,7 @@
     {
       "label": "deploy-functions.js",
       "file_type": "code",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L1",
       "id": "deploy_functions",
       "community": 5
@@ -270,7 +270,7 @@
     {
       "label": "syncExecuteFromConfig()",
       "file_type": "code",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L20",
       "id": "deploy_functions_syncexecutefromconfig",
       "community": 5
@@ -278,7 +278,7 @@
     {
       "label": "createTarGz()",
       "file_type": "code",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L55",
       "id": "deploy_functions_createtargz",
       "community": 5
@@ -286,7 +286,7 @@
     {
       "label": "deployFunction()",
       "file_type": "code",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L66",
       "id": "deploy_functions_deployfunction",
       "community": 5
@@ -294,7 +294,7 @@
     {
       "label": "main()",
       "file_type": "code",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L136",
       "id": "deploy_functions_main",
       "community": 5
@@ -502,7 +502,7 @@
     {
       "label": "layout.tsx",
       "file_type": "code",
-      "source_file": "src\\app\\layout.tsx",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
       "source_location": "L1",
       "id": "layout",
       "community": 4
@@ -510,8 +510,8 @@
     {
       "label": "RootLayout()",
       "file_type": "code",
-      "source_file": "src\\app\\layout.tsx",
-      "source_location": "L19",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
+      "source_location": "L20",
       "id": "layout_rootlayout",
       "community": 4
     },
@@ -526,48 +526,48 @@
     {
       "label": "handleRegister()",
       "file_type": "code",
-      "source_file": "src\\app\\dashboard\\page.tsx",
-      "source_location": "L47",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\dashboard\\page.tsx",
+      "source_location": "L48",
       "id": "page_handleregister",
       "community": 1
     },
     {
       "label": "handleStripeConnect()",
       "file_type": "code",
-      "source_file": "src\\app\\dashboard\\page.tsx",
-      "source_location": "L61",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\dashboard\\page.tsx",
+      "source_location": "L62",
       "id": "page_handlestripeconnect",
       "community": 1
     },
     {
       "label": "handleCurrencyChange()",
       "file_type": "code",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L55",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L56",
       "id": "page_handlecurrencychange",
       "community": 1
     },
     {
       "label": "handleDonate()",
       "file_type": "code",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L72",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L73",
       "id": "page_handledonate",
       "community": 1
     },
     {
       "label": "handleUpiQr()",
       "file_type": "code",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L84",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L85",
       "id": "page_handleupiqr",
       "community": 1
     },
     {
       "label": "fmt()",
       "file_type": "code",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L110",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L111",
       "id": "page_fmt",
       "community": 1
     },
@@ -582,16 +582,16 @@
     {
       "label": "handleList()",
       "file_type": "code",
-      "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L36",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\list-repo\\page.tsx",
+      "source_location": "L37",
       "id": "page_handlelist",
       "community": 1
     },
     {
       "label": "handleDelist()",
       "file_type": "code",
-      "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L56",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\list-repo\\page.tsx",
+      "source_location": "L57",
       "id": "page_handledelist",
       "community": 1
     },
@@ -602,6 +602,22 @@
       "source_location": "L11",
       "id": "page_formatnumber",
       "community": 1
+    },
+    {
+      "label": "oauth-callback-handler.tsx",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
+      "source_location": "L1",
+      "id": "oauth_callback_handler",
+      "community": 4
+    },
+    {
+      "label": "OAuthCallbackHandler()",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
+      "source_location": "L14",
+      "id": "oauth_callback_handler_oauthcallbackhandler",
+      "community": 4
     },
     {
       "label": "contributor-table.tsx",
@@ -622,24 +638,40 @@
     {
       "label": "header.tsx",
       "file_type": "code",
-      "source_file": "src\\components\\layout\\header.tsx",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
       "source_location": "L1",
       "id": "header",
       "community": 4
     },
     {
+      "label": "refreshUser()",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L19",
+      "id": "header_refreshuser",
+      "community": 4
+    },
+    {
+      "label": "consumeAuthError()",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L30",
+      "id": "header_consumeautherror",
+      "community": 4
+    },
+    {
       "label": "handleSignIn()",
       "file_type": "code",
-      "source_file": "src\\components\\layout\\header.tsx",
-      "source_location": "L20",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L44",
       "id": "header_handlesignin",
       "community": 4
     },
     {
       "label": "handleSignOut()",
       "file_type": "code",
-      "source_file": "src\\components\\layout\\header.tsx",
-      "source_location": "L33",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L54",
       "id": "header_handlesignout",
       "community": 4
     },
@@ -953,6 +985,30 @@
       "source_file": "src\\lib\\appwrite.ts",
       "source_location": "L1",
       "id": "appwrite",
+      "community": 4
+    },
+    {
+      "label": "oauth.ts",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L1",
+      "id": "oauth",
+      "community": 4
+    },
+    {
+      "label": "oauthRedirectUrl()",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L10",
+      "id": "oauth_oauthredirecturl",
+      "community": 4
+    },
+    {
+      "label": "startGithubOAuthSession()",
+      "file_type": "code",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L21",
+      "id": "oauth_startgithuboauthsession",
       "community": 4
     },
     {
@@ -1516,7 +1572,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L20",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1528,7 +1584,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L55",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1540,7 +1596,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L66",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1552,7 +1608,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L136",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1564,7 +1620,7 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L126",
       "weight": 1.0,
       "_src": "deploy_functions_deployfunction",
@@ -1576,7 +1632,7 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L113",
       "weight": 1.0,
       "_src": "deploy_functions_deployfunction",
@@ -1588,7 +1644,7 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
-      "source_file": "scripts\\deploy-functions.js",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
       "source_location": "L172",
       "weight": 1.0,
       "_src": "deploy_functions_main",
@@ -2380,8 +2436,20 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\layout.tsx",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
       "source_location": "L2",
+      "weight": 1.0,
+      "_src": "layout",
+      "_tgt": "oauth_callback_handler",
+      "source": "layout",
+      "target": "oauth_callback_handler",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
+      "source_location": "L3",
       "weight": 1.0,
       "_src": "layout",
       "_tgt": "header",
@@ -2392,8 +2460,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\layout.tsx",
-      "source_location": "L19",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
+      "source_location": "L20",
       "weight": 1.0,
       "_src": "layout",
       "_tgt": "layout_rootlayout",
@@ -2440,8 +2508,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\dashboard\\page.tsx",
-      "source_location": "L9",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\dashboard\\page.tsx",
+      "source_location": "L10",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "seed_data",
@@ -2488,8 +2556,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L10",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\list-repo\\page.tsx",
+      "source_location": "L11",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "appwrite",
@@ -2498,10 +2566,22 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\list-repo\\page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_src": "page",
+      "_tgt": "oauth",
+      "source": "page",
+      "target": "oauth",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\dashboard\\page.tsx",
-      "source_location": "L47",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\dashboard\\page.tsx",
+      "source_location": "L48",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handleregister",
@@ -2512,8 +2592,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\dashboard\\page.tsx",
-      "source_location": "L61",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\dashboard\\page.tsx",
+      "source_location": "L62",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handlestripeconnect",
@@ -2524,8 +2604,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L6",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L7",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "pool_card",
@@ -2536,8 +2616,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L55",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L56",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handlecurrencychange",
@@ -2548,8 +2628,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L72",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L73",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handledonate",
@@ -2560,8 +2640,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L84",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L85",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handleupiqr",
@@ -2572,8 +2652,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\donate\\page.tsx",
-      "source_location": "L110",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
+      "source_location": "L111",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_fmt",
@@ -2596,8 +2676,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L36",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\list-repo\\page.tsx",
+      "source_location": "L37",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handlelist",
@@ -2608,8 +2688,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L56",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\list-repo\\page.tsx",
+      "source_location": "L57",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handledelist",
@@ -2644,6 +2724,30 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_src": "oauth_callback_handler",
+      "_tgt": "appwrite",
+      "source": "oauth_callback_handler",
+      "target": "appwrite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_src": "oauth_callback_handler",
+      "_tgt": "oauth_callback_handler_oauthcallbackhandler",
+      "source": "oauth_callback_handler",
+      "target": "oauth_callback_handler_oauthcallbackhandler",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\contributors\\contributor-table.tsx",
       "source_location": "L5",
       "weight": 1.0,
@@ -2668,8 +2772,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\components\\layout\\header.tsx",
-      "source_location": "L8",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L9",
       "weight": 1.0,
       "_src": "header",
       "_tgt": "appwrite",
@@ -2680,8 +2784,20 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\components\\layout\\header.tsx",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
       "source_location": "L7",
+      "weight": 1.0,
+      "_src": "header",
+      "_tgt": "oauth",
+      "source": "header",
+      "target": "oauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L8",
       "weight": 1.0,
       "_src": "header",
       "_tgt": "button",
@@ -2692,8 +2808,32 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\components\\layout\\header.tsx",
-      "source_location": "L20",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_src": "header",
+      "_tgt": "header_refreshuser",
+      "source": "header",
+      "target": "header_refreshuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_src": "header",
+      "_tgt": "header_consumeautherror",
+      "source": "header",
+      "target": "header_consumeautherror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L44",
       "weight": 1.0,
       "_src": "header",
       "_tgt": "header_handlesignin",
@@ -2704,8 +2844,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\components\\layout\\header.tsx",
-      "source_location": "L33",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_location": "L54",
       "weight": 1.0,
       "_src": "header",
       "_tgt": "header_handlesignout",
@@ -3419,6 +3559,54 @@
       "_tgt": "appwrite",
       "source": "appwrite",
       "target": "appwrite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_src": "oauth",
+      "_tgt": "appwrite",
+      "source": "appwrite",
+      "target": "oauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_src": "oauth",
+      "_tgt": "oauth_oauthredirecturl",
+      "source": "oauth",
+      "target": "oauth_oauthredirecturl",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_src": "oauth",
+      "_tgt": "oauth_startgithuboauthsession",
+      "source": "oauth",
+      "target": "oauth_startgithuboauthsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_src": "oauth_startgithuboauthsession",
+      "_tgt": "oauth_oauthredirecturl",
+      "source": "oauth_oauthredirecturl",
+      "target": "oauth_startgithuboauthsession",
       "confidence_score": 1.0
     },
     {

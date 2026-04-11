@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { account, OAuthProvider } from "@/lib/appwrite";
+import { account } from "@/lib/appwrite";
+import { startGithubOAuthSession } from "@/lib/oauth";
 import { getEarnings, registerContributor, onboardStripeConnect } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,13 +94,11 @@ export default function DashboardPage() {
           contributor, and manage payouts.
         </p>
         <Button
-          onClick={() =>
-            account.createOAuth2Session(
-              OAuthProvider.Github,
-              `${window.location.origin}/dashboard`,
-              `${window.location.origin}/dashboard?auth_error=true`
-            )
-          }
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            startGithubOAuthSession(account, "/dashboard", "/dashboard?auth_error=true");
+          }}
         >
           Sign in with GitHub
         </Button>

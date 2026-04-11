@@ -2,35 +2,57 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { account, OAuthProvider } from "@/lib/appwrite";
+import { useEffect, useState, type MouseEvent } from "react";
+import { account } from "@/lib/appwrite";
+import { startGithubOAuthSession } from "@/lib/oauth";
 import { Button } from "@/components/ui/button";
 import type { Models } from "appwrite";
+
+const OAUTH_FAIL_MSG =
+  "GitHub sign-in did not complete. In Appwrite Console, enable the GitHub provider (client ID/secret) and add this site URL under Auth → platforms / redirect URLs. Preview domains (*.appwrite.network) must be listed separately.";
 
 export function Header() {
   const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    account.get()
-      .then(setUser)
-      .catch(() => setUser(null));
+    const refreshUser = () => {
+      account.get()
+        .then(setUser)
+        .catch(() => setUser(null));
+    };
+    refreshUser();
+    window.addEventListener("openget-auth-session", refreshUser);
+    return () => window.removeEventListener("openget-auth-session", refreshUser);
   }, []);
 
-  const handleSignIn = () => {
+  useEffect(() => {
+    const consumeAuthError = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("auth_error") !== "true") return;
+      setAuthError(OAUTH_FAIL_MSG);
+      params.delete("auth_error");
+      const q = params.toString();
+      const next = `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`;
+      window.history.replaceState({}, "", next);
+    };
+    consumeAuthError();
+    window.addEventListener("openget-auth-error-in-url", consumeAuthError);
+    return () => window.removeEventListener("openget-auth-error-in-url", consumeAuthError);
+  }, []);
+
+  const handleSignIn = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     setAuthError(null);
     try {
-      account.createOAuth2Session(
-        OAuthProvider.Github,
-        window.location.origin,
-        window.location.origin + "/?auth_error=true"
-      );
+      startGithubOAuthSession(account, "/", "/?auth_error=true");
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Sign in failed");
     }
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     try {
       await account.deleteSession("current");
       setUser(null);
@@ -61,23 +83,23 @@ export function Header() {
             )}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-4 max-w-[min(100vw-2rem,24rem)] sm:max-w-none">
           {authError && (
-            <span className="text-xs text-amber-500 max-w-[200px] text-right hidden sm:inline">
+            <p className="text-xs text-amber-500 text-right leading-snug order-first sm:order-none sm:max-w-xs">
               {authError}
-            </span>
+            </p>
           )}
           {user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 {user.name || user.email}
               </span>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <Button type="button" variant="ghost" size="sm" onClick={handleSignOut}>
                 Sign out
               </Button>
             </div>
           ) : (
-            <Button onClick={handleSignIn} size="sm">
+            <Button type="button" onClick={handleSignIn} size="sm">
               Sign in with GitHub
             </Button>
           )}

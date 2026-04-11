@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { account, OAuthProvider } from "@/lib/appwrite";
+import { account } from "@/lib/appwrite";
+import { startGithubOAuthSession } from "@/lib/oauth";
 import { getMyGithubRepos, listRepo, delistRepo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,13 +92,11 @@ export default function ListRepoPage() {
           on OpenGet.
         </p>
         <Button
-          onClick={() =>
-            account.createOAuth2Session(
-              OAuthProvider.Github,
-              `${window.location.origin}/list-repo`,
-              `${window.location.origin}/list-repo?auth_error=true`
-            )
-          }
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            startGithubOAuthSession(account, "/list-repo", "/list-repo?auth_error=true");
+          }}
         >
           Sign in with GitHub
         </Button>
