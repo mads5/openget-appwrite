@@ -9,7 +9,7 @@
       "source_file": "next-env.d.ts",
       "source_location": "L1",
       "id": "next_env_d",
-      "community": 12
+      "community": 11
     },
     {
       "label": "next.config.js",
@@ -17,7 +17,7 @@
       "source_file": "next.config.js",
       "source_location": "L1",
       "id": "next_config",
-      "community": 13
+      "community": 12
     },
     {
       "label": "postcss.config.js",
@@ -25,7 +25,7 @@
       "source_file": "postcss.config.js",
       "source_location": "L1",
       "id": "postcss_config",
-      "community": 14
+      "community": 13
     },
     {
       "label": "tailwind.config.ts",
@@ -33,7 +33,7 @@
       "source_file": "tailwind.config.ts",
       "source_location": "L1",
       "id": "tailwind_config",
-      "community": 15
+      "community": 14
     },
     {
       "label": "main.js",
@@ -204,10 +204,42 @@
       "community": 0
     },
     {
+      "label": "getGithubIdentityToken()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L29",
+      "id": "main_getgithubidentitytoken",
+      "community": 0
+    },
+    {
+      "label": "resolveGithubAccessTokenForRepos()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L47",
+      "id": "main_resolvegithubaccesstokenforrepos",
+      "community": 0
+    },
+    {
+      "label": "fetchGithubUser()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L60",
+      "id": "main_fetchgithubuser",
+      "community": 0
+    },
+    {
+      "label": "resolveGithubUsernameForRegistration()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L73",
+      "id": "main_resolvegithubusernameforregistration",
+      "community": 0
+    },
+    {
       "label": "initClient()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L21",
+      "source_location": "L99",
       "id": "main_initclient",
       "community": 0
     },
@@ -265,7 +297,7 @@
       "source_file": "scripts\\deploy-single-function.js",
       "source_location": "L1",
       "id": "deploy_single_function",
-      "community": 9
+      "community": 8
     },
     {
       "label": "main()",
@@ -273,7 +305,7 @@
       "source_file": "scripts\\deploy-single-function.js",
       "source_location": "L14",
       "id": "deploy_single_function_main",
-      "community": 9
+      "community": 8
     },
     {
       "label": "setup-database.js",
@@ -431,7 +463,7 @@
       "label": "main()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L302",
+      "source_location": "L303",
       "id": "setup_database_main",
       "community": 2
     },
@@ -441,7 +473,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L1",
       "id": "middleware",
-      "community": 10
+      "community": 9
     },
     {
       "label": "middleware()",
@@ -449,7 +481,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L4",
       "id": "middleware_middleware",
-      "community": 10
+      "community": 9
     },
     {
       "label": "layout.tsx",
@@ -457,7 +489,7 @@
       "source_file": "src\\app\\layout.tsx",
       "source_location": "L1",
       "id": "layout",
-      "community": 5
+      "community": 4
     },
     {
       "label": "RootLayout()",
@@ -465,7 +497,7 @@
       "source_file": "src\\app\\layout.tsx",
       "source_location": "L19",
       "id": "layout_rootlayout",
-      "community": 5
+      "community": 4
     },
     {
       "label": "page.tsx",
@@ -553,7 +585,7 @@
       "source_file": "src\\components\\contributors\\contributor-table.tsx",
       "source_location": "L1",
       "id": "contributor_table",
-      "community": 8
+      "community": 3
     },
     {
       "label": "header.tsx",
@@ -561,7 +593,7 @@
       "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L1",
       "id": "header",
-      "community": 5
+      "community": 4
     },
     {
       "label": "handleSignIn()",
@@ -569,7 +601,7 @@
       "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L20",
       "id": "header_handlesignin",
-      "community": 5
+      "community": 4
     },
     {
       "label": "handleSignOut()",
@@ -577,7 +609,7 @@
       "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L33",
       "id": "header_handlesignout",
-      "community": 5
+      "community": 4
     },
     {
       "label": "pool-card.tsx",
@@ -601,7 +633,7 @@
       "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L1",
       "id": "repo_table",
-      "community": 8
+      "community": 3
     },
     {
       "label": "formatNumber()",
@@ -609,7 +641,7 @@
       "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L11",
       "id": "repo_table_formatnumber",
-      "community": 8
+      "community": 3
     },
     {
       "label": "badge.tsx",
@@ -617,7 +649,7 @@
       "source_file": "src\\components\\ui\\badge.tsx",
       "source_location": "L1",
       "id": "badge",
-      "community": 8
+      "community": 3
     },
     {
       "label": "button.tsx",
@@ -625,7 +657,7 @@
       "source_file": "src\\components\\ui\\button.tsx",
       "source_location": "L1",
       "id": "button",
-      "community": 5
+      "community": 4
     },
     {
       "label": "card.tsx",
@@ -641,7 +673,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo",
-      "community": 11
+      "community": 10
     },
     {
       "label": "LogoIcon()",
@@ -649,7 +681,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo_logoicon",
-      "community": 11
+      "community": 10
     },
     {
       "label": "progress.tsx",
@@ -657,7 +689,7 @@
       "source_file": "src\\components\\ui\\progress.tsx",
       "source_location": "L1",
       "id": "progress",
-      "community": 4
+      "community": 5
     },
     {
       "label": "tabs.tsx",
@@ -665,7 +697,7 @@
       "source_file": "src\\components\\ui\\tabs.tsx",
       "source_location": "L1",
       "id": "tabs",
-      "community": 4
+      "community": 5
     },
     {
       "label": "api.ts",
@@ -873,7 +905,7 @@
       "source_file": "src\\lib\\appwrite.ts",
       "source_location": "L1",
       "id": "appwrite",
-      "community": 5
+      "community": 4
     },
     {
       "label": "seed-data.ts",
@@ -897,7 +929,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L1",
       "id": "utils",
-      "community": 4
+      "community": 5
     },
     {
       "label": "cn()",
@@ -905,7 +937,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L4",
       "id": "utils_cn",
-      "community": 4
+      "community": 5
     },
     {
       "label": "formatCurrency()",
@@ -913,7 +945,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L8",
       "id": "utils_formatcurrency",
-      "community": 4
+      "community": 5
     },
     {
       "label": "formatNumber()",
@@ -921,7 +953,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L18",
       "id": "utils_formatnumber",
-      "community": 4
+      "community": 5
     },
     {
       "label": "formatScore()",
@@ -929,7 +961,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L24",
       "id": "utils_formatscore",
-      "community": 4
+      "community": 5
     },
     {
       "label": "index.ts",
@@ -937,79 +969,7 @@
       "source_file": "src\\types\\index.ts",
       "source_location": "L1",
       "id": "index",
-      "community": 16
-    },
-    {
-      "label": "OpenGet",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L13-L18",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "readme_openget",
-      "community": 0
-    },
-    {
-      "label": "4-factor anti-fraud scoring model",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L64-L87",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "readme_four_factor_model",
-      "community": 0
-    },
-    {
-      "label": "Pool lifecycle (Collecting \u2192 Active \u2192 Completed)",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L91-L124",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "readme_pool_lifecycle",
-      "community": 0
-    },
-    {
-      "label": "Next.js + Appwrite Cloud architecture",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L166-L193",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "readme_architecture",
-      "community": 17
-    },
-    {
-      "label": "OpenGet logo (braces + upward arrow on orange gradient)",
-      "file_type": "image",
-      "source_file": "public/logo.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "img_public_logo",
-      "community": 0
-    },
-    {
-      "label": "Next.js app icon",
-      "file_type": "image",
-      "source_file": "src/app/icon.png",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "img_app_icon",
-      "community": 0
+      "community": 15
     }
   ],
   "links": [
@@ -1257,7 +1217,55 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L21",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_getgithubidentitytoken",
+      "source": "main",
+      "target": "main_getgithubidentitytoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_resolvegithubaccesstokenforrepos",
+      "source": "main",
+      "target": "main_resolvegithubaccesstokenforrepos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_fetchgithubuser",
+      "source": "main",
+      "target": "main_fetchgithubuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L73",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_resolvegithubusernameforregistration",
+      "source": "main",
+      "target": "main_resolvegithubusernameforregistration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L99",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_initclient",
@@ -1336,30 +1344,6 @@
       "source": "main_activatepool",
       "target": "main_getoractivatepool",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "README.md",
-      "source_location": "L59-L60",
-      "weight": 1.0,
-      "_src": "readme_openget",
-      "_tgt": "main_distributeweekly",
-      "source": "main_distributeweekly",
-      "target": "readme_openget"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "README.md",
-      "source_location": "L91-L124",
-      "weight": 1.0,
-      "_src": "readme_pool_lifecycle",
-      "_tgt": "main_distributeweekly",
-      "source": "main_distributeweekly",
-      "target": "readme_pool_lifecycle"
     },
     {
       "relation": "calls",
@@ -1446,40 +1430,40 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "README.md",
-      "source_location": "L58",
-      "weight": 1.0,
-      "_src": "readme_openget",
-      "_tgt": "main_fetchmonthlyprstats",
-      "source": "main_fetchmonthlyprstats",
-      "target": "readme_openget"
-    },
-    {
-      "relation": "references",
+      "relation": "calls",
       "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "README.md",
-      "source_location": "L58-L59",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L54",
       "weight": 1.0,
-      "_src": "readme_openget",
-      "_tgt": "main_computecontributorscore",
-      "source": "main_computecontributorscore",
-      "target": "readme_openget"
+      "_src": "main_resolvegithubaccesstokenforrepos",
+      "_tgt": "main_getgithubidentitytoken",
+      "source": "main_getgithubidentitytoken",
+      "target": "main_resolvegithubaccesstokenforrepos",
+      "confidence_score": 1.0
     },
     {
-      "relation": "rationale_for",
-      "confidence": "INFERRED",
-      "confidence_score": 0.75,
-      "source_file": "README.md",
-      "source_location": "L66-L77",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L91",
       "weight": 1.0,
-      "_src": "readme_four_factor_model",
-      "_tgt": "main_computecontributorscore",
-      "source": "main_computecontributorscore",
-      "target": "readme_four_factor_model"
+      "_src": "main_resolvegithubusernameforregistration",
+      "_tgt": "main_getgithubidentitytoken",
+      "source": "main_getgithubidentitytoken",
+      "target": "main_resolvegithubusernameforregistration",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L93",
+      "weight": 1.0,
+      "_src": "main_resolvegithubusernameforregistration",
+      "_tgt": "main_fetchgithubuser",
+      "source": "main_fetchgithubuser",
+      "target": "main_resolvegithubusernameforregistration",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -1773,7 +1757,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L302",
+      "source_location": "L303",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_main",
@@ -1893,7 +1877,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L312",
+      "source_location": "L313",
       "weight": 1.0,
       "_src": "setup_database_main",
       "_tgt": "setup_database_ensuredatabase",
@@ -3328,30 +3312,6 @@
       "source": "utils",
       "target": "utils_formatscore",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "README.md",
-      "source_location": "L1-L3",
-      "weight": 1.0,
-      "_src": "img_public_logo",
-      "_tgt": "readme_openget",
-      "source": "readme_openget",
-      "target": "img_public_logo"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "README.md",
-      "source_location": null,
-      "weight": 1.0,
-      "_src": "img_app_icon",
-      "_tgt": "readme_openget",
-      "source": "readme_openget",
-      "target": "img_app_icon"
     }
   ],
   "hyperedges": []

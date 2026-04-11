@@ -18,6 +18,84 @@ const COL = {
 
 const MIN_PAYOUT_CENTS = 50;
 
+const GH_HEADERS_BASE = {
+  Accept: 'application/vnd.github+json',
+  'User-Agent': 'OpenGet-Appwrite-Function',
+};
+
+/**
+ * GitHub OAuth identity token for this Appwrite user (never use env PAT here).
+ */
+async function getGithubIdentityToken(usersApi, userId, log) {
+  try {
+    const idList = await usersApi.listIdentities(
+      [Query.equal('userId', userId), Query.equal('provider', 'github')],
+      undefined,
+    );
+    const identities = idList.identities || [];
+    const gh = identities.find((i) => i.provider === 'github');
+    if (gh?.providerAccessToken) return String(gh.providerAccessToken);
+  } catch (e) {
+    log(`getGithubIdentityToken: ${e.message}`);
+  }
+  return null;
+}
+
+/**
+ * Token for GitHub API as the signed-in user: users doc, OAuth identity, then env (dev / single PAT).
+ */
+async function resolveGithubAccessTokenForRepos(db, usersApi, userId, log) {
+  try {
+    const profile = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+    if (profile.github_access_token) return String(profile.github_access_token);
+  } catch {
+    /* no profile row */
+  }
+  const idTok = await getGithubIdentityToken(usersApi, userId, log);
+  if (idTok) return idTok;
+  if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
+  return null;
+}
+
+async function fetchGithubUser(token) {
+  const ghRes = await fetch('https://api.github.com/user', {
+    headers: { ...GH_HEADERS_BASE, Authorization: `Bearer ${token}` },
+  });
+  if (!ghRes.ok) return null;
+  const u = await ghRes.json();
+  if (!u?.login) return null;
+  return { login: String(u.login), id: u.id != null ? String(u.id) : null };
+}
+
+/**
+ * Canonical GitHub login for registration: profile, prefs, body, then GET /user via OAuth identity token only.
+ */
+async function resolveGithubUsernameForRegistration(db, usersApi, userId, body, log) {
+  if (body.github_username && typeof body.github_username === 'string') {
+    const t = body.github_username.trim();
+    if (t) return t;
+  }
+  try {
+    const profile = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+    if (profile.github_username) return String(profile.github_username);
+  } catch {
+    /* no profile */
+  }
+  try {
+    const u = await usersApi.get(userId);
+    const prefs = u.prefs || {};
+    if (prefs.github_username) return String(prefs.github_username);
+  } catch (e) {
+    log(`users.get for prefs: ${e.message}`);
+  }
+  const idTok = await getGithubIdentityToken(usersApi, userId, log);
+  if (idTok) {
+    const info = await fetchGithubUser(idTok);
+    if (info?.login) return info.login;
+  }
+  return null;
+}
+
 function initClient() {
   return new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT || process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1')
@@ -85,18 +163,33 @@ export default async ({ req, res, log, error }) => {
       // ---- GET MY REPOS ----
       case 'get-my-repos': {
         if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const ghToken = process.env.GITHUB_TOKEN || '';
-        if (!ghToken) return res.json({ error: 'GitHub token not configured' }, 500);
+        const ghToken = await resolveGithubAccessTokenForRepos(db, users, userId, log);
+        if (!ghToken) {
+          return res.json(
+            {
+              error:
+                'GitHub token not available. Sign in with GitHub OAuth (repo scope), or set github_access_token on your users profile document, or set GITHUB_TOKEN on the function for development.',
+            },
+            400,
+          );
+        }
 
-        const ghHeaders = { 'User-Agent': 'OpenGet', Accept: 'application/vnd.github.v3+json', Authorization: `token ${ghToken}` };
-        const ghRes = await fetch('https://api.github.com/user/repos?sort=stars&per_page=100&type=owner', { headers: ghHeaders });
-        if (!ghRes.ok) return res.json([]);
+        const ghHeaders = { ...GH_HEADERS_BASE, Authorization: `Bearer ${ghToken}` };
+        const ghRes = await fetch(
+          'https://api.github.com/user/repos?sort=stars&per_page=100&affiliation=owner,collaborator,organization_member',
+          { headers: ghHeaders },
+        );
+        if (!ghRes.ok) {
+          const text = await ghRes.text();
+          error(`GitHub user/repos error: ${ghRes.status} ${text}`);
+          return res.json({ error: 'Failed to load GitHub repositories' }, 502);
+        }
         const repos = await ghRes.json();
 
         const listedDocs = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(500)]);
-        const listedNames = new Set(listedDocs.documents.map(d => d.full_name));
+        const listedNames = new Set(listedDocs.documents.map((d) => d.full_name));
 
-        const result = repos.map(r => ({
+        const result = repos.map((r) => ({
           full_name: r.full_name,
           html_url: r.html_url,
           description: r.description,
@@ -144,27 +237,55 @@ export default async ({ req, res, log, error }) => {
       case 'register-contributor': {
         if (!userId) return res.json({ error: 'Authentication required' }, 401);
 
-        let githubUsername = body.github_username || '';
+        const githubUsername = await resolveGithubUsernameForRegistration(db, users, userId, body, log);
         if (!githubUsername) {
-          try {
-            const user = await users.get(userId);
-            githubUsername = user.name || '';
-          } catch {}
+          return res.json(
+            {
+              error:
+                'Could not resolve GitHub username. Set github_username on your users profile document or user prefs, pass github_username in the request body, or sign in with GitHub OAuth.',
+            },
+            400,
+          );
         }
-        if (!githubUsername) return res.json({ error: 'Could not determine GitHub username' }, 400);
 
-        const existing = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
-          Query.equal('github_username', githubUsername), Query.limit(1),
+        let githubId = null;
+        const idTok = await getGithubIdentityToken(users, userId, log);
+        if (idTok) {
+          const info = await fetchGithubUser(idTok);
+          if (info?.id) githubId = info.id;
+        }
+        if (!githubId) {
+          try {
+            const profile = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+            if (profile.github_id) githubId = String(profile.github_id);
+          } catch {
+            /* no profile */
+          }
+        }
+
+        let existing = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+          Query.equal('github_username', githubUsername),
+          Query.limit(1),
         ]);
+        if (existing.documents.length === 0 && githubId) {
+          existing = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+            Query.equal('github_id', githubId),
+            Query.limit(1),
+          ]);
+        }
+
         if (existing.documents.length > 0) {
           const doc = existing.documents[0];
-          if (!doc.user_id) {
-            await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, doc.$id, { user_id: userId });
-          }
-          return res.json({ ...doc, user_id: userId, is_registered: true });
+          const patch = { user_id: userId };
+          if (githubId) patch.github_id = githubId;
+          if (doc.github_username !== githubUsername) patch.github_username = githubUsername;
+          const merged = await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, doc.$id, patch);
+          return res.json({ ...merged, is_registered: true });
         }
+
         const doc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
           github_username: githubUsername,
+          ...(githubId ? { github_id: githubId } : {}),
           user_id: userId,
           total_score: 0,
           repo_count: 0,

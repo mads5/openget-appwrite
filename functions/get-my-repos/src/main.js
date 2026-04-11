@@ -71,7 +71,7 @@ export default async ({ req, res, log, error }) => {
       {
         headers: {
           Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${String(token)}`,
           "User-Agent": "OpenGet-Appwrite-Function",
         },
       }

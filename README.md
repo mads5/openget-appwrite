@@ -309,11 +309,13 @@ openget-appwrite/
 | `APPWRITE_API_KEY` | **Yes** | — | Server API key (database + users perms) |
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
-| `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for contributor discovery |
+| `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `fetch-contributors`, `list-repo`, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
 | `STRIPE_SECRET_KEY` | **Yes** | — | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | **Yes** | — | Stripe webhook signing secret |
 | `STRIPE_CONNECT_REFRESH_URL` | No | — | Redirect after Connect refresh |
 | `STRIPE_CONNECT_RETURN_URL` | No | — | Redirect after Connect completes |
+
+**GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The `openget-api` function resolves tokens in this order: optional **`github_access_token`** on the `users` collection document (document ID = Appwrite user ID), then the GitHub OAuth **`providerAccessToken`** from Appwrite **user identities**, then **`GITHUB_TOKEN`**.
 
 </details>
 
@@ -355,6 +357,14 @@ APPWRITE_API_KEY=your_key npm run db:sync
 ```
 
 > The script is **idempotent** — safe to run on every deploy. Creates missing collections/attributes, skips existing ones.
+
+### Duplicate contributor rows (same GitHub account)
+
+If you see two **`contributors`** documents for one person (one with GitHub **login**, one with **display name**), keep the row whose **`github_username`** matches your [GitHub username](https://github.com/settings/admin). Merge data as needed:
+
+1. Prefer the document created by contributor discovery (correct **`github_id`** / **`github_username`** from GitHub).
+2. If the wrong row has **`user_id`** set, copy that value onto the canonical document, then delete the duplicate.
+3. Update **`repo_contributions`** (and **`payouts`**, if any) that reference the duplicate **`contributor_id`** to point at the canonical contributor `$id`, or delete the duplicate only after references are moved.
 
 ---
 

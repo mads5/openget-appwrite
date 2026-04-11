@@ -297,6 +297,7 @@ async function setupUsers() {
   await addStringAttribute(id, 'display_name', 200, false);
   await addStringAttribute(id, 'email', 200, false);
   await addStringAttribute(id, 'stripe_connect_account_id', 100, false);
+  await addStringAttribute(id, 'github_access_token', 2000, false);
 }
 
 async function main() {
