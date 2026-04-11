@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { account, OAuthProvider } from "@/lib/appwrite";
 import { Button } from "@/components/ui/button";
+import { LogoIcon } from "@/components/ui/logo";
 import type { Models } from "appwrite";
 
 export function Header() {
@@ -43,9 +44,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">OG</span>
-            </div>
+            <LogoIcon className="h-8 w-8" />
             <span className="font-bold text-xl">
               Open<span className="text-primary">Get</span>
             </span>
