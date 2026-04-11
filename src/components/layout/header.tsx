@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { account, OAuthProvider } from "@/lib/appwrite";
 import { Button } from "@/components/ui/button";
-import { LogoIcon } from "@/components/ui/logo";
 import type { Models } from "appwrite";
 
 export function Header() {
@@ -44,7 +44,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <LogoIcon className="h-8 w-8" />
+            <Image src="/logo.png" alt="OpenGet" width={32} height={32} className="rounded-lg" />
             <span className="font-bold text-xl">
               Open<span className="text-primary">Get</span>
             </span>
