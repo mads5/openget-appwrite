@@ -1,4 +1,20 @@
 import { Client, Functions } from 'node-appwrite';
+
+/** See `deploy-functions.js` — `create` does not fix execute on existing functions. */
+async function syncOpengetApiExecute(functions) {
+  try {
+    const existing = await functions.get('openget-api');
+    const execute = ['any', 'users'];
+    await functions.update({
+      functionId: 'openget-api',
+      name: existing.name,
+      execute,
+    });
+    console.log(`[ok] Execute access: ${execute.join(', ')}`);
+  } catch (e) {
+    console.error('[warn] Could not sync execute access:', e.message);
+  }
+}
 import { InputFile } from 'node-appwrite/file';
 import { execSync } from 'child_process';
 import { resolve } from 'path';
@@ -22,7 +38,7 @@ async function main() {
       functionId: 'openget-api',
       name: 'OpenGet API',
       runtime: 'node-22',
-      execute: ['any'],
+      execute: ['any', 'users'],
       timeout: 300,
       enabled: true,
       entrypoint: 'src/main.js',
@@ -32,8 +48,8 @@ async function main() {
     if (e.code === 409) {
       console.log('[skip] Function openget-api already exists');
     } else {
-      console.error('[error] Create failed:', e.message);
-      return;
+      console.error('[warn] Create failed:', e.message);
+      console.log('[info] Continuing — function may already exist under a different error code.');
     }
   }
 
@@ -52,6 +68,7 @@ async function main() {
     entrypoint: 'src/main.js',
   });
   console.log('[ok] Deployment submitted successfully');
+  await syncOpengetApiExecute(functions);
 
   try { unlinkSync(tarPath); } catch {}
 }

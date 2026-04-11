@@ -189,6 +189,10 @@ export async function listRepo(githubUrl: string): Promise<Repo> {
   return mapRepo({ ...raw, $id } as unknown as Models.Document);
 }
 
+export async function delistRepo(repoId: string): Promise<void> {
+  await executeFunction<{ success: boolean }>("delist-repo", { repo_id: repoId });
+}
+
 // ---- Contributors ----
 
 export async function listContributors(page = 1, perPage = 50): Promise<{ contributors: Contributor[]; total: number }> {

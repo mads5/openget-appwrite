@@ -171,6 +171,34 @@ export default async ({ req, res, log, error }) => {
           listed_by: userId,
           contributor_count: 0,
         });
+
+        // Link the lister as initial contributor so repo_count updates immediately
+        try {
+          const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+            Query.equal('user_id', userId), Query.limit(1),
+          ]);
+          if (contribs.documents.length > 0) {
+            const contrib = contribs.documents[0];
+            await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), {
+              contributor_id: contrib.$id,
+              repo_id: doc.$id,
+              repo_full_name: gh.full_name,
+              commits: 0, prs_merged: 0, lines_added: 0, lines_removed: 0,
+              reviews: 0, issues_closed: 0, score: 0,
+              last_contribution_at: new Date().toISOString(),
+            });
+            const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+              Query.equal('contributor_id', contrib.$id), Query.limit(1),
+            ]);
+            await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contrib.$id, {
+              repo_count: rcCount.total,
+            });
+            await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, { contributor_count: 1 });
+          }
+        } catch (e) {
+          log(`list-repo: linking lister as contributor: ${e.message}`);
+        }
+
         return res.json({ id: doc.$id, ...doc });
       }
 
@@ -201,18 +229,73 @@ export default async ({ req, res, log, error }) => {
         const repos = await ghRes.json();
 
         const listedDocs = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(500)]);
-        const listedNames = new Set(listedDocs.documents.map((d) => d.full_name));
+        const listedByName = new Map(listedDocs.documents.map((d) => [d.full_name, d]));
 
-        const result = repos.map((r) => ({
-          full_name: r.full_name,
-          html_url: r.html_url,
-          description: r.description,
-          language: r.language,
-          stargazers_count: r.stargazers_count,
-          forks_count: r.forks_count,
-          already_listed: listedNames.has(r.full_name),
-        }));
+        const result = repos.map((r) => {
+          const listed = listedByName.get(r.full_name);
+          return {
+            full_name: r.full_name,
+            html_url: r.html_url,
+            description: r.description,
+            language: r.language,
+            stargazers_count: r.stargazers_count,
+            forks_count: r.forks_count,
+            already_listed: !!listed,
+            listed_by_me: listed?.listed_by === userId,
+            repo_id: listed?.$id || null,
+          };
+        });
         return res.json(result);
+      }
+
+      // ---- DELIST REPO ----
+      case 'delist-repo': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const repoId = body.repo_id;
+        if (!repoId) return res.json({ error: 'repo_id is required' }, 400);
+
+        let repo;
+        try {
+          repo = await db.getDocument(DATABASE_ID, COL.REPOS, repoId);
+        } catch {
+          return res.json({ error: 'Repo not found' }, 404);
+        }
+        if (repo.listed_by !== userId) {
+          return res.json({ error: 'Only the user who listed this repo can delist it' }, 403);
+        }
+
+        // Remove repo_contributions linked to this repo and update contributor repo_counts
+        try {
+          let offset = 0;
+          const affected = new Set();
+          while (true) {
+            const batch = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+              Query.equal('repo_id', repoId), Query.limit(100), Query.offset(offset),
+            ]);
+            if (batch.documents.length === 0) break;
+            for (const rc of batch.documents) {
+              affected.add(rc.contributor_id);
+              await db.deleteDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, rc.$id);
+            }
+            if (batch.documents.length < 100) break;
+            offset += batch.documents.length;
+          }
+          for (const contribId of affected) {
+            try {
+              const remaining = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+                Query.equal('contributor_id', contribId), Query.limit(1),
+              ]);
+              await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribId, {
+                repo_count: remaining.total,
+              });
+            } catch {}
+          }
+        } catch (e) {
+          log(`delist-repo: cleaning repo_contributions: ${e.message}`);
+        }
+
+        await db.deleteDocument(DATABASE_ID, COL.REPOS, repoId);
+        return res.json({ success: true, repo_id: repoId });
       }
 
       // ---- GET REPO CONTRIBUTORS ----
@@ -292,24 +375,59 @@ export default async ({ req, res, log, error }) => {
           ]);
         }
 
+        let contribDoc;
         if (existing.documents.length > 0) {
           const doc = existing.documents[0];
           const patch = { user_id: userId };
           if (githubId) patch.github_id = githubId;
           if (doc.github_username !== githubUsername) patch.github_username = githubUsername;
-          const merged = await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, doc.$id, patch);
-          return res.json({ ...merged, is_registered: true });
+          contribDoc = await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, doc.$id, patch);
+        } else {
+          contribDoc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
+            github_username: githubUsername,
+            ...(githubId ? { github_id: githubId } : {}),
+            user_id: userId,
+            total_score: 0,
+            repo_count: 0,
+            total_contributions: 0,
+          });
         }
 
-        const doc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
-          github_username: githubUsername,
-          ...(githubId ? { github_id: githubId } : {}),
-          user_id: userId,
-          total_score: 0,
-          repo_count: 0,
-          total_contributions: 0,
-        });
-        return res.json({ ...doc, is_registered: true });
+        // Link repos the user has already listed so repo_count reflects immediately
+        try {
+          const listedRepos = await db.listDocuments(DATABASE_ID, COL.REPOS, [
+            Query.equal('listed_by', userId), Query.limit(100),
+          ]);
+          for (const repo of listedRepos.documents) {
+            const hasRC = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+              Query.equal('contributor_id', contribDoc.$id),
+              Query.equal('repo_id', repo.$id),
+              Query.limit(1),
+            ]);
+            if (hasRC.documents.length === 0) {
+              await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), {
+                contributor_id: contribDoc.$id,
+                repo_id: repo.$id,
+                repo_full_name: repo.full_name,
+                commits: 0, prs_merged: 0, lines_added: 0, lines_removed: 0,
+                reviews: 0, issues_closed: 0, score: 0,
+                last_contribution_at: new Date().toISOString(),
+              });
+            }
+          }
+          const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+            Query.equal('contributor_id', contribDoc.$id), Query.limit(1),
+          ]);
+          if (rcCount.total !== (contribDoc.repo_count || 0)) {
+            contribDoc = await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
+              repo_count: rcCount.total,
+            });
+          }
+        } catch (e) {
+          log(`register-contributor: linking listed repos: ${e.message}`);
+        }
+
+        return res.json({ ...contribDoc, is_registered: true });
       }
 
       // ---- CREATE CHECKOUT ----
@@ -663,7 +781,7 @@ export default async ({ req, res, log, error }) => {
 
       default:
         return res.json({ error: `Unknown action: ${action}`, available: [
-          'list-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
+          'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
           'create-checkout', 'stripe-webhook', 'stripe-connect', 'upi-payment',
           'get-earnings', 'distribute-pool', 'get-collecting-pool', 'fetch-contributors',
         ]}, 400);

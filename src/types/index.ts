@@ -23,6 +23,8 @@ export interface GitHubRepoInfo {
   stargazers_count: number;
   forks_count: number;
   already_listed: boolean;
+  listed_by_me: boolean;
+  repo_id: string | null;
 }
 
 export interface Contributor {
