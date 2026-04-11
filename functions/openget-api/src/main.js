@@ -44,7 +44,13 @@ async function getGithubIdentityToken(usersApi, userId, log) {
 /**
  * Token for GitHub API as the signed-in user: users doc, OAuth identity, then env (dev / single PAT).
  */
-async function resolveGithubAccessTokenForRepos(db, usersApi, userId, log) {
+/** Client can send `github_access_token` from `account.listIdentities()` (browser has the OAuth token; the admin API often does not). */
+async function resolveGithubAccessTokenForRepos(body, db, usersApi, userId, log) {
+  const fromClient =
+    body.github_access_token && typeof body.github_access_token === 'string'
+      ? body.github_access_token.trim()
+      : '';
+  if (fromClient) return fromClient;
   try {
     const profile = await db.getDocument(DATABASE_ID, COL.USERS, userId);
     if (profile.github_access_token) return String(profile.github_access_token);
@@ -74,6 +80,14 @@ async function resolveGithubUsernameForRegistration(db, usersApi, userId, body, 
   if (body.github_username && typeof body.github_username === 'string') {
     const t = body.github_username.trim();
     if (t) return t;
+  }
+  const bodyTok =
+    body.github_access_token && typeof body.github_access_token === 'string'
+      ? body.github_access_token.trim()
+      : '';
+  if (bodyTok) {
+    const info = await fetchGithubUser(bodyTok);
+    if (info?.login) return info.login;
   }
   try {
     const profile = await db.getDocument(DATABASE_ID, COL.USERS, userId);
@@ -163,12 +177,12 @@ export default async ({ req, res, log, error }) => {
       // ---- GET MY REPOS ----
       case 'get-my-repos': {
         if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const ghToken = await resolveGithubAccessTokenForRepos(db, users, userId, log);
+        const ghToken = await resolveGithubAccessTokenForRepos(body, db, users, userId, log);
         if (!ghToken) {
           return res.json(
             {
               error:
-                'GitHub token not available. Sign in with GitHub OAuth (repo scope), or set github_access_token on your users profile document, or set GITHUB_TOKEN on the function for development.',
+                'GitHub token not available. Sign in with GitHub, or set github_access_token on your users profile document, or GITHUB_TOKEN on this function.',
             },
             400,
           );
@@ -249,9 +263,13 @@ export default async ({ req, res, log, error }) => {
         }
 
         let githubId = null;
-        const idTok = await getGithubIdentityToken(users, userId, log);
-        if (idTok) {
-          const info = await fetchGithubUser(idTok);
+        const bodyTok =
+          body.github_access_token && typeof body.github_access_token === 'string'
+            ? body.github_access_token.trim()
+            : '';
+        const tokenForUser = bodyTok || (await getGithubIdentityToken(users, userId, log));
+        if (tokenForUser) {
+          const info = await fetchGithubUser(tokenForUser);
           if (info?.id) githubId = info.id;
         }
         if (!githubId) {

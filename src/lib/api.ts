@@ -1,5 +1,5 @@
 import { Query, Functions, ExecutionMethod, type Models } from "appwrite";
-import { client, databases, DATABASE_ID, COLLECTION } from "@/lib/appwrite";
+import { client, databases, account, DATABASE_ID, COLLECTION } from "@/lib/appwrite";
 import type {
   Repo,
   Contributor,
@@ -13,6 +13,22 @@ import type {
 const functions = new Functions(client);
 
 const FUNCTION_ID = "openget-api";
+
+/**
+ * GitHub OAuth access token is available on the client via identities; the Functions
+ * runtime often cannot read it from the Admin Users API. Pass it in the execution body.
+ */
+async function getGithubAccessTokenFromSession(): Promise<string | null> {
+  try {
+    const idList = await account.listIdentities();
+    const gh = idList.identities?.find((i) => i.provider === "github");
+    const t = gh?.providerAccessToken;
+    if (t && typeof t === "string" && t.length > 0) return t;
+  } catch {
+    /* not signed in or identities unavailable */
+  }
+  return null;
+}
 
 async function executeFunction<T>(action: string, body?: Record<string, unknown>): Promise<T> {
   try {
@@ -160,7 +176,11 @@ export async function getRepoContributors(repoId: string) {
 }
 
 export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
-  return executeFunction<GitHubRepoInfo[]>("get-my-repos");
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunction<GitHubRepoInfo[]>(
+    "get-my-repos",
+    token ? { github_access_token: token } : undefined,
+  );
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
@@ -196,7 +216,11 @@ export async function getContributor(id: string): Promise<ContributorDetail> {
 }
 
 export async function registerContributor(): Promise<Contributor> {
-  const data = await executeFunction<Record<string, unknown>>("register-contributor");
+  const token = await getGithubAccessTokenFromSession();
+  const data = await executeFunction<Record<string, unknown>>(
+    "register-contributor",
+    token ? { github_access_token: token } : undefined,
+  );
   return mapContributorFromFunctionPayload(data);
 }
 

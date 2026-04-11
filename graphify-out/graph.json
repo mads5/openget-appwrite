@@ -9,7 +9,7 @@
       "source_file": "next-env.d.ts",
       "source_location": "L1",
       "id": "next_env_d",
-      "community": 12
+      "community": 9
     },
     {
       "label": "next.config.js",
@@ -17,7 +17,7 @@
       "source_file": "next.config.js",
       "source_location": "L1",
       "id": "next_config",
-      "community": 13
+      "community": 10
     },
     {
       "label": "postcss.config.js",
@@ -25,7 +25,7 @@
       "source_file": "postcss.config.js",
       "source_location": "L1",
       "id": "postcss_config",
-      "community": 14
+      "community": 11
     },
     {
       "label": "tailwind.config.ts",
@@ -33,7 +33,7 @@
       "source_file": "tailwind.config.ts",
       "source_location": "L1",
       "id": "tailwind_config",
-      "community": 15
+      "community": 12
     },
     {
       "label": "main.js",
@@ -215,7 +215,7 @@
       "label": "resolveGithubAccessTokenForRepos()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L47",
+      "source_location": "L48",
       "id": "main_resolvegithubaccesstokenforrepos",
       "community": 0
     },
@@ -223,7 +223,7 @@
       "label": "fetchGithubUser()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L60",
+      "source_location": "L66",
       "id": "main_fetchgithubuser",
       "community": 0
     },
@@ -231,7 +231,7 @@
       "label": "resolveGithubUsernameForRegistration()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L73",
+      "source_location": "L79",
       "id": "main_resolvegithubusernameforregistration",
       "community": 0
     },
@@ -239,7 +239,7 @@
       "label": "initClient()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L99",
+      "source_location": "L113",
       "id": "main_initclient",
       "community": 0
     },
@@ -265,7 +265,7 @@
       "source_file": "scripts\\deploy-functions.js",
       "source_location": "L1",
       "id": "deploy_functions",
-      "community": 7
+      "community": 5
     },
     {
       "label": "createTarGz()",
@@ -273,7 +273,7 @@
       "source_file": "scripts\\deploy-functions.js",
       "source_location": "L34",
       "id": "deploy_functions_createtargz",
-      "community": 7
+      "community": 5
     },
     {
       "label": "deployFunction()",
@@ -281,7 +281,7 @@
       "source_file": "scripts\\deploy-functions.js",
       "source_location": "L45",
       "id": "deploy_functions_deployfunction",
-      "community": 7
+      "community": 5
     },
     {
       "label": "main()",
@@ -289,7 +289,7 @@
       "source_file": "scripts\\deploy-functions.js",
       "source_location": "L114",
       "id": "deploy_functions_main",
-      "community": 7
+      "community": 5
     },
     {
       "label": "deploy-single-function.js",
@@ -297,7 +297,7 @@
       "source_file": "scripts\\deploy-single-function.js",
       "source_location": "L1",
       "id": "deploy_single_function",
-      "community": 9
+      "community": 6
     },
     {
       "label": "main()",
@@ -305,7 +305,7 @@
       "source_file": "scripts\\deploy-single-function.js",
       "source_location": "L14",
       "id": "deploy_single_function_main",
-      "community": 9
+      "community": 6
     },
     {
       "label": "setup-database.js",
@@ -313,7 +313,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L1",
       "id": "setup_database",
-      "community": 2
+      "community": 3
     },
     {
       "label": "isConflict()",
@@ -321,7 +321,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L19",
       "id": "setup_database_isconflict",
-      "community": 2
+      "community": 3
     },
     {
       "label": "sleep()",
@@ -329,7 +329,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L23",
       "id": "setup_database_sleep",
-      "community": 2
+      "community": 3
     },
     {
       "label": "waitForAttribute()",
@@ -337,7 +337,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L29",
       "id": "setup_database_waitforattribute",
-      "community": 2
+      "community": 3
     },
     {
       "label": "ensureDatabase()",
@@ -345,7 +345,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L44",
       "id": "setup_database_ensuredatabase",
-      "community": 2
+      "community": 3
     },
     {
       "label": "ensureCollection()",
@@ -353,7 +353,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L74",
       "id": "setup_database_ensurecollection",
-      "community": 2
+      "community": 3
     },
     {
       "label": "addStringAttribute()",
@@ -361,7 +361,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L101",
       "id": "setup_database_addstringattribute",
-      "community": 2
+      "community": 3
     },
     {
       "label": "addIntegerAttribute()",
@@ -369,7 +369,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L128",
       "id": "setup_database_addintegerattribute",
-      "community": 2
+      "community": 3
     },
     {
       "label": "addFloatAttribute()",
@@ -377,7 +377,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L156",
       "id": "setup_database_addfloatattribute",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupRepos()",
@@ -385,7 +385,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L178",
       "id": "setup_database_setuprepos",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupContributors()",
@@ -393,7 +393,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L195",
       "id": "setup_database_setupcontributors",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupRepoContributions()",
@@ -401,7 +401,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L207",
       "id": "setup_database_setuprepocontributions",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupPools()",
@@ -409,7 +409,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L223",
       "id": "setup_database_setuppools",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupDonations()",
@@ -417,7 +417,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L239",
       "id": "setup_database_setupdonations",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupPayouts()",
@@ -425,7 +425,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L250",
       "id": "setup_database_setuppayouts",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupPlatformFees()",
@@ -433,7 +433,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L262",
       "id": "setup_database_setupplatformfees",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupMonthlyContributorStats()",
@@ -441,7 +441,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L270",
       "id": "setup_database_setupmonthlycontributorstats",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupWeeklyDistributions()",
@@ -449,7 +449,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L280",
       "id": "setup_database_setupweeklydistributions",
-      "community": 2
+      "community": 3
     },
     {
       "label": "setupUsers()",
@@ -457,7 +457,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L291",
       "id": "setup_database_setupusers",
-      "community": 2
+      "community": 3
     },
     {
       "label": "main()",
@@ -465,7 +465,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L303",
       "id": "setup_database_main",
-      "community": 2
+      "community": 3
     },
     {
       "label": "middleware.ts",
@@ -473,7 +473,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L1",
       "id": "middleware",
-      "community": 10
+      "community": 7
     },
     {
       "label": "middleware()",
@@ -481,7 +481,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L4",
       "id": "middleware_middleware",
-      "community": 10
+      "community": 7
     },
     {
       "label": "layout.tsx",
@@ -505,7 +505,7 @@
       "source_file": "src\\app\\repos\\[id]\\page.tsx",
       "source_location": "L1",
       "id": "page",
-      "community": 3
+      "community": 1
     },
     {
       "label": "handleRegister()",
@@ -513,7 +513,7 @@
       "source_file": "src\\app\\dashboard\\page.tsx",
       "source_location": "L47",
       "id": "page_handleregister",
-      "community": 3
+      "community": 1
     },
     {
       "label": "handleStripeConnect()",
@@ -521,7 +521,7 @@
       "source_file": "src\\app\\dashboard\\page.tsx",
       "source_location": "L61",
       "id": "page_handlestripeconnect",
-      "community": 3
+      "community": 1
     },
     {
       "label": "handleCurrencyChange()",
@@ -529,7 +529,7 @@
       "source_file": "src\\app\\donate\\page.tsx",
       "source_location": "L55",
       "id": "page_handlecurrencychange",
-      "community": 3
+      "community": 1
     },
     {
       "label": "handleDonate()",
@@ -537,7 +537,7 @@
       "source_file": "src\\app\\donate\\page.tsx",
       "source_location": "L72",
       "id": "page_handledonate",
-      "community": 3
+      "community": 1
     },
     {
       "label": "handleUpiQr()",
@@ -545,7 +545,7 @@
       "source_file": "src\\app\\donate\\page.tsx",
       "source_location": "L84",
       "id": "page_handleupiqr",
-      "community": 3
+      "community": 1
     },
     {
       "label": "fmt()",
@@ -553,7 +553,7 @@
       "source_file": "src\\app\\donate\\page.tsx",
       "source_location": "L110",
       "id": "page_fmt",
-      "community": 3
+      "community": 1
     },
     {
       "label": "DonateSuccessPage()",
@@ -561,15 +561,15 @@
       "source_file": "src\\app\\donate\\success\\page.tsx",
       "source_location": "L7",
       "id": "page_donatesuccesspage",
-      "community": 3
+      "community": 1
     },
     {
       "label": "handleList()",
       "file_type": "code",
       "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L31",
+      "source_location": "L35",
       "id": "page_handlelist",
-      "community": 3
+      "community": 1
     },
     {
       "label": "formatNumber()",
@@ -577,7 +577,7 @@
       "source_file": "src\\app\\repos\\[id]\\page.tsx",
       "source_location": "L11",
       "id": "page_formatnumber",
-      "community": 3
+      "community": 1
     },
     {
       "label": "contributor-table.tsx",
@@ -585,7 +585,7 @@
       "source_file": "src\\components\\contributors\\contributor-table.tsx",
       "source_location": "L1",
       "id": "contributor_table",
-      "community": 8
+      "community": 1
     },
     {
       "label": "header.tsx",
@@ -617,7 +617,7 @@
       "source_file": "src\\components\\pool\\pool-card.tsx",
       "source_location": "L1",
       "id": "pool_card",
-      "community": 6
+      "community": 1
     },
     {
       "label": "PoolCard()",
@@ -625,7 +625,7 @@
       "source_file": "src\\components\\pool\\pool-card.tsx",
       "source_location": "L11",
       "id": "pool_card_poolcard",
-      "community": 6
+      "community": 1
     },
     {
       "label": "repo-table.tsx",
@@ -633,7 +633,7 @@
       "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L1",
       "id": "repo_table",
-      "community": 8
+      "community": 1
     },
     {
       "label": "formatNumber()",
@@ -641,7 +641,7 @@
       "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L11",
       "id": "repo_table_formatnumber",
-      "community": 8
+      "community": 1
     },
     {
       "label": "badge.tsx",
@@ -649,7 +649,7 @@
       "source_file": "src\\components\\ui\\badge.tsx",
       "source_location": "L1",
       "id": "badge",
-      "community": 8
+      "community": 1
     },
     {
       "label": "button.tsx",
@@ -665,7 +665,7 @@
       "source_file": "src\\components\\ui\\card.tsx",
       "source_location": "L1",
       "id": "card",
-      "community": 6
+      "community": 1
     },
     {
       "label": "logo.tsx",
@@ -673,7 +673,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo",
-      "community": 11
+      "community": 8
     },
     {
       "label": "LogoIcon()",
@@ -681,7 +681,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo_logoicon",
-      "community": 11
+      "community": 8
     },
     {
       "label": "progress.tsx",
@@ -689,7 +689,7 @@
       "source_file": "src\\components\\ui\\progress.tsx",
       "source_location": "L1",
       "id": "progress",
-      "community": 5
+      "community": 1
     },
     {
       "label": "tabs.tsx",
@@ -697,7 +697,7 @@
       "source_file": "src\\components\\ui\\tabs.tsx",
       "source_location": "L1",
       "id": "tabs",
-      "community": 5
+      "community": 1
     },
     {
       "label": "api.ts",
@@ -705,199 +705,207 @@
       "source_file": "src\\lib\\api.ts",
       "source_location": "L1",
       "id": "api",
-      "community": 1
+      "community": 2
+    },
+    {
+      "label": "getGithubAccessTokenFromSession()",
+      "file_type": "code",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L21",
+      "id": "api_getgithubaccesstokenfromsession",
+      "community": 2
     },
     {
       "label": "executeFunction()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L17",
+      "source_location": "L33",
       "id": "api_executefunction",
-      "community": 1
+      "community": 2
     },
     {
       "label": "docAttrs()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L38",
+      "source_location": "L54",
       "id": "api_docattrs",
-      "community": 1
+      "community": 2
     },
     {
       "label": "mapRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L42",
+      "source_location": "L58",
       "id": "api_maprepo",
-      "community": 1
+      "community": 2
     },
     {
       "label": "mapContributor()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L62",
+      "source_location": "L78",
       "id": "api_mapcontributor",
-      "community": 1
+      "community": 2
     },
     {
       "label": "mapContributorFromFunctionPayload()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L79",
+      "source_location": "L95",
       "id": "api_mapcontributorfromfunctionpayload",
-      "community": 1
+      "community": 2
     },
     {
       "label": "mapPool()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L96",
+      "source_location": "L112",
       "id": "api_mappool",
-      "community": 1
+      "community": 2
     },
     {
       "label": "mapRepoContributionDoc()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L118",
+      "source_location": "L134",
       "id": "api_maprepocontributiondoc",
-      "community": 1
+      "community": 2
     },
     {
       "label": "listRepos()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L136",
+      "source_location": "L152",
       "id": "api_listrepos",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L149",
+      "source_location": "L165",
       "id": "api_getrepo",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getRepoContributors()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L154",
+      "source_location": "L170",
       "id": "api_getrepocontributors",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getMyGithubRepos()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L162",
+      "source_location": "L178",
       "id": "api_getmygithubrepos",
-      "community": 1
+      "community": 2
     },
     {
       "label": "listRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L166",
+      "source_location": "L186",
       "id": "api_listrepo",
-      "community": 1
+      "community": 2
     },
     {
       "label": "listContributors()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L174",
+      "source_location": "L194",
       "id": "api_listcontributors",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getContributor()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L187",
+      "source_location": "L207",
       "id": "api_getcontributor",
-      "community": 1
+      "community": 2
     },
     {
       "label": "registerContributor()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L198",
+      "source_location": "L218",
       "id": "api_registercontributor",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getActivePool()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L205",
+      "source_location": "L229",
       "id": "api_getactivepool",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getCollectingPool()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L219",
+      "source_location": "L243",
       "id": "api_getcollectingpool",
-      "community": 1
+      "community": 2
     },
     {
       "label": "createCheckoutSession()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L233",
+      "source_location": "L257",
       "id": "api_createcheckoutsession",
-      "community": 1
+      "community": 2
     },
     {
       "label": "createUpiQr()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L247",
+      "source_location": "L271",
       "id": "api_createupiqr",
-      "community": 1
+      "community": 2
     },
     {
       "label": "checkUpiQrStatus()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L254",
+      "source_location": "L278",
       "id": "api_checkupiqrstatus",
-      "community": 1
+      "community": 2
     },
     {
       "label": "donate()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L260",
+      "source_location": "L284",
       "id": "api_donate",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getEarnings()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L274",
+      "source_location": "L298",
       "id": "api_getearnings",
-      "community": 1
+      "community": 2
     },
     {
       "label": "onboardStripeConnect()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L283",
+      "source_location": "L307",
       "id": "api_onboardstripeconnect",
-      "community": 1
+      "community": 2
     },
     {
       "label": "getStats()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L292",
+      "source_location": "L316",
       "id": "api_getstats",
-      "community": 1
+      "community": 2
     },
     {
       "label": "appwrite.ts",
@@ -913,7 +921,7 @@
       "source_file": "src\\lib\\seed-data.ts",
       "source_location": "L1",
       "id": "seed_data",
-      "community": 6
+      "community": 1
     },
     {
       "label": "formatCents()",
@@ -921,7 +929,7 @@
       "source_file": "src\\lib\\seed-data.ts",
       "source_location": "L23",
       "id": "seed_data_formatcents",
-      "community": 6
+      "community": 1
     },
     {
       "label": "utils.ts",
@@ -929,7 +937,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L1",
       "id": "utils",
-      "community": 5
+      "community": 1
     },
     {
       "label": "cn()",
@@ -937,7 +945,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L4",
       "id": "utils_cn",
-      "community": 5
+      "community": 1
     },
     {
       "label": "formatCurrency()",
@@ -945,7 +953,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L8",
       "id": "utils_formatcurrency",
-      "community": 5
+      "community": 1
     },
     {
       "label": "formatNumber()",
@@ -953,7 +961,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L18",
       "id": "utils_formatnumber",
-      "community": 5
+      "community": 1
     },
     {
       "label": "formatScore()",
@@ -961,7 +969,7 @@
       "source_file": "src\\lib\\utils.ts",
       "source_location": "L24",
       "id": "utils_formatscore",
-      "community": 5
+      "community": 1
     },
     {
       "label": "index.ts",
@@ -969,7 +977,7 @@
       "source_file": "src\\types\\index.ts",
       "source_location": "L1",
       "id": "index",
-      "community": 16
+      "community": 13
     }
   ],
   "links": [
@@ -1229,7 +1237,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L47",
+      "source_location": "L48",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_resolvegithubaccesstokenforrepos",
@@ -1241,7 +1249,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L60",
+      "source_location": "L66",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_fetchgithubuser",
@@ -1253,7 +1261,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L73",
+      "source_location": "L79",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_resolvegithubusernameforregistration",
@@ -1265,7 +1273,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L99",
+      "source_location": "L113",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_initclient",
@@ -1433,7 +1441,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L54",
+      "source_location": "L60",
       "weight": 1.0,
       "_src": "main_resolvegithubaccesstokenforrepos",
       "_tgt": "main_getgithubidentitytoken",
@@ -1445,7 +1453,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L91",
+      "source_location": "L105",
       "weight": 1.0,
       "_src": "main_resolvegithubusernameforregistration",
       "_tgt": "main_getgithubidentitytoken",
@@ -1457,7 +1465,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L93",
+      "source_location": "L89",
       "weight": 1.0,
       "_src": "main_resolvegithubusernameforregistration",
       "_tgt": "main_fetchgithubuser",
@@ -2501,7 +2509,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\app\\list-repo\\page.tsx",
-      "source_location": "L31",
+      "source_location": "L35",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handlelist",
@@ -2741,7 +2749,19 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L17",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_src": "api",
+      "_tgt": "api_getgithubaccesstokenfromsession",
+      "source": "api",
+      "target": "api_getgithubaccesstokenfromsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L33",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_executefunction",
@@ -2753,7 +2773,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L38",
+      "source_location": "L54",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_docattrs",
@@ -2765,7 +2785,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L42",
+      "source_location": "L58",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_maprepo",
@@ -2777,7 +2797,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L62",
+      "source_location": "L78",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_mapcontributor",
@@ -2789,7 +2809,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L79",
+      "source_location": "L95",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_mapcontributorfromfunctionpayload",
@@ -2801,7 +2821,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L96",
+      "source_location": "L112",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_mappool",
@@ -2813,7 +2833,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L118",
+      "source_location": "L134",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_maprepocontributiondoc",
@@ -2825,7 +2845,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L136",
+      "source_location": "L152",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_listrepos",
@@ -2837,7 +2857,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L149",
+      "source_location": "L165",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getrepo",
@@ -2849,7 +2869,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L154",
+      "source_location": "L170",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getrepocontributors",
@@ -2861,7 +2881,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L162",
+      "source_location": "L178",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getmygithubrepos",
@@ -2873,7 +2893,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L166",
+      "source_location": "L186",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_listrepo",
@@ -2885,7 +2905,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L174",
+      "source_location": "L194",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_listcontributors",
@@ -2897,7 +2917,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L187",
+      "source_location": "L207",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getcontributor",
@@ -2909,7 +2929,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L198",
+      "source_location": "L218",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_registercontributor",
@@ -2921,7 +2941,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L205",
+      "source_location": "L229",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getactivepool",
@@ -2933,7 +2953,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L219",
+      "source_location": "L243",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getcollectingpool",
@@ -2945,7 +2965,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L233",
+      "source_location": "L257",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_createcheckoutsession",
@@ -2957,7 +2977,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L247",
+      "source_location": "L271",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_createupiqr",
@@ -2969,7 +2989,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L254",
+      "source_location": "L278",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_checkupiqrstatus",
@@ -2981,7 +3001,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L260",
+      "source_location": "L284",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_donate",
@@ -2993,7 +3013,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L274",
+      "source_location": "L298",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getearnings",
@@ -3005,7 +3025,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L283",
+      "source_location": "L307",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_onboardstripeconnect",
@@ -3017,7 +3037,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L292",
+      "source_location": "L316",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getstats",
@@ -3029,7 +3049,31 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L163",
+      "source_location": "L179",
+      "weight": 1.0,
+      "_src": "api_getmygithubrepos",
+      "_tgt": "api_getgithubaccesstokenfromsession",
+      "source": "api_getgithubaccesstokenfromsession",
+      "target": "api_getmygithubrepos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L219",
+      "weight": 1.0,
+      "_src": "api_registercontributor",
+      "_tgt": "api_getgithubaccesstokenfromsession",
+      "source": "api_getgithubaccesstokenfromsession",
+      "target": "api_registercontributor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L180",
       "weight": 1.0,
       "_src": "api_getmygithubrepos",
       "_tgt": "api_executefunction",
@@ -3041,7 +3085,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L238",
+      "source_location": "L262",
       "weight": 1.0,
       "_src": "api_createcheckoutsession",
       "_tgt": "api_executefunction",
@@ -3053,7 +3097,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L251",
+      "source_location": "L275",
       "weight": 1.0,
       "_src": "api_createupiqr",
       "_tgt": "api_executefunction",
@@ -3065,7 +3109,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L257",
+      "source_location": "L281",
       "weight": 1.0,
       "_src": "api_checkupiqrstatus",
       "_tgt": "api_executefunction",
@@ -3077,7 +3121,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L264",
+      "source_location": "L288",
       "weight": 1.0,
       "_src": "api_donate",
       "_tgt": "api_executefunction",
@@ -3089,7 +3133,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L275",
+      "source_location": "L299",
       "weight": 1.0,
       "_src": "api_getearnings",
       "_tgt": "api_executefunction",
@@ -3101,7 +3145,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L284",
+      "source_location": "L308",
       "weight": 1.0,
       "_src": "api_onboardstripeconnect",
       "_tgt": "api_executefunction",
@@ -3113,7 +3157,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L43",
+      "source_location": "L59",
       "weight": 1.0,
       "_src": "api_maprepo",
       "_tgt": "api_docattrs",
@@ -3125,7 +3169,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L63",
+      "source_location": "L79",
       "weight": 1.0,
       "_src": "api_mapcontributor",
       "_tgt": "api_docattrs",
@@ -3137,7 +3181,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L97",
+      "source_location": "L113",
       "weight": 1.0,
       "_src": "api_mappool",
       "_tgt": "api_docattrs",
@@ -3149,7 +3193,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L119",
+      "source_location": "L135",
       "weight": 1.0,
       "_src": "api_maprepocontributiondoc",
       "_tgt": "api_docattrs",
@@ -3161,7 +3205,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L151",
+      "source_location": "L167",
       "weight": 1.0,
       "_src": "api_getrepo",
       "_tgt": "api_maprepo",
@@ -3173,7 +3217,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L169",
+      "source_location": "L189",
       "weight": 1.0,
       "_src": "api_listrepo",
       "_tgt": "api_maprepo",
@@ -3185,7 +3229,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L189",
+      "source_location": "L209",
       "weight": 1.0,
       "_src": "api_getcontributor",
       "_tgt": "api_mapcontributor",
@@ -3197,7 +3241,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L200",
+      "source_location": "L224",
       "weight": 1.0,
       "_src": "api_registercontributor",
       "_tgt": "api_mapcontributorfromfunctionpayload",
@@ -3209,7 +3253,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L212",
+      "source_location": "L236",
       "weight": 1.0,
       "_src": "api_getactivepool",
       "_tgt": "api_mappool",
@@ -3221,7 +3265,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L226",
+      "source_location": "L250",
       "weight": 1.0,
       "_src": "api_getcollectingpool",
       "_tgt": "api_mappool",
@@ -3233,7 +3277,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L304",
+      "source_location": "L328",
       "weight": 1.0,
       "_src": "api_getstats",
       "_tgt": "api_mappool",

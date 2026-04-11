@@ -315,7 +315,7 @@ openget-appwrite/
 | `STRIPE_CONNECT_REFRESH_URL` | No | — | Redirect after Connect refresh |
 | `STRIPE_CONNECT_RETURN_URL` | No | — | Redirect after Connect completes |
 
-**GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The `openget-api` function resolves tokens in this order: optional **`github_access_token`** on the `users` collection document (document ID = Appwrite user ID), then the GitHub OAuth **`providerAccessToken`** from Appwrite **user identities**, then **`GITHUB_TOKEN`**.
+**GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The **browser** reads the GitHub OAuth token from **`account.listIdentities()`** and sends it to **`openget-api`** as `github_access_token` (the Functions admin API often cannot read that token). The function then falls back to the **`users`** document, server-side identities, or **`GITHUB_TOKEN`**.
 
 </details>
 

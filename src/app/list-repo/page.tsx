@@ -21,7 +21,11 @@ export default function ListRepoPage() {
       setUser(u);
       getMyGithubRepos()
         .then(setRepos)
-        .catch(() => setMessage("Could not fetch your repos. Try again later."))
+        .catch((err) =>
+          setMessage(
+            err instanceof Error ? err.message : "Could not fetch your repos. Try again later.",
+          ),
+        )
         .finally(() => setLoading(false));
     }).catch(() => {
       setLoading(false);
