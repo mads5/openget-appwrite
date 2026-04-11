@@ -44,7 +44,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="OpenGet" width={32} height={32} className="rounded-lg" />
+            <Image src="/logo.png" alt="OpenGet" width={48} height={48} className="rounded-xl" />
             <span className="font-bold text-xl">
               Open<span className="text-primary">Get</span>
             </span>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getStats } from "@/lib/api";
@@ -18,7 +17,6 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       <section className="container flex flex-col items-center justify-center gap-6 py-24 text-center">
-        <Image src="/logo.png" alt="OpenGet" width={80} height={80} className="drop-shadow-lg mb-2 rounded-2xl" />
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm text-primary mb-2">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
