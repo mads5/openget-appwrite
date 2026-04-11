@@ -1,6 +1,9 @@
 {
   "name": "openget-scripts",
   "type": "module",
+  "scripts": {
+    "db:sync": "node setup-database.js"
+  },
   "dependencies": {
     "node-appwrite": "^23.1.0"
   }

@@ -11,8 +11,12 @@ const COL = {
   DONATIONS: 'donations',
   PAYOUTS: 'payouts',
   PLATFORM_FEES: 'platform_fees',
+  MONTHLY_STATS: 'monthly_contributor_stats',
+  WEEKLY_DISTRIBUTIONS: 'weekly_distributions',
   USERS: 'users',
 };
+
+const MIN_PAYOUT_CENTS = 50;
 
 function initClient() {
   return new Client()
@@ -71,6 +75,7 @@ export default async ({ req, res, log, error }) => {
           language: gh.language || null,
           stars: gh.stargazers_count || 0,
           forks: gh.forks_count || 0,
+          repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
           listed_by: userId,
           contributor_count: 0,
         });
@@ -163,6 +168,7 @@ export default async ({ req, res, log, error }) => {
           user_id: userId,
           total_score: 0,
           repo_count: 0,
+          total_contributions: 0,
         });
         return res.json({ ...doc, is_registered: true });
       }
@@ -179,9 +185,15 @@ export default async ({ req, res, log, error }) => {
         const { amount_cents, currency = 'usd', message = '', success_url, cancel_url } = body;
         if (!amount_cents || !success_url || !cancel_url) return res.json({ error: 'Missing required fields' }, 400);
 
-        const pools = await db.listDocuments(DATABASE_ID, COL.POOLS, [Query.equal('status', 'active'), Query.limit(1)]);
-        const poolId = pools.documents.length > 0 ? pools.documents[0].$id : null;
-        if (!poolId) return res.json({ error: 'No active pool' }, 404);
+        let poolDoc = null;
+        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [Query.equal('status', 'collecting'), Query.limit(1)]);
+        if (collecting.documents.length > 0) poolDoc = collecting.documents[0];
+        if (!poolDoc) {
+          const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [Query.equal('status', 'active'), Query.limit(1)]);
+          if (active.documents.length > 0) poolDoc = active.documents[0];
+        }
+        if (!poolDoc) return res.json({ error: 'No pool available for donations' }, 404);
+        const poolId = poolDoc.$id;
 
         const donation = await db.createDocument(DATABASE_ID, COL.DONATIONS, ID.unique(), {
           pool_id: poolId,
@@ -321,35 +333,89 @@ export default async ({ req, res, log, error }) => {
         return res.json({ contributor_id: contributor.$id, total_earned_cents: totalEarned, pending_cents: pending, payouts });
       }
 
-      // ---- DISTRIBUTE POOL ----
+      // ---- DISTRIBUTE POOL (weekly) ----
       case 'distribute-pool': {
         const pools = await db.listDocuments(DATABASE_ID, COL.POOLS, [Query.equal('status', 'active'), Query.limit(1)]);
         if (pools.documents.length === 0) return res.json({ message: 'No active pool' });
         const pool = pools.documents[0];
 
-        await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, { status: 'distributing' });
+        const weeklyBudget = (pool.daily_budget_cents || 0) * 7;
+        const budget = Math.min(weeklyBudget, pool.remaining_cents || 0);
+        if (budget <= 0) return res.json({ error: 'No budget remaining for this week' }, 400);
 
-        const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [Query.greaterThan('total_score', 0), Query.limit(500)]);
-        const registered = contribs.documents.filter(c => c.user_id);
-        if (registered.length === 0) {
-          await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, { status: 'completed' });
-          return res.json({ message: 'No registered contributors to pay' });
+        const repos = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(5000)]);
+        const reposWithScore = repos.documents.filter(r => (r.repo_score || (r.stars || 0) + (r.forks || 0)) > 0);
+        if (reposWithScore.length === 0) return res.json({ message: 'No repos with score > 0' });
+
+        const repoWeights = reposWithScore.map(r => ({
+          repo: r,
+          weight: Math.sqrt(r.repo_score || (r.stars || 0) + (r.forks || 0)),
+        }));
+        const totalWeight = repoWeights.reduce((s, rw) => s + rw.weight, 0);
+
+        let totalDistributed = 0, totalPayouts = 0;
+        const now = new Date();
+        const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+        const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+
+        for (const { repo, weight } of repoWeights) {
+          const repoBudget = Math.floor((weight / totalWeight) * budget);
+          if (repoBudget <= 0) continue;
+
+          const rcs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+            Query.equal('repo_id', repo.$id), Query.limit(5000),
+          ]);
+          const eligible = [];
+          for (const rc of rcs.documents) {
+            try {
+              const c = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
+              if (c.user_id && (c.total_score || 0) > 0) eligible.push({ rc, contributor: c });
+            } catch {}
+          }
+          if (eligible.length === 0) continue;
+
+          const ts = eligible.reduce((s, e) => s + (e.contributor.total_score || 0), 0);
+          if (ts <= 0) continue;
+
+          const rawShares = eligible.map(e => ({ ...e, raw: ((e.contributor.total_score || 0) / ts) * repoBudget }));
+          const floors = rawShares.map(r => Math.floor(r.raw));
+          let remainder = repoBudget - floors.reduce((a, b) => a + b, 0);
+          const order = rawShares.map((r, i) => ({ i, frac: r.raw - floors[i] })).sort((a, b) => b.frac - a.frac);
+          const amounts = [...floors];
+          for (let r = 0; r < remainder && r < order.length; r++) amounts[order[r].i] += 1;
+
+          for (let i = 0; i < eligible.length; i++) {
+            if (amounts[i] < MIN_PAYOUT_CENTS) continue;
+            await db.createDocument(DATABASE_ID, COL.PAYOUTS, ID.unique(), {
+              pool_id: pool.$id, contributor_id: eligible[i].contributor.$id,
+              amount_cents: amounts[i], score_snapshot: eligible[i].contributor.total_score || 0, status: 'pending',
+            });
+            totalDistributed += amounts[i];
+            totalPayouts++;
+          }
         }
 
-        const totalScore = registered.reduce((s, c) => s + (c.total_score || 0), 0);
-        const distributable = pool.distributable_amount_cents || Math.round((pool.total_amount_cents || 0) * 0.99);
+        await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
+          remaining_cents: Math.max(0, (pool.remaining_cents || 0) - totalDistributed),
+        });
 
-        for (const c of registered) {
-          const share = Math.floor((c.total_score / totalScore) * distributable);
-          if (share <= 0) continue;
-          await db.createDocument(DATABASE_ID, COL.PAYOUTS, ID.unique(), {
-            pool_id: pool.$id, contributor_id: c.$id,
-            amount_cents: share, score_snapshot: c.total_score, status: 'pending',
-          });
-        }
+        await db.createDocument(DATABASE_ID, COL.WEEKLY_DISTRIBUTIONS, ID.unique(), {
+          pool_id: pool.$id,
+          week_start: weekStart.toISOString().slice(0, 10),
+          week_end: weekEnd.toISOString().slice(0, 10),
+          budget_cents: budget,
+          distributed_cents: totalDistributed,
+          payouts_created: totalPayouts,
+        });
 
-        await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, { status: 'completed' });
-        return res.json({ message: `Distributed to ${registered.length} contributors` });
+        return res.json({ pool_id: pool.$id, distributed_cents: totalDistributed, payouts_created: totalPayouts });
+      }
+
+      // ---- GET COLLECTING POOL ----
+      case 'get-collecting-pool': {
+        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [Query.equal('status', 'collecting'), Query.limit(1)]);
+        if (collecting.documents.length === 0) return res.json({ pool: null });
+        return res.json({ pool: collecting.documents[0] });
       }
 
       // ---- FETCH CONTRIBUTORS (background) ----
@@ -363,6 +429,16 @@ export default async ({ req, res, log, error }) => {
 
         for (const repo of repos.documents) {
           try {
+            const ghInfoRes = await fetch(`https://api.github.com/repos/${repo.full_name}`, { headers: ghHeaders });
+            if (ghInfoRes.ok) {
+              const ghInfo = await ghInfoRes.json();
+              await db.updateDocument(DATABASE_ID, COL.REPOS, repo.$id, {
+                stars: ghInfo.stargazers_count || 0,
+                forks: ghInfo.forks_count || 0,
+                repo_score: (ghInfo.stargazers_count || 0) + (ghInfo.forks_count || 0),
+              });
+            }
+
             const statsRes = await fetch(`https://api.github.com/repos/${repo.full_name}/stats/contributors`, { headers: ghHeaders });
             if (!statsRes.ok) continue;
             const stats = await statsRes.json();
@@ -388,6 +464,7 @@ export default async ({ req, res, log, error }) => {
                   avatar_url: s.author.avatar_url || null,
                   total_score: 0,
                   repo_count: 0,
+                  total_contributions: 0,
                 });
               }
 
@@ -421,9 +498,13 @@ export default async ({ req, res, log, error }) => {
                 Query.equal('contributor_id', contribDoc.$id), Query.limit(500),
               ]);
               const totalScore = allContribs.documents.reduce((s, d) => s + (d.score || 0), 0);
+              const totalContributions = allContribs.documents.reduce(
+                (s, d) => s + (d.commits || 0) + (d.prs_merged || 0) + (d.reviews || 0) + (d.issues_closed || 0), 0
+              );
               await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
                 total_score: totalScore,
                 repo_count: allContribs.total,
+                total_contributions: totalContributions,
               });
 
               contribCount++;
@@ -445,7 +526,7 @@ export default async ({ req, res, log, error }) => {
         return res.json({ error: `Unknown action: ${action}`, available: [
           'list-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
           'create-checkout', 'stripe-webhook', 'stripe-connect', 'upi-payment',
-          'get-earnings', 'distribute-pool', 'fetch-contributors',
+          'get-earnings', 'distribute-pool', 'get-collecting-pool', 'fetch-contributors',
         ]}, 400);
     }
   } catch (e) {
