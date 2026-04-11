@@ -406,6 +406,8 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 2. Run **Option A** or **B** above — the deploy script includes `openget-api` and uploads a new deployment.
 3. In Appwrite Console → **Functions** → **`openget-api`**, confirm the **active deployment** matches the commit you expect.
 
+**Execute access:** If the UI shows **`No permissions provided for action 'execute'`** (for example on **List your repo**), the function’s **Execute access** in Appwrite Console → **Functions** → **`openget-api`** → **Settings** must include **`users`** (and usually **`any`**). Older functions may have been created without those roles; [`scripts/deploy-functions.js`](scripts/deploy-functions.js) updates execute permissions from `FUNCTION_CONFIG` after each successful deployment so redeploying **`openget-api`** applies the fix without manual edits.
+
 **PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
 
 ### Scheduled Functions

@@ -12,6 +12,27 @@ const client = new Client()
 
 const functions = new Functions(client);
 
+/**
+ * Appwrite only applies `execute` on **create**. Existing functions keep stale execute access unless updated.
+ * Client calls then fail with: "No permissions provided for action 'execute'".
+ * Cron-only functions use `execute: []` — we skip syncing so their access is unchanged.
+ */
+async function syncExecuteFromConfig(functionId, config) {
+  if (!config.execute?.length) return;
+  try {
+    const existing = await functions.get(functionId);
+    const execute = [...new Set(config.execute)];
+    await functions.update({
+      functionId,
+      name: existing.name,
+      execute,
+    });
+    console.log(`  [ok] Execute access: ${execute.join(', ')}`);
+  } catch (e) {
+    console.error(`  [warn] Could not sync execute access for ${functionId}:`, e.message);
+  }
+}
+
 /** Repo-root `functions/` (works when `node deploy-functions.js` is run from `scripts/`). */
 const FUNCTIONS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'functions');
 
@@ -102,6 +123,7 @@ async function deployFunction(functionId) {
       entrypoint: 'src/main.js',
     });
     console.log(`  [ok] Deployed: ${functionId}`);
+    await syncExecuteFromConfig(functionId, config);
     return true;
   } catch (err) {
     console.error(`  [error] Deploy failed for ${functionId}:`, err.message);

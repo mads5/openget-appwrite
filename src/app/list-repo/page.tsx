@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { account, OAuthProvider } from "@/lib/appwrite";
-import { getMyGithubRepos, listRepo } from "@/lib/api";
+import { getMyGithubRepos, listRepo, delistRepo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ export default function ListRepoPage() {
   const [repos, setRepos] = useState<GitHubRepoInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [listing, setListing] = useState<string | null>(null);
+  const [delisting, setDelisting] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,17 +37,40 @@ export default function ListRepoPage() {
     setListing(githubUrl);
     setMessage(null);
     try {
-      await listRepo(githubUrl);
+      const listed = await listRepo(githubUrl);
       setRepos((prev) =>
         prev.map((r) =>
-          r.html_url === githubUrl ? { ...r, already_listed: true } : r
-        )
+          r.html_url === githubUrl
+            ? { ...r, already_listed: true, listed_by_me: true, repo_id: listed.id }
+            : r,
+        ),
       );
       setMessage("Repo listed! We're discovering contributors now.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to list repo");
     } finally {
       setListing(null);
+    }
+  };
+
+  const handleDelist = async (repo: GitHubRepoInfo) => {
+    if (!repo.repo_id) return;
+    setDelisting(repo.html_url);
+    setMessage(null);
+    try {
+      await delistRepo(repo.repo_id);
+      setRepos((prev) =>
+        prev.map((r) =>
+          r.html_url === repo.html_url
+            ? { ...r, already_listed: false, listed_by_me: false, repo_id: null }
+            : r,
+        ),
+      );
+      setMessage("Repo delisted.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to delist repo");
+    } finally {
+      setDelisting(null);
     }
   };
 
@@ -120,11 +144,24 @@ export default function ListRepoPage() {
                   <span>{repo.forks_count.toLocaleString()} forks</span>
                 </div>
               </div>
-              <div className="ml-4 shrink-0">
+              <div className="ml-4 shrink-0 flex items-center gap-2">
                 {repo.already_listed ? (
-                  <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20">
-                    Listed &#10003;
-                  </Badge>
+                  <>
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20">
+                      Listed &#10003;
+                    </Badge>
+                    {repo.listed_by_me && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                        onClick={() => handleDelist(repo)}
+                        disabled={delisting === repo.html_url}
+                      >
+                        {delisting === repo.html_url ? "Delisting..." : "Delist"}
+                      </Button>
+                    )}
+                  </>
                 ) : (
                   <Button
                     size="sm"
