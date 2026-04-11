@@ -46,13 +46,13 @@ async function deployFunction(functionId) {
   const config = FUNCTION_CONFIG[functionId];
   if (!config) {
     console.log(`  [skip] No config for ${functionId}`);
-    return;
+    return true;
   }
 
   const functionDir = join(FUNCTIONS_DIR, functionId);
   if (!existsSync(functionDir)) {
     console.log(`  [skip] Directory not found: ${functionDir}`);
-    return;
+    return true;
   }
 
   // Install deps if node_modules doesn't exist
@@ -66,7 +66,7 @@ async function deployFunction(functionId) {
     }
   }
 
-  // Create function
+  // Create function (may fail at plan limit — still upload code below if function already exists)
   try {
     await functions.create({
       functionId,
@@ -84,16 +84,14 @@ async function deployFunction(functionId) {
     if (err.code === 409) {
       console.log(`  [skip] Function already exists: ${functionId}`);
     } else {
-      console.error(`  [error] Failed to create ${functionId}:`, err.message);
-      return;
+      console.error(`  [warn] Could not create ${functionId}:`, err.message);
+      console.log(`  [info] Uploading deployment anyway (function may already exist; plan limit blocks new functions).`);
     }
   }
 
-  // Create tar.gz for deployment
   const tarPath = await createTarGz(functionDir);
-  if (!tarPath) return;
+  if (!tarPath) return false;
 
-  // Deploy
   try {
     const { InputFile } = await import('node-appwrite/file');
     const file = InputFile.fromPath(tarPath, `${functionId}.tar.gz`);
@@ -104,8 +102,10 @@ async function deployFunction(functionId) {
       entrypoint: 'src/main.js',
     });
     console.log(`  [ok] Deployed: ${functionId}`);
+    return true;
   } catch (err) {
     console.error(`  [error] Deploy failed for ${functionId}:`, err.message);
+    return false;
   } finally {
     try { unlinkSync(tarPath); } catch {}
   }
@@ -120,19 +120,35 @@ async function main() {
   console.log('Deploying Appwrite Functions...');
   console.log('Endpoint:', process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1');
 
-  const functionDirs = readdirSync(FUNCTIONS_DIR).filter(d => {
+  let functionDirs = readdirSync(FUNCTIONS_DIR).filter(d => {
     const full = join(FUNCTIONS_DIR, d);
     return statSync(full).isDirectory() && FUNCTION_CONFIG[d];
   });
 
+  const PRIORITY = ['openget-api'];
+  functionDirs = functionDirs.sort((a, b) => {
+    const ia = PRIORITY.indexOf(a);
+    const ib = PRIORITY.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
   console.log(`Found ${functionDirs.length} functions to deploy.\n`);
 
+  let failures = 0;
   for (const funcId of functionDirs) {
     console.log(`--- ${funcId} ---`);
-    await deployFunction(funcId);
+    const ok = await deployFunction(funcId);
+    if (ok === false) failures++;
     console.log('');
   }
 
+  if (failures > 0) {
+    console.error(`[error] ${failures} deployment(s) failed.`);
+    process.exit(1);
+  }
   console.log('[done] Function deployment complete.');
 }
 

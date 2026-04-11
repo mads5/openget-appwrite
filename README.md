@@ -380,7 +380,7 @@ cd scripts && npm install
 APPWRITE_API_KEY=your_key node deploy-functions.js
 ```
 
-Creates functions (if missing), bundles `node_modules`, and uploads deployments.
+Creates functions (if missing), bundles `node_modules`, and uploads deployments. **`openget-api` is deployed first.** If Appwrite reports **maximum number of functions** for your plan, **creating** a new function can fail, but **uploading** a new deployment to a function that **already exists** still runs—so your router can be updated without adding more function slots.
 
 </details>
 

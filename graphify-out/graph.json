@@ -9,7 +9,7 @@
       "source_file": "next-env.d.ts",
       "source_location": "L1",
       "id": "next_env_d",
-      "community": 11
+      "community": 12
     },
     {
       "label": "next.config.js",
@@ -17,7 +17,7 @@
       "source_file": "next.config.js",
       "source_location": "L1",
       "id": "next_config",
-      "community": 12
+      "community": 13
     },
     {
       "label": "postcss.config.js",
@@ -25,7 +25,7 @@
       "source_file": "postcss.config.js",
       "source_location": "L1",
       "id": "postcss_config",
-      "community": 13
+      "community": 14
     },
     {
       "label": "tailwind.config.ts",
@@ -33,7 +33,7 @@
       "source_file": "tailwind.config.ts",
       "source_location": "L1",
       "id": "tailwind_config",
-      "community": 14
+      "community": 15
     },
     {
       "label": "main.js",
@@ -297,7 +297,7 @@
       "source_file": "scripts\\deploy-single-function.js",
       "source_location": "L1",
       "id": "deploy_single_function",
-      "community": 8
+      "community": 9
     },
     {
       "label": "main()",
@@ -305,7 +305,7 @@
       "source_file": "scripts\\deploy-single-function.js",
       "source_location": "L14",
       "id": "deploy_single_function_main",
-      "community": 8
+      "community": 9
     },
     {
       "label": "setup-database.js",
@@ -473,7 +473,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L1",
       "id": "middleware",
-      "community": 9
+      "community": 10
     },
     {
       "label": "middleware()",
@@ -481,7 +481,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L4",
       "id": "middleware_middleware",
-      "community": 9
+      "community": 10
     },
     {
       "label": "layout.tsx",
@@ -585,7 +585,7 @@
       "source_file": "src\\components\\contributors\\contributor-table.tsx",
       "source_location": "L1",
       "id": "contributor_table",
-      "community": 3
+      "community": 8
     },
     {
       "label": "header.tsx",
@@ -633,7 +633,7 @@
       "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L1",
       "id": "repo_table",
-      "community": 3
+      "community": 8
     },
     {
       "label": "formatNumber()",
@@ -641,7 +641,7 @@
       "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L11",
       "id": "repo_table_formatnumber",
-      "community": 3
+      "community": 8
     },
     {
       "label": "badge.tsx",
@@ -649,7 +649,7 @@
       "source_file": "src\\components\\ui\\badge.tsx",
       "source_location": "L1",
       "id": "badge",
-      "community": 3
+      "community": 8
     },
     {
       "label": "button.tsx",
@@ -673,7 +673,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo",
-      "community": 10
+      "community": 11
     },
     {
       "label": "LogoIcon()",
@@ -681,7 +681,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo_logoicon",
-      "community": 10
+      "community": 11
     },
     {
       "label": "progress.tsx",
@@ -969,7 +969,7 @@
       "source_file": "src\\types\\index.ts",
       "source_location": "L1",
       "id": "index",
-      "community": 15
+      "community": 16
     }
   ],
   "links": [
@@ -1505,7 +1505,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\deploy-functions.js",
-      "source_location": "L93",
+      "source_location": "L92",
       "weight": 1.0,
       "_src": "deploy_functions_deployfunction",
       "_tgt": "deploy_functions_createtargz",
@@ -1517,7 +1517,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\deploy-functions.js",
-      "source_location": "L132",
+      "source_location": "L143",
       "weight": 1.0,
       "_src": "deploy_functions_main",
       "_tgt": "deploy_functions_deployfunction",
