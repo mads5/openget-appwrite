@@ -22,7 +22,9 @@
   <a href="#-how-it-works">How It Works</a> &bull;
   <a href="#-scoring-formula">Scoring</a> &bull;
   <a href="#-environment-variables">Config</a> &bull;
-  <a href="#-architecture">Architecture</a>
+  <a href="#-architecture">Architecture</a> &bull;
+  <a href="#-governance">Governance</a> &bull;
+  <a href="#-for-enterprises">For enterprises</a>
 </p>
 
 ---
@@ -118,10 +120,19 @@ Score = (F1 * 0.20) + (F2 * 0.15 * merge_penalty) + (F3 * 0.55) + (F4 * 0.10)
 | **Platform fee** | 1% deducted per donation, tracked in `platform_fees` |
 | **Daily budget** | `distributable_cents / days_in_month` |
 | **Weekly budget** | `daily_budget * 7` (or remaining, whichever is less) |
-| **Repo weighting** | `sqrt(stars + forks)` — popular repos get more, but diminishing returns |
+| **Strategic pools** | Four parallel lanes per month (`innovation`, `security_compliance`, `deep_deps`, `community_match`). Donors pick a lane at checkout. See [docs/POOL_TYPES.md](docs/POOL_TYPES.md). |
+| **Repo weighting** | `sqrt(stars+forks) × (0.35 + 0.65 × criticality_score) × (1 + min(1.5, 1/bus_factor))` — nightly GitHub heuristic for **criticality** (v1) and **bus factor** (authors needed for ~50% of commits), reducing pure star-count bias. |
 | **Contributor weighting** | `total_score` within each repo's budget |
 | **Minimum payout** | $0.50 — smaller amounts roll over |
 | **Audit trail** | Every distribution creates a `weekly_distributions` record |
+
+## Governance
+
+OpenGet does **not** let donors direct payouts to specific pull requests. Funds flow through **public contributor scoring** and **repo weighting** rules so maintainers are not paid on a single employer’s roadmap—supporting neutral, multi-sponsor narratives.
+
+## For enterprises
+
+Supply-chain risk, operational receipts, CSR/ESG alignment (where applicable), and neutral governance are summarized in-app on **`/enterprise`** and in [docs/POOL_TYPES.md](docs/POOL_TYPES.md). Legal claims about specific regulations require your own counsel.
 
 ---
 

@@ -75,6 +75,7 @@ export function Header() {
             <Link href="/repos" className="text-muted-foreground hover:text-foreground transition-colors">Repos</Link>
             <Link href="/contributors" className="text-muted-foreground hover:text-foreground transition-colors">Contributors</Link>
             <Link href="/donate" className="text-muted-foreground hover:text-foreground transition-colors">Donate</Link>
+            <Link href="/enterprise" className="text-muted-foreground hover:text-foreground transition-colors">For enterprises</Link>
             {user && (
               <>
                 <Link href="/list-repo" className="text-muted-foreground hover:text-foreground transition-colors">List a Repo</Link>

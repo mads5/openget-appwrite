@@ -93,6 +93,58 @@ function monthDateRange(monthKey) {
   return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 }
 
+function totalCommitsFromStatsRow(row) {
+  let c = 0;
+  for (const w of row.weeks || []) c += w.c || 0;
+  return c;
+}
+
+/**
+ * Minimal bus-factor estimate: smallest number of authors accounting for ≥50% of commits.
+ */
+function estimateBusFactor(stats) {
+  const rows = stats
+    .filter((r) => r.author?.login)
+    .map((r) => ({
+      login: r.author.login,
+      c: totalCommitsFromStatsRow(r),
+    }));
+  const sum = rows.reduce((s, x) => s + x.c, 0);
+  if (sum <= 0) return { bus_factor: 1 };
+  const sorted = [...rows].sort((a, b) => b.c - a.c);
+  let cum = 0;
+  let k = 0;
+  for (const row of sorted) {
+    cum += row.c;
+    k++;
+    if (cum >= sum * 0.5) break;
+  }
+  return { bus_factor: Math.max(1, k) };
+}
+
+/** Heuristic criticality (0.05–1) from GitHub metadata — v1 substitute for full OpenSSF score. */
+function computeCriticalityV1(gh, contributorCount) {
+  const stars = gh.stargazers_count || 0;
+  const forks = gh.forks_count || 0;
+  const pop = Math.log1p(stars + forks);
+  const team = Math.log1p(contributorCount);
+  let daysSincePush = 120;
+  try {
+    if (gh.pushed_at) {
+      daysSincePush = (Date.now() - new Date(gh.pushed_at).getTime()) / 86400000;
+    }
+  } catch {
+    /* ignore */
+  }
+  const recency = 1 / (1 + daysSincePush / 45);
+  const openIssues = gh.open_issues_count || 0;
+  const issueLoad = Math.min(1, Math.log1p(openIssues) / Math.log1p(200));
+  const normPop = Math.min(1, pop / Math.log1p(100000));
+  const normTeam = Math.min(1, team / Math.log1p(300));
+  const raw = 0.35 * normPop + 0.35 * normTeam + 0.2 * recency + 0.1 * issueLoad;
+  return Math.round(Math.min(1, Math.max(0.05, raw)) * 1000) / 1000;
+}
+
 async function fetchMonthlyPrStats(owner, repo, username, monthKey) {
   const { start, end } = monthDateRange(monthKey);
   await sleep(200);
@@ -149,17 +201,19 @@ export default async ({ req, res, log, error }) => {
       }
       const [owner, repoName] = full.split("/");
       try {
+        let ghSnapshot = null;
         const ghRes = await fetch(`https://api.github.com/repos/${full}`, { headers: ghHeaders() });
         if (ghRes.ok) {
-          const gh = await ghRes.json();
-          const newScore = (gh.stargazers_count || 0) + (gh.forks_count || 0);
+          ghSnapshot = await ghRes.json();
+          const newScore =
+            (ghSnapshot.stargazers_count || 0) + (ghSnapshot.forks_count || 0);
           await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, {
-            stars: gh.stargazers_count || 0,
-            forks: gh.forks_count || 0,
+            stars: ghSnapshot.stargazers_count || 0,
+            forks: ghSnapshot.forks_count || 0,
             repo_score: newScore,
           });
-          repoDoc.stars = gh.stargazers_count || 0;
-          repoDoc.forks = gh.forks_count || 0;
+          repoDoc.stars = ghSnapshot.stargazers_count || 0;
+          repoDoc.forks = ghSnapshot.forks_count || 0;
           repoDoc.repo_score = newScore;
         }
 
@@ -179,6 +233,17 @@ export default async ({ req, res, log, error }) => {
           }
           byLogin.set(login, { commits, lines_added, lines_removed });
         }
+
+        const { bus_factor: busFactor } = estimateBusFactor(stats);
+        const crit = ghSnapshot
+          ? computeCriticalityV1(ghSnapshot, logins.size)
+          : 0.5;
+        await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, {
+          criticality_score: crit,
+          bus_factor: busFactor,
+        });
+        repoDoc.criticality_score = crit;
+        repoDoc.bus_factor = busFactor;
 
         for (const login of logins) {
           const base = byLogin.get(login) || { commits: 0, lines_added: 0, lines_removed: 0 };

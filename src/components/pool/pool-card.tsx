@@ -2,7 +2,9 @@
 
 import { Pool } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/lib/seed-data";
+import { POOL_TYPE_LABELS, type PoolTypeId } from "@/lib/pool-types";
 
 interface PoolCardProps {
   pool: Pool;
@@ -28,10 +30,21 @@ export function PoolCard({ pool }: PoolCardProps) {
 
   const distributable = pool.distributable_amount_cents ?? Math.round(pool.total_amount_cents * 0.99);
 
+  const typeId = pool.pool_type as PoolTypeId | undefined;
+  const typeLabel =
+    typeId && POOL_TYPE_LABELS[typeId] ? POOL_TYPE_LABELS[typeId] : null;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{pool.name}</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-lg">{pool.name}</CardTitle>
+          {typeLabel && (
+            <Badge variant="secondary" className="text-xs font-normal">
+              {typeLabel}
+            </Badge>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           Monthly Round: {roundStart} &ndash; {roundEnd} &middot; Payouts distributed weekly
         </p>

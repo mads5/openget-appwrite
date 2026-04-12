@@ -5,6 +5,7 @@ import type {
   Contributor,
   ContributorDetail,
   Pool,
+  CollectingPoolSummary,
   Payout,
   GitHubRepoInfo,
   RepoContribution,
@@ -68,6 +69,9 @@ function mapRepo(doc: Models.Document): Repo {
     stars: Number(d.stars ?? 0),
     forks: Number(d.forks ?? 0),
     repo_score: Number(d.repo_score ?? 0),
+    criticality_score:
+      d.criticality_score != null ? Number(d.criticality_score) : undefined,
+    bus_factor: d.bus_factor != null ? Number(d.bus_factor) : undefined,
     listed_by: String(d.listed_by ?? ""),
     contributor_count: Number(d.contributor_count ?? 0),
     contributors_fetched_at: (d.contributors_fetched_at as string | null) ?? null,
@@ -127,6 +131,7 @@ function mapPool(doc: Models.Document): Pool {
     status: (d.status as Pool["status"]) || "active",
     round_start: String(d.round_start ?? ""),
     round_end: String(d.round_end ?? ""),
+    pool_type: (d.pool_type as string | null | undefined) ?? null,
     created_at: (d.created_at as string) || doc.$createdAt,
   };
 }
@@ -258,15 +263,48 @@ export async function getCollectingPool(): Promise<Pool | null> {
   return null;
 }
 
+export async function listCollectingPools(): Promise<CollectingPoolSummary[]> {
+  try {
+    const { pools } = await executeFunction<{ pools: CollectingPoolSummary[] }>(
+      "list-collecting-pools",
+    );
+    return pools ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getPoolImpact(): Promise<{
+  collecting: Array<{
+    id: string;
+    pool_type: string | null;
+    round_start: string;
+    total_amount_cents: number;
+    donor_count: number;
+  }>;
+  active: Array<{
+    id: string;
+    pool_type: string | null;
+    round_start: string;
+    remaining_cents: number;
+    distributable_amount_cents: number;
+  }>;
+  listed_repos: number;
+}> {
+  return executeFunction("get-pool-impact");
+}
+
 export async function createCheckoutSession(
   amountCents: number,
   message?: string,
   currency?: string,
+  poolType?: string,
 ): Promise<{ checkout_url: string; session_id: string }> {
   return executeFunction<{ checkout_url: string; session_id: string }>("create-checkout", {
     amount_cents: amountCents,
     currency: currency || "usd",
     message: message ?? "",
+    pool_type: poolType,
     success_url: `${window.location.origin}/donate/success`,
     cancel_url: `${window.location.origin}/donate`,
   });
@@ -319,23 +357,29 @@ export async function onboardStripeConnect(userId: string, email: string) {
 
 export async function getStats(): Promise<{ repos: number; contributors: number; poolCents: number; donors: number }> {
   try {
-    const [reposResult, contribResult, poolResult] = await Promise.all([
+    const [reposResult, contribResult, activePoolsResult] = await Promise.all([
       databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(1)]),
       databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [Query.limit(1)]),
       databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
         Query.equal("status", "active"),
-        Query.orderDesc("$createdAt"),
-        Query.limit(1),
+        Query.limit(100),
       ]),
     ]);
 
-    const pool = poolResult.documents.length > 0 ? mapPool(poolResult.documents[0]) : null;
+    const poolCents = activePoolsResult.documents.reduce(
+      (s, d) => s + Number((d as { total_amount_cents?: number }).total_amount_cents ?? 0),
+      0,
+    );
+    const donors = activePoolsResult.documents.reduce(
+      (s, d) => s + Number((d as { donor_count?: number }).donor_count ?? 0),
+      0,
+    );
 
     return {
       repos: reposResult.total,
       contributors: contribResult.total,
-      poolCents: pool?.total_amount_cents ?? 0,
-      donors: pool?.donor_count ?? 0,
+      poolCents,
+      donors,
     };
   } catch {
     return { repos: 0, contributors: 0, poolCents: 0, donors: 0 };

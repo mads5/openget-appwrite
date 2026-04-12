@@ -9,6 +9,10 @@ export interface Repo {
   stars: number;
   forks: number;
   repo_score: number;
+  /** Heuristic 0–1 (OpenSSF-style criticality v1). */
+  criticality_score?: number;
+  /** Estimated bus factor (≥1). */
+  bus_factor?: number;
   listed_by: string;
   contributor_count: number;
   contributors_fetched_at: string | null;
@@ -70,7 +74,20 @@ export interface Pool {
   status: "collecting" | "active" | "distributing" | "completed";
   round_start: string;
   round_end: string;
+  /** Strategic pool lane — see docs/POOL_TYPES.md */
+  pool_type?: string | null;
   created_at: string;
+}
+
+export interface CollectingPoolSummary {
+  id: string;
+  pool_type: string | null;
+  name: string;
+  description: string | null;
+  round_start: string;
+  round_end: string;
+  total_amount_cents: number;
+  donor_count: number;
 }
 
 export interface WeeklyDistribution {

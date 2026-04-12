@@ -187,6 +187,8 @@ async function setupRepos() {
   await addIntegerAttribute(id, 'stars', false, 0);
   await addIntegerAttribute(id, 'forks', false, 0);
   await addIntegerAttribute(id, 'repo_score', false, 0);
+  await addFloatAttribute(id, 'criticality_score', false, 0);
+  await addFloatAttribute(id, 'bus_factor', false, 0);
   await addStringAttribute(id, 'listed_by', 100, true);
   await addIntegerAttribute(id, 'contributor_count', false, 0);
   await addStringAttribute(id, 'contributors_fetched_at', 50, false);
@@ -234,6 +236,7 @@ async function setupPools() {
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'round_start', 50, true);
   await addStringAttribute(id, 'round_end', 50, true);
+  await addStringAttribute(id, 'pool_type', 40, false);
 }
 
 async function setupDonations() {

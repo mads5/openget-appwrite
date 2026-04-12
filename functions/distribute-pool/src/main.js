@@ -1,4 +1,9 @@
 import { Client, Databases, ID, Query } from "node-appwrite";
+import { POOL_TYPES, POOL_TYPE_DESCRIPTIONS } from "./pool-types.js";
+import {
+  computeRepoDistributionWeight,
+  filterReposForDistribution,
+} from "./repo-distribution.js";
 
 const DATABASE_ID = "openget-db";
 const PLATFORM_FEE_RATE = 0.01;
@@ -39,7 +44,7 @@ function getActiveMonthInfo() {
   return { year: y, month: m, totalDays, dayOfMonth, dayOfWeek, isLastDay };
 }
 
-async function ensureCollectingPool(databases) {
+async function ensureCollectingPools(databases) {
   const now = new Date();
   const nextMonth = now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2;
   const nextYear = nextMonth === 1 ? now.getFullYear() + 1 : now.getFullYear();
@@ -49,27 +54,47 @@ async function ensureCollectingPool(databases) {
 
   const existing = await databases.listDocuments(DATABASE_ID, COLLECTION_POOLS, [
     Query.equal("status", "collecting"),
-    Query.limit(5),
+    Query.limit(100),
   ]);
 
-  for (const p of existing.documents) {
-    if (p.round_start === roundStart) return p;
+  const legacy = existing.documents.find(
+    (p) => p.round_start === roundStart && !(p.pool_type && String(p.pool_type).trim()),
+  );
+  if (legacy) {
+    await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, legacy.$id, {
+      pool_type: "community_match",
+    });
+    legacy.pool_type = "community_match";
   }
 
-  const pool = await databases.createDocument(DATABASE_ID, COLLECTION_POOLS, ID.unique(), {
-    name: `Pool ${roundStart.slice(0, 7)}`,
-    description: `Monthly pool for ${roundStart} to ${roundEnd}`,
-    total_amount_cents: 0,
-    platform_fee_cents: 0,
-    distributable_amount_cents: 0,
-    daily_budget_cents: 0,
-    remaining_cents: 0,
-    donor_count: 0,
-    status: "collecting",
-    round_start: roundStart,
-    round_end: roundEnd,
-  });
-  return pool;
+  const out = [];
+  for (const poolType of POOL_TYPES) {
+    const found = existing.documents.find(
+      (p) => p.round_start === roundStart && String(p.pool_type || "") === poolType,
+    );
+    if (found) {
+      out.push(found);
+      continue;
+    }
+    const name = `Pool ${roundStart.slice(0, 7)} — ${poolType}`;
+    const desc = POOL_TYPE_DESCRIPTIONS[poolType] || "";
+    const pool = await databases.createDocument(DATABASE_ID, COLLECTION_POOLS, ID.unique(), {
+      name,
+      description: `${desc} (${roundStart} to ${roundEnd})`,
+      total_amount_cents: 0,
+      platform_fee_cents: 0,
+      distributable_amount_cents: 0,
+      daily_budget_cents: 0,
+      remaining_cents: 0,
+      donor_count: 0,
+      status: "collecting",
+      round_start: roundStart,
+      round_end: roundEnd,
+      pool_type: poolType,
+    });
+    out.push(pool);
+  }
+  return out;
 }
 
 async function activatePool(databases, pool) {
@@ -87,30 +112,48 @@ async function activatePool(databases, pool) {
     remaining_cents: distributable,
   });
 
-  return { ...pool, status: "active", platform_fee_cents: fee, distributable_amount_cents: distributable, daily_budget_cents: dailyBudget, remaining_cents: distributable };
+  return {
+    ...pool,
+    status: "active",
+    platform_fee_cents: fee,
+    distributable_amount_cents: distributable,
+    daily_budget_cents: dailyBudget,
+    remaining_cents: distributable,
+  };
 }
 
-async function getOrActivatePool(databases) {
+async function listActivePools(databases) {
   const active = await databases.listDocuments(DATABASE_ID, COLLECTION_POOLS, [
     Query.equal("status", "active"),
-    Query.limit(1),
+    Query.limit(100),
   ]);
-  if (active.documents.length > 0) return active.documents[0];
+  return active.documents;
+}
 
+async function activateAllCollectingForCurrentMonth(databases) {
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const collecting = await databases.listDocuments(DATABASE_ID, COLLECTION_POOLS, [
     Query.equal("status", "collecting"),
-    Query.limit(10),
+    Query.limit(100),
   ]);
-
-  for (const p of collecting.documents) {
-    if (p.round_start && p.round_start.startsWith(monthKey)) {
-      return activatePool(databases, p);
-    }
+  const matched = collecting.documents.filter(
+    (p) => p.round_start && p.round_start.startsWith(monthKey),
+  );
+  const activated = [];
+  for (const p of matched) {
+    activated.push(await activatePool(databases, p));
   }
+  return activated;
+}
 
-  return null;
+/** Ensures at least one active pool exists for the current round (activates collecting rows for this month). */
+async function ensureActivePools(databases) {
+  let active = await listActivePools(databases);
+  if (active.length > 0) return active;
+  await activateAllCollectingForCurrentMonth(databases);
+  active = await listActivePools(databases);
+  return active;
 }
 
 export default async ({ req, res, log, error }) => {
@@ -118,61 +161,132 @@ export default async ({ req, res, log, error }) => {
     const databases = makeDb();
     let body = {};
     if (req.body) {
-      try { body = typeof req.body === "string" ? JSON.parse(req.body) : req.body; } catch {}
+      try {
+        body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+      } catch {
+        /* ignore */
+      }
     }
     const action = body.action || req.query?.action || "distribute-weekly";
 
     if (action === "ensure-collecting") {
-      const pool = await ensureCollectingPool(databases);
-      return res.json({ pool_id: pool.$id, status: pool.status });
+      const pools = await ensureCollectingPools(databases);
+      return res.json({
+        pools: pools.map((p) => ({
+          pool_id: p.$id,
+          pool_type: p.pool_type || null,
+          status: p.status,
+        })),
+      });
     }
 
     if (action === "activate") {
-      const pool = await getOrActivatePool(databases);
-      if (!pool) return res.json({ error: "No pool to activate" }, 404);
-      return res.json({ pool_id: pool.$id, status: pool.status });
+      const activated = await activateAllCollectingForCurrentMonth(databases);
+      if (activated.length === 0) {
+        const fallback = await ensureActivePools(databases);
+        if (fallback.length === 0) {
+          return res.json({ error: "No pool to activate" }, 404);
+        }
+        return res.json({
+          pools: fallback.map((p) => ({
+            pool_id: p.$id,
+            pool_type: p.pool_type || null,
+            status: p.status,
+          })),
+        });
+      }
+      return res.json({
+        pools: activated.map((p) => ({
+          pool_id: p.$id,
+          pool_type: p.pool_type || null,
+          status: p.status,
+        })),
+      });
     }
 
     if (action === "finalize-month") {
-      const pool = await getOrActivatePool(databases);
-      if (!pool) return res.json({ message: "No active pool to finalize" });
-
       const { isLastDay } = getActiveMonthInfo();
       if (!isLastDay && !body.force) {
-        return res.json({ message: "Not the last day of the month. Pass force=true to override." });
+        return res.json({
+          message: "Not the last day of the month. Pass force=true to override.",
+        });
       }
 
-      const remaining = pool.remaining_cents || 0;
-      if (remaining <= 0) {
-        await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, { status: "completed" });
-        return res.json({ message: "Pool finalized with no remaining funds", pool_id: pool.$id });
+      const pools = await ensureActivePools(databases);
+      if (pools.length === 0) {
+        return res.json({ message: "No active pool to finalize" });
       }
 
-      const result = await distributeWeekly(databases, pool, remaining, log, error);
-      await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
-        status: "completed",
-        remaining_cents: 0,
-      });
+      const results = [];
+      for (const pool of pools) {
+        const remaining = pool.remaining_cents || 0;
+        if (remaining <= 0) {
+          await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
+            status: "completed",
+          });
+          results.push({
+            pool_id: pool.$id,
+            distributed_cents: 0,
+            payouts_created: 0,
+            message: "No remaining funds",
+          });
+          continue;
+        }
+        const result = await distributeWeekly(databases, pool, remaining, log, error);
+        await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
+          status: "completed",
+          remaining_cents: 0,
+        });
+        results.push(result);
+      }
 
-      await ensureCollectingPool(databases);
-      return res.json({ message: "Month finalized", ...result });
+      await ensureCollectingPools(databases);
+      return res.json({ message: "Month finalized", results });
     }
 
-    const pool = await getOrActivatePool(databases);
-    if (!pool) return res.json({ error: "No active pool found" }, 404);
+    const pools = await ensureActivePools(databases);
+    if (pools.length === 0) {
+      return res.json({ error: "No active pool found" }, 404);
+    }
 
-    const weeklyBudget = (pool.daily_budget_cents || 0) * 7;
-    const budget = Math.min(weeklyBudget, pool.remaining_cents || 0);
-    if (budget <= 0) return res.json({ error: "No budget remaining for this week" }, 400);
+    const batchResults = [];
+    let totalDistributed = 0;
+    let totalPayouts = 0;
 
-    const result = await distributeWeekly(databases, pool, budget, log, error);
+    for (const pool of pools) {
+      const weeklyBudget = (pool.daily_budget_cents || 0) * 7;
+      const budget = Math.min(weeklyBudget, pool.remaining_cents || 0);
+      if (budget <= 0) continue;
 
-    const newRemaining = Math.max(0, (pool.remaining_cents || 0) - result.distributed_cents);
-    await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
-      remaining_cents: newRemaining,
+      const result = await distributeWeekly(databases, pool, budget, log, error);
+      const newRemaining = Math.max(
+        0,
+        (pool.remaining_cents || 0) - result.distributed_cents,
+      );
+      await databases.updateDocument(DATABASE_ID, COLLECTION_POOLS, pool.$id, {
+        remaining_cents: newRemaining,
+      });
+      batchResults.push({
+        pool_id: pool.$id,
+        pool_type: pool.pool_type || null,
+        ...result,
+      });
+      totalDistributed += result.distributed_cents;
+      totalPayouts += result.payouts_created;
+    }
+
+    if (batchResults.length === 0) {
+      return res.json(
+        { error: "No budget remaining for this week across active pools" },
+        400,
+      );
+    }
+
+    return res.json({
+      distributed_cents: totalDistributed,
+      payouts_created: totalPayouts,
+      pools: batchResults,
     });
-
-    return res.json(result);
   } catch (e) {
     error(e.message || String(e));
     return res.json({ error: e.message || "Internal error" }, 500);
@@ -180,16 +294,23 @@ export default async ({ req, res, log, error }) => {
 };
 
 async function distributeWeekly(databases, pool, budget, log, error) {
-  const repos = await databases.listDocuments(DATABASE_ID, COLLECTION_REPOS, [Query.limit(5000)]);
-  const reposWithScore = repos.documents.filter((r) => (r.repo_score || (r.stars || 0) + (r.forks || 0)) > 0);
+  const repos = await databases.listDocuments(DATABASE_ID, COLLECTION_REPOS, [
+    Query.limit(5000),
+  ]);
+  const reposWithScore = filterReposForDistribution(repos.documents);
 
   if (reposWithScore.length === 0) {
-    return { pool_id: pool.$id, distributed_cents: 0, payouts_created: 0, message: "No repos with score > 0" };
+    return {
+      pool_id: pool.$id,
+      distributed_cents: 0,
+      payouts_created: 0,
+      message: "No repos with score > 0",
+    };
   }
 
   const repoWeights = reposWithScore.map((r) => ({
     repo: r,
-    weight: Math.sqrt(r.repo_score || (r.stars || 0) + (r.forks || 0)),
+    weight: computeRepoDistributionWeight(r),
   }));
   const totalWeight = repoWeights.reduce((s, rw) => s + rw.weight, 0);
 
@@ -205,15 +326,20 @@ async function distributeWeekly(databases, pool, budget, log, error) {
     const repoBudget = Math.floor((weight / totalWeight) * budget);
     if (repoBudget <= 0) continue;
 
-    const contribs = await databases.listDocuments(DATABASE_ID, COLLECTION_REPO_CONTRIBUTIONS, [
-      Query.equal("repo_id", repo.$id),
-      Query.limit(5000),
-    ]);
+    const contribs = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_REPO_CONTRIBUTIONS,
+      [Query.equal("repo_id", repo.$id), Query.limit(5000)],
+    );
 
     const eligible = [];
     for (const rc of contribs.documents) {
       try {
-        const contributor = await databases.getDocument(DATABASE_ID, COLLECTION_CONTRIBUTORS, rc.contributor_id);
+        const contributor = await databases.getDocument(
+          DATABASE_ID,
+          COLLECTION_CONTRIBUTORS,
+          rc.contributor_id,
+        );
         if (!contributor.user_id) continue;
         if ((contributor.total_score || 0) <= 0) continue;
         eligible.push({ rc, contributor });
@@ -224,7 +350,10 @@ async function distributeWeekly(databases, pool, budget, log, error) {
 
     if (eligible.length === 0) continue;
 
-    const totalScore = eligible.reduce((s, e) => s + (e.contributor.total_score || 0), 0);
+    const totalScore = eligible.reduce(
+      (s, e) => s + (e.contributor.total_score || 0),
+      0,
+    );
     if (totalScore <= 0) continue;
 
     const rawShares = eligible.map((e) => ({
@@ -233,8 +362,8 @@ async function distributeWeekly(databases, pool, budget, log, error) {
     }));
 
     const floors = rawShares.map((r) => Math.floor(r.raw));
-    let allocated = floors.reduce((a, b) => a + b, 0);
-    let remainder = repoBudget - allocated;
+    const allocated = floors.reduce((a, b) => a + b, 0);
+    const remainder = repoBudget - allocated;
     const order = rawShares
       .map((r, i) => ({ i, frac: r.raw - floors[i] }))
       .sort((a, b) => b.frac - a.frac);
@@ -259,15 +388,26 @@ async function distributeWeekly(databases, pool, budget, log, error) {
     }
   }
 
-  await databases.createDocument(DATABASE_ID, COLLECTION_WEEKLY_DISTRIBUTIONS, ID.unique(), {
+  await databases.createDocument(
+    DATABASE_ID,
+    COLLECTION_WEEKLY_DISTRIBUTIONS,
+    ID.unique(),
+    {
+      pool_id: pool.$id,
+      week_start: weekStart.toISOString().slice(0, 10),
+      week_end: weekEnd.toISOString().slice(0, 10),
+      budget_cents: budget,
+      distributed_cents: totalDistributed,
+      payouts_created: totalPayouts,
+    },
+  );
+
+  log(
+    `Weekly distribution: ${totalPayouts} payouts, ${totalDistributed} cents from pool ${pool.$id}`,
+  );
+  return {
     pool_id: pool.$id,
-    week_start: weekStart.toISOString().slice(0, 10),
-    week_end: weekEnd.toISOString().slice(0, 10),
-    budget_cents: budget,
     distributed_cents: totalDistributed,
     payouts_created: totalPayouts,
-  });
-
-  log(`Weekly distribution: ${totalPayouts} payouts, ${totalDistributed} cents from pool ${pool.$id}`);
-  return { pool_id: pool.$id, distributed_cents: totalDistributed, payouts_created: totalPayouts };
+  };
 }

@@ -103,6 +103,8 @@ export default async ({ req, res, log, error }) => {
     }
 
     const now = new Date().toISOString();
+    const stars = meta.stargazers_count ?? 0;
+    const forks = meta.forks_count ?? 0;
     const doc = {
       github_url: meta.html_url || `https://github.com/${full_name}`,
       owner: meta.owner?.login || owner,
@@ -110,8 +112,11 @@ export default async ({ req, res, log, error }) => {
       full_name: meta.full_name || full_name,
       description: meta.description ?? null,
       language: meta.language ?? null,
-      stars: meta.stargazers_count ?? 0,
-      forks: meta.forks_count ?? 0,
+      stars,
+      forks,
+      repo_score: stars + forks,
+      criticality_score: 0.5,
+      bus_factor: 3,
       listed_by: userId,
       contributor_count: 0,
       contributors_fetched_at: null,

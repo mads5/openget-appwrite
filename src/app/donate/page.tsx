@@ -3,12 +3,24 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getActivePool, createCheckoutSession, createUpiQr, checkUpiQrStatus } from "@/lib/api";
+import {
+  getActivePool,
+  listCollectingPools,
+  createCheckoutSession,
+  createUpiQr,
+  checkUpiQrStatus,
+} from "@/lib/api";
 import { PoolCard } from "@/components/pool/pool-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Pool } from "@/types";
+import type { Pool, CollectingPoolSummary } from "@/types";
+import {
+  DEFAULT_POOL_TYPE,
+  POOL_TYPES,
+  POOL_TYPE_LABELS,
+  type PoolTypeId,
+} from "@/lib/pool-types";
 import type { Models } from "appwrite";
 
 const CURRENCIES = [
@@ -26,6 +38,8 @@ const CURRENCIES = [
 export default function DonatePage() {
   const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [pool, setPool] = useState<Pool | null>(null);
+  const [collectingSummaries, setCollectingSummaries] = useState<CollectingPoolSummary[]>([]);
+  const [selectedPoolType, setSelectedPoolType] = useState<PoolTypeId>(DEFAULT_POOL_TYPE);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState(
     () => CURRENCIES.find(c => c.code === (process.env.NEXT_PUBLIC_CURRENCY || "usd").toLowerCase()) || CURRENCIES[0]
@@ -44,8 +58,35 @@ export default function DonatePage() {
     Promise.all([
       account.get().then(setUser).catch(() => setUser(null)),
       getActivePool().then(setPool),
+      listCollectingPools().then(setCollectingSummaries),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const selectedCollectingSummary =
+    collectingSummaries.find(
+      (s) => (s.pool_type || DEFAULT_POOL_TYPE) === selectedPoolType,
+    ) ?? collectingSummaries[0];
+
+  const donatingPool: Pool | null = selectedCollectingSummary
+    ? {
+        id: selectedCollectingSummary.id,
+        name: selectedCollectingSummary.name,
+        description: selectedCollectingSummary.description,
+        total_amount_cents: selectedCollectingSummary.total_amount_cents,
+        platform_fee_cents: 0,
+        distributable_amount_cents: Math.round(
+          selectedCollectingSummary.total_amount_cents * 0.99,
+        ),
+        daily_budget_cents: 0,
+        remaining_cents: 0,
+        donor_count: selectedCollectingSummary.donor_count,
+        status: "collecting",
+        round_start: selectedCollectingSummary.round_start,
+        round_end: selectedCollectingSummary.round_end,
+        pool_type: selectedCollectingSummary.pool_type,
+        created_at: selectedCollectingSummary.round_start,
+      }
+    : pool;
 
   useEffect(() => {
     return () => {
@@ -74,7 +115,12 @@ export default function DonatePage() {
     setDonating(true);
     setError(null);
     try {
-      const { checkout_url } = await createCheckoutSession(amount, message || undefined, currency.code);
+      const { checkout_url } = await createCheckoutSession(
+        amount,
+        message || undefined,
+        currency.code,
+        selectedPoolType,
+      );
       window.location.href = checkout_url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start payment. Try again.");
@@ -133,9 +179,38 @@ export default function DonatePage() {
         </p>
       </div>
 
-      {pool && (
+      <div className="mb-6">
+        <label className="text-sm text-muted-foreground block mb-2">
+          Funding pool
+        </label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {POOL_TYPES.map((pt) => (
+            <button
+              key={pt}
+              type="button"
+              onClick={() => setSelectedPoolType(pt)}
+              className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                selectedPoolType === pt
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              <span className="font-medium">{POOL_TYPE_LABELS[pt]}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Donations are earmarked for this lane. See{" "}
+          <a href="/enterprise" className="underline underline-offset-2">
+            For enterprises
+          </a>{" "}
+          for how this maps to compliance and supply-chain narratives.
+        </p>
+      </div>
+
+      {donatingPool && (
         <div className="mb-8">
-          <PoolCard pool={pool} />
+          <PoolCard pool={donatingPool} />
         </div>
       )}
 

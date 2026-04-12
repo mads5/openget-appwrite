@@ -28,6 +28,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# graphify regenerable cache
+graphify-out/cache/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
