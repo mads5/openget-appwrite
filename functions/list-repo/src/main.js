@@ -117,6 +117,7 @@ export default async ({ req, res, log, error }) => {
       repo_score: stars + forks,
       criticality_score: 0.5,
       bus_factor: 3,
+      has_security_md: false,
       listed_by: userId,
       contributor_count: 0,
       contributors_fetched_at: null,

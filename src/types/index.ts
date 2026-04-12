@@ -13,6 +13,12 @@ export interface Repo {
   criticality_score?: number;
   /** Estimated bus factor (≥1). */
   bus_factor?: number;
+  /** True if SECURITY.md exists on default branch (from nightly fetch). */
+  has_security_md?: boolean;
+  /** Pool lanes this repo receives distributions from (nightly-computed). */
+  eligible_pool_types?: string[];
+  /** Short AI-generated blurb (cached on first view when OPENAI_API_KEY is configured server-side). */
+  ai_summary?: string | null;
   listed_by: string;
   contributor_count: number;
   contributors_fetched_at: string | null;

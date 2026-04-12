@@ -120,7 +120,7 @@ Score = (F1 * 0.20) + (F2 * 0.15 * merge_penalty) + (F3 * 0.55) + (F4 * 0.10)
 | **Platform fee** | 1% deducted per donation, tracked in `platform_fees` |
 | **Daily budget** | `distributable_cents / days_in_month` |
 | **Weekly budget** | `daily_budget * 7` (or remaining, whichever is less) |
-| **Strategic pools** | Four parallel lanes per month (`innovation`, `security_compliance`, `deep_deps`, `community_match`). Donors pick a lane at checkout. See [docs/POOL_TYPES.md](docs/POOL_TYPES.md). |
+| **Strategic pools** | Four parallel lanes per month; donors pick at checkout. Each **listed repo** gets automatic `eligible_pool_types` from nightly GitHub signals—repos do not all share every pool’s budget. See [docs/POOL_TYPES.md](docs/POOL_TYPES.md). |
 | **Repo weighting** | `sqrt(stars+forks) × (0.35 + 0.65 × criticality_score) × (1 + min(1.5, 1/bus_factor))` — nightly GitHub heuristic for **criticality** (v1) and **bus factor** (authors needed for ~50% of commits), reducing pure star-count bias. |
 | **Contributor weighting** | `total_score` within each repo's budget |
 | **Minimum payout** | $0.50 — smaller amounts roll over |

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getRepo, getRepoContributors } from "@/lib/api";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Repo } from "@/types";
 
@@ -19,6 +19,9 @@ export default function RepoDetailPage() {
   const [contributors, setContributors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
@@ -35,6 +38,25 @@ export default function RepoDetailPage() {
       )
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  useEffect(() => {
+    if (!repo) return;
+    const cached = repo.ai_summary?.trim();
+    if (cached) {
+      setAiSummary(cached);
+      return;
+    }
+    setAiLoading(true);
+    setAiError(false);
+    fetch(`/api/repos/${repo.id}/summary`)
+      .then((r) => {
+        if (!r.ok) throw new Error("summary");
+        return r.json() as Promise<{ summary?: string }>;
+      })
+      .then((data) => setAiSummary(data.summary ?? null))
+      .catch(() => setAiError(true))
+      .finally(() => setAiLoading(false));
+  }, [repo]);
 
   if (loading) {
     return (
@@ -62,9 +84,6 @@ export default function RepoDetailPage() {
             <Badge variant="secondary">{repo.language}</Badge>
           )}
         </div>
-        {repo.description && (
-          <p className="text-muted-foreground text-lg">{repo.description}</p>
-        )}
         <a
           href={repo.github_url}
           target="_blank"
@@ -75,13 +94,65 @@ export default function RepoDetailPage() {
         </a>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <Card className="mb-8">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">About this repository</CardTitle>
+          <CardDescription>
+            Short summary generated for OpenGet (cached after first load when AI is configured).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {aiLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
+              Generating summary…
+            </div>
+          )}
+          {!aiLoading && aiError && (
+            <p className="text-sm text-muted-foreground">
+              Could not load the generated summary. Try refreshing the page.
+            </p>
+          )}
+          {!aiLoading && !aiError && aiSummary && (
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+          )}
+          {!aiLoading && !aiError && !aiSummary && (
+            <p className="text-sm text-muted-foreground">No summary available yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {repo.description && (
+        <p className="text-sm text-muted-foreground mb-8 border-l-2 pl-3 border-muted">
+          <span className="font-medium text-foreground">GitHub description: </span>
+          {repo.description}
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Stars", value: formatNumber(repo.stars) },
           { label: "Forks", value: formatNumber(repo.forks) },
+          { label: "Popularity score", value: formatNumber(repo.repo_score) },
+          {
+            label: "Criticality",
+            value:
+              repo.criticality_score != null
+                ? `${Math.round(repo.criticality_score * 100)}%`
+                : "—",
+          },
+          {
+            label: "Bus factor",
+            value:
+              repo.bus_factor != null
+                ? repo.bus_factor < 10
+                  ? repo.bus_factor.toFixed(1)
+                  : String(Math.round(repo.bus_factor))
+                : "—",
+          },
           { label: "Contributors", value: String(repo.contributor_count) },
           {
-            label: "Last Fetched",
+            label: "Last fetched",
             value: repo.contributors_fetched_at
               ? new Date(repo.contributors_fetched_at).toLocaleDateString()
               : "Pending",

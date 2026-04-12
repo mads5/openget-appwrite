@@ -1,4 +1,5 @@
 import { Client, Databases, ID, Query } from "node-appwrite";
+import { computeEligiblePoolTypes } from "./pool-eligibility.js";
 
 const DATABASE_ID = "openget-db";
 const COLLECTION_REPOS = "repos";
@@ -60,6 +61,13 @@ async function githubSearchCount(owner, repo, queryExtra) {
   if (!res.ok) return 0;
   const data = await res.json();
   return data.total_count ?? 0;
+}
+
+async function fetchHasSecurityMd(owner, repoName) {
+  await sleep(200);
+  const url = `https://api.github.com/repos/${owner}/${repoName}/contents/SECURITY.md`;
+  const res = await fetch(url, { headers: ghHeaders() });
+  return res.status === 200;
 }
 
 async function fetchStatsContributors(owner, repo) {
@@ -238,12 +246,43 @@ export default async ({ req, res, log, error }) => {
         const crit = ghSnapshot
           ? computeCriticalityV1(ghSnapshot, logins.size)
           : 0.5;
+
+        let daysSincePush = 120;
+        try {
+          if (ghSnapshot?.pushed_at) {
+            daysSincePush =
+              (Date.now() - new Date(ghSnapshot.pushed_at).getTime()) / 86400000;
+          }
+        } catch {
+          /* ignore */
+        }
+        const hasSecurityMd = ghSnapshot
+          ? await fetchHasSecurityMd(owner, repoName)
+          : false;
+        const stars = ghSnapshot?.stargazers_count ?? repoDoc.stars ?? 0;
+        const forks = ghSnapshot?.forks_count ?? repoDoc.forks ?? 0;
+        const openIssues = ghSnapshot?.open_issues_count ?? 0;
+
+        const eligibleTypes = computeEligiblePoolTypes({
+          stars,
+          forks,
+          criticality_score: crit,
+          bus_factor: busFactor,
+          open_issues: openIssues,
+          days_since_push: daysSincePush,
+          has_security_md: hasSecurityMd,
+        });
+
         await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, {
           criticality_score: crit,
           bus_factor: busFactor,
+          has_security_md: hasSecurityMd,
+          eligible_pool_types: JSON.stringify(eligibleTypes),
         });
         repoDoc.criticality_score = crit;
         repoDoc.bus_factor = busFactor;
+        repoDoc.has_security_md = hasSecurityMd;
+        repoDoc.eligible_pool_types = JSON.stringify(eligibleTypes);
 
         for (const login of logins) {
           const base = byLogin.get(login) || { commits: 0, lines_added: 0, lines_removed: 0 };

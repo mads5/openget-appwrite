@@ -3,6 +3,7 @@ import {
   computeRepoDistributionWeight,
   filterReposForDistribution,
 } from './repo-distribution.js';
+import { filterReposForPoolType } from './pool-eligibility.js';
 import {
   DEFAULT_CHECKOUT_POOL_TYPE,
   POOL_TYPES,
@@ -192,6 +193,7 @@ export default async ({ req, res, log, error }) => {
           repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
           criticality_score: 0.5,
           bus_factor: 3,
+          has_security_md: false,
           listed_by: userId,
           contributor_count: 0,
         });
@@ -700,7 +702,9 @@ export default async ({ req, res, log, error }) => {
           if (budget <= 0) continue;
 
           const repos = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(5000)]);
-          const reposWithScore = filterReposForDistribution(repos.documents);
+          let reposWithScore = filterReposForDistribution(repos.documents);
+          const pt = pool.pool_type && String(pool.pool_type).trim();
+          if (pt) reposWithScore = filterReposForPoolType(reposWithScore, pt);
           if (reposWithScore.length === 0) continue;
 
           const repoWeights = reposWithScore.map((r) => ({

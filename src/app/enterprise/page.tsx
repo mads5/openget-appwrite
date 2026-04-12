@@ -3,17 +3,18 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getPoolImpact } from "@/lib/api";
+import { PoolTypesGuide } from "@/components/enterprise/pool-types-guide";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function EnterprisePage() {
   const [impact, setImpact] = useState<Awaited<ReturnType<typeof getPoolImpact>> | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [loadingImpact, setLoadingImpact] = useState(true);
 
   useEffect(() => {
     getPoolImpact()
       .then(setImpact)
-      .catch(() => setErr("Could not load pool snapshot."));
+      .finally(() => setLoadingImpact(false));
   }, []);
 
   return (
@@ -52,26 +53,24 @@ export default function EnterprisePage() {
         </ul>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Pool lanes</h2>
-        <p className="text-muted-foreground leading-relaxed">
-          Enterprises typically earmark <strong className="text-foreground font-medium">Security &amp; compliance</strong>{" "}
-          or <strong className="text-foreground font-medium">Deep dependencies</strong>. See{" "}
-          <span className="font-mono text-sm text-foreground">docs/POOL_TYPES.md</span>{" "}
-          for definitions.
-        </p>
-      </section>
+      <PoolTypesGuide />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Live snapshot (impact export)</CardTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            High-level JSON-backed snapshot for dashboards. Detailed CSV/PDF exports can build on the same API.
+            High-level snapshot from the database (same data as the API). Detailed CSV/PDF exports can build on this
+            later.
           </p>
         </CardHeader>
         <CardContent>
-          {err && <p className="text-sm text-red-400">{err}</p>}
-          {impact && !err && (
+          {loadingImpact && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              Loading pool data…
+            </div>
+          )}
+          {!loadingImpact && impact && (
             <div className="space-y-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Listed repositories</div>

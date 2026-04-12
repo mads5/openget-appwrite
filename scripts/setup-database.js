@@ -175,6 +175,32 @@ async function addFloatAttribute(collectionId, key, required, defaultValue) {
   }
 }
 
+/**
+ * @param {string} collectionId
+ * @param {string} key
+ * @param {boolean} required
+ * @param {boolean} [defaultValue]
+ */
+async function addBooleanAttribute(collectionId, key, required, defaultValue) {
+  try {
+    await databases.createBooleanAttribute(
+      DATABASE_ID,
+      collectionId,
+      key,
+      required,
+      defaultValue,
+    );
+    await waitForAttribute(collectionId, key);
+    console.log('    + boolean', key, required ? '(required)' : '(optional)');
+  } catch (err) {
+    if (isConflict(err)) {
+      console.log('    ~ boolean', key, '(already exists)');
+    } else {
+      throw err;
+    }
+  }
+}
+
 async function setupRepos() {
   const id = 'repos';
   await ensureCollection(id, 'Repos');
@@ -192,6 +218,9 @@ async function setupRepos() {
   await addStringAttribute(id, 'listed_by', 100, true);
   await addIntegerAttribute(id, 'contributor_count', false, 0);
   await addStringAttribute(id, 'contributors_fetched_at', 50, false);
+  await addStringAttribute(id, 'eligible_pool_types', 2000, false);
+  await addBooleanAttribute(id, 'has_security_md', false, false);
+  await addStringAttribute(id, 'ai_summary', 4000, false);
 }
 
 async function setupContributors() {

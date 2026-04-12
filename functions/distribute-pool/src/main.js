@@ -4,6 +4,7 @@ import {
   computeRepoDistributionWeight,
   filterReposForDistribution,
 } from "./repo-distribution.js";
+import { filterReposForPoolType } from "./pool-eligibility.js";
 
 const DATABASE_ID = "openget-db";
 const PLATFORM_FEE_RATE = 0.01;
@@ -297,14 +298,22 @@ async function distributeWeekly(databases, pool, budget, log, error) {
   const repos = await databases.listDocuments(DATABASE_ID, COLLECTION_REPOS, [
     Query.limit(5000),
   ]);
-  const reposWithScore = filterReposForDistribution(repos.documents);
+  let reposWithScore = filterReposForDistribution(repos.documents);
+  const poolType = pool.pool_type && String(pool.pool_type).trim();
+  if (poolType) {
+    reposWithScore = filterReposForPoolType(reposWithScore, poolType);
+  }
 
   if (reposWithScore.length === 0) {
+    const msg = poolType
+      ? `No repos eligible for pool_type=${poolType} (or missing score)`
+      : "No repos with score > 0";
+    log(msg);
     return {
       pool_id: pool.$id,
       distributed_cents: 0,
       payouts_created: 0,
-      message: "No repos with score > 0",
+      message: msg,
     };
   }
 
