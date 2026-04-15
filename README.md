@@ -35,7 +35,7 @@ Open source runs the world, but most contributors never see a dollar. Sponsorshi
 
 ## The Solution
 
-OpenGet creates a **monthly donation pool** and distributes it **weekly** to contributors using a **4-factor anti-fraud scoring model** that measures real contributions — merged PRs, code reviews, issue resolution — not just star counts.
+OpenGet creates a **monthly donation pool** and distributes it **weekly** to contributors using a **6-factor scoring model** that measures real contributions — merged PRs, code reviews, release management, issue triage — not just star counts.
 
 ---
 
@@ -48,7 +48,7 @@ OpenGet creates a **monthly donation pool** and distributes it **weekly** to con
   │ with      │───>│ donate to    │───>│ scrapes      │───>│ splits pool  │───>│ + connect │
   │ GitHub    │    │ the monthly  │    │ GitHub &     │    │ across repos │    │ Stripe    │
   │ + pick    │    │ pool via     │    │ computes     │    │ then across  │    │ Express   │
-  │ your repo │    │ Stripe / UPI │    │ 4-factor     │    │ contributors │    │ = weekly  │
+  │ your repo │    │ Stripe / UPI │    │ 6-factor     │    │ contributors │    │ = weekly  │
   │           │    │              │    │ score        │    │ by score     │    │ payouts   │
   └───────────┘    └──────────────┘    └──────────────┘    └──────────────┘    └───────────┘
 ```
@@ -57,7 +57,7 @@ OpenGet creates a **monthly donation pool** and distributes it **weekly** to con
 |------|-------------|
 | **1. List** | Sign in with GitHub, pick a repo. OpenGet auto-discovers all contributors via the GitHub Stats API. |
 | **2. Donate** | Anyone donates to the monthly pool (9 currencies via Stripe, UPI stub for INR). Donations target the **collecting** pool for next month. |
-| **3. Score** | `fetch-contributors` runs nightly — refreshes repo metadata, scrapes contribution stats, computes monthly PR counts, and applies the **4-factor anti-fraud score**. |
+| **3. Score** | `fetch-contributors` runs nightly — refreshes repo metadata, scrapes contribution stats, computes monthly PR counts, and applies the **6-factor scoring model**. |
 | **4. Distribute** | `distribute-pool` runs every Monday — splits the week's budget across repos (sqrt-weighted by repo score), then to eligible contributors (weighted by `total_score`). Min payout: **$0.50**. |
 | **5. Get Paid** | Contributors register on OpenGet, connect Stripe Express, and receive weekly payouts directly to their bank. |
 
@@ -65,25 +65,27 @@ OpenGet creates a **monthly donation pool** and distributes it **weekly** to con
 
 ## Scoring Formula
 
-Contributors are scored using a **4-factor model** designed to reward real work and punish gaming:
+Contributors are scored using a **6-factor model** designed to reward real work — both code authorship and stewardship — and punish gaming:
 
 ```
-Score = (F1 * 0.20) + (F2 * 0.15 * merge_penalty) + (F3 * 0.55) + (F4 * 0.10)
+Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + (F5 * 0.15) + (F6 * 0.10)
 ```
 
 | Factor | Weight | Formula | What It Measures |
 |--------|:------:|---------|-----------------|
-| **F1** Total Contributions | 20% | `log2(total + 1) / log2(1001)` | Commits + merged PRs + reviews + issues closed (log-scaled) |
-| **F2** PRs Raised | 15% | `min(raised, 100) / 100` | Monthly PR activity, capped at 100 |
-| **F3** PRs Merged | **55%** | `min(merged, 80) / 80` | Monthly merged PRs — the heaviest signal, capped at 80 |
+| **F1** Total Contributions | 15% | `log2(total + 1) / log2(1001)` | Commits + merged PRs + reviews + issues closed (log-scaled) |
+| **F2** PRs Raised | 10% | `min(raised, 100) / 100` | Monthly PR activity, capped at 100 |
+| **F3** PRs Merged | **40%** | `min(merged, 80) / 80` | Monthly merged PRs — the heaviest signal, capped at 80 |
 | **F4** Qualified Repos | 10% | `log2(min(repos, 20) + 1) / log2(21)` | Repos contributed to (excluding self-owned, low-quality) |
+| **F5** Review Activity | 15% | `log2(min(reviews, 200) + 1) / log2(201)` | PR reviews + review comments across repos (log-scaled) |
+| **F6** Release & Triage | 10% | `log2(min(releases, 30) + 1) / log2(31)` | Release tags created + issues resolved (log-scaled) |
 
 ### Anti-Fraud Safeguards
 
 | Protection | How |
 |-----------|-----|
 | **PR Spam Penalty** | If merge ratio < 30%, F2 weight is halved (0.5x). If < 50%, reduced by 25% (0.75x). |
-| **Self-Owned Exclusion** | Your own repos don't count toward F4 (qualified repo count). |
+| **Self-Owned Exclusion** | Your own repos don't count toward F4 (qualified repo count). Owners earn F1–F3 and F5–F6 for real work on their own repos. |
 | **Low-Quality Filter** | Repos with `stars + forks < 5` are excluded from F4. |
 | **Merge Gate** | A repo only counts in F4 if the contributor has at least 1 merged PR there. |
 | **Hard Caps** | Every factor is capped to prevent outlier gaming. |
@@ -128,11 +130,11 @@ Score = (F1 * 0.20) + (F2 * 0.15 * merge_penalty) + (F3 * 0.55) + (F4 * 0.10)
 
 ## Governance
 
-OpenGet does **not** let donors direct payouts to specific pull requests. Funds flow through **public contributor scoring** and **repo weighting** rules so maintainers are not paid on a single employer’s roadmap—supporting neutral, multi-sponsor narratives.
+OpenGet does **not** let donors direct payouts to specific pull requests. Funds flow through **public contributor scoring** and **repo weighting** rules so no single employer captures a maintainer’s roadmap—supporting neutral, multi-sponsor narratives.
 
 ## For enterprises
 
-Supply-chain risk, operational receipts, CSR/ESG alignment (where applicable), and neutral governance are summarized in-app on **`/enterprise`** and in [docs/POOL_TYPES.md](docs/POOL_TYPES.md). Legal claims about specific regulations require your own counsel.
+Patch velocity, dependency continuity, ecosystem-level funding, and neutral governance are summarized in-app on **`/enterprise`** and in [docs/POOL_TYPES.md](docs/POOL_TYPES.md). Tax treatment depends on your jurisdiction; involve counsel before contractual commitments.
 
 ---
 

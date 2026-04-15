@@ -6,6 +6,7 @@ import { startGithubOAuthSession } from "@/lib/oauth";
 import {
   getActivePool,
   listCollectingPools,
+  listRepos,
   createCheckoutSession,
   createUpiQr,
   checkUpiQrStatus,
@@ -14,7 +15,7 @@ import { PoolCard } from "@/components/pool/pool-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Pool, CollectingPoolSummary } from "@/types";
+import type { Pool, CollectingPoolSummary, Repo } from "@/types";
 import {
   DEFAULT_POOL_TYPE,
   POOL_TYPES,
@@ -39,6 +40,7 @@ export default function DonatePage() {
   const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [pool, setPool] = useState<Pool | null>(null);
   const [collectingSummaries, setCollectingSummaries] = useState<CollectingPoolSummary[]>([]);
+  const [allRepos, setAllRepos] = useState<Repo[]>([]);
   const [selectedPoolType, setSelectedPoolType] = useState<PoolTypeId>(DEFAULT_POOL_TYPE);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState(
@@ -59,6 +61,7 @@ export default function DonatePage() {
       account.get().then(setUser).catch(() => setUser(null)),
       getActivePool().then(setPool),
       listCollectingPools().then(setCollectingSummaries),
+      listRepos().then((r) => setAllRepos(r.repos)),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -87,6 +90,15 @@ export default function DonatePage() {
         created_at: selectedCollectingSummary.round_start,
       }
     : pool;
+
+  const poolRepos = allRepos.filter((r) => {
+    const eligible = r.eligible_pool_types;
+    if (!eligible || eligible.length === 0) return true;
+    return eligible.includes(selectedPoolType);
+  });
+  const topPoolRepos = [...poolRepos]
+    .sort((a, b) => b.stars - a.stars)
+    .slice(0, 5);
 
   useEffect(() => {
     return () => {
@@ -204,9 +216,46 @@ export default function DonatePage() {
           <a href="/enterprise" className="underline underline-offset-2">
             For enterprises
           </a>{" "}
-          for how this maps to compliance and supply-chain narratives.
+          for pool details and scoring.
         </p>
       </div>
+
+      {poolRepos.length > 0 && (
+        <div className="mb-6 rounded-lg border border-border p-4">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-sm font-medium">
+              {poolRepos.length} {poolRepos.length === 1 ? "repo" : "repos"} in this pool
+            </h3>
+            <a
+              href="/repos"
+              className="text-xs text-primary underline underline-offset-2"
+            >
+              View all repos
+            </a>
+          </div>
+          <div className="space-y-2">
+            {topPoolRepos.map((r) => (
+              <a
+                key={r.id}
+                href={`/repos/${r.id}`}
+                className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50 transition-colors"
+              >
+                <span className="truncate font-mono text-xs">{r.full_name}</span>
+                <span className="flex items-center gap-2 shrink-0 text-muted-foreground text-xs">
+                  {r.language && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{r.language}</Badge>}
+                  {r.license && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{r.license}</Badge>}
+                  <span className="tabular-nums">{r.stars.toLocaleString()} stars</span>
+                </span>
+              </a>
+            ))}
+          </div>
+          {poolRepos.length > 5 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              and {poolRepos.length - 5} more...
+            </p>
+          )}
+        </div>
+      )}
 
       {donatingPool && (
         <div className="mb-8">

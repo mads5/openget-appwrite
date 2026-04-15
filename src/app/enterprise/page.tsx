@@ -22,10 +22,10 @@ export default function EnterprisePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">For enterprises</h1>
         <p className="text-muted-foreground mt-3 leading-relaxed">
-          OpenGet is not a generic tip jar. It is a <strong className="text-foreground font-medium">neutral</strong>,{" "}
-          rules-based way to fund maintainers across your actual dependency surface—with invoices, pooled
-          governance, and algorithmic payouts instead of one-off contracts that can create vendor capture and IP
-          ambiguity.
+          Your upstream patches sit in review queues because maintainers are unpaid and stretched thin.
+          OpenGet keeps the projects you depend on <strong className="text-foreground font-medium">staffed,
+          reviewed, and releasing</strong>&mdash;through pooled, algorithmic funding instead of managing
+          dozens of individual maintainer contracts.
         </p>
       </div>
 
@@ -33,22 +33,34 @@ export default function EnterprisePage() {
         <h2 className="text-xl font-semibold">Why fund through OpenGet</h2>
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
-            <span className="text-foreground">Supply-chain risk</span>: Unpaid critical dependencies are continuity
-            and security risk—not only a goodwill issue.
+            <span className="text-foreground">Faster patch velocity</span>: Funded maintainers review upstream
+            patches faster. A security fix waiting weeks in a review queue is weeks of exposure for your users.
+            OpenGet reduces that queue by keeping maintainers engaged and compensated.
+          </li>
+          <li>
+            <span className="text-foreground">Dependency continuity</span>: If a critical dependency goes
+            unmaintained, you face migration costs, emergency forks, or unpatched vulnerabilities. OpenGet is
+            insurance against project abandonment&mdash;sustained funding keeps the bus factor healthy.
+          </li>
+          <li>
+            <span className="text-foreground">Ecosystem-level funding</span>: Fund all your Python security
+            dependencies through one pool instead of negotiating 15 individual contracts. Pick a pool type
+            that matches your risk profile and the algorithm handles distribution.
           </li>
           <li>
             <span className="text-foreground">Operational receipts</span>: Pooled contributions produce traceable
-            distribution records (weekly runs, pool types, listed repos) suitable for internal reporting.
+            distribution records (weekly runs, pool types, listed repos) suitable for internal reporting and
+            procurement workflows.
           </li>
           <li>
-            <span className="text-foreground">Neutrality</span>: Donors do not pick individual PRs for payment;
-            eligibility follows public scoring and repo weighting rules—reducing capture compared to hiring
-            maintainers onto a single roadmap.
+            <span className="text-foreground">Neutrality</span>: Donors do not pick individual PRs for payment.
+            A public 6-factor scoring model and repo weighting rules determine eligibility&mdash;no single
+            employer captures a maintainer&apos;s roadmap.
           </li>
           <li>
-            <span className="text-foreground">CSR / ESG alignment</span>: Depending on your jurisdiction and entity
-            structure, sustainability and digital-infrastructure programs may map to CSR or ESG narratives—verify with
-            your finance and legal teams.
+            <span className="text-foreground">Tax documentation support</span>: OpenGet generates structured
+            funding records (donor, amount, pool, allocation period, recipient repos) that your tax team can
+            incorporate into R&D credit documentation. Consult your tax advisor for eligibility.
           </li>
         </ul>
       </section>
@@ -121,8 +133,8 @@ export default function EnterprisePage() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Regulatory claims (for example EU CRA deadlines or fine amounts) change over time. Treat marketing copy as
-        non-legal guidance; involve counsel before contractual commitments.
+        Tax treatment and regulatory applicability depend on your jurisdiction and entity structure. Treat this
+        page as product guidance, not legal or tax advice; involve counsel before contractual commitments.
       </p>
     </div>
   );

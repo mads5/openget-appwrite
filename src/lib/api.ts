@@ -96,6 +96,7 @@ export function mapRepo(doc: Models.Document): Repo {
       d.ai_summary != null && String(d.ai_summary).trim() !== ""
         ? String(d.ai_summary)
         : null,
+    license: (d.license as string | null) ?? null,
     listed_by: String(d.listed_by ?? ""),
     contributor_count: Number(d.contributor_count ?? 0),
     contributors_fetched_at: (d.contributors_fetched_at as string | null) ?? null,
@@ -171,6 +172,8 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
     lines_removed: Number(d.lines_removed ?? 0),
     reviews: Number(d.reviews ?? 0),
     issues_closed: Number(d.issues_closed ?? 0),
+    review_comments: Number(d.review_comments ?? 0),
+    releases_count: Number(d.releases_count ?? 0),
     score: Number(d.score ?? 0),
     last_contribution_at: (d.last_contribution_at as string | null) ?? null,
   };

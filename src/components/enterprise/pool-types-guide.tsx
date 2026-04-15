@@ -11,8 +11,8 @@ const ROWS: {
 }[] = [
   {
     id: "community_match",
-    donors: "Individuals, small sponsors, QF-style matching",
-    optimizes: "Broad participation and democratic signal",
+    donors: "Individuals, small sponsors, broad community backers",
+    optimizes: "Broad participation across all listed repos",
     eligibility: "Every listed repo (always included).",
   },
   {
@@ -24,15 +24,15 @@ const ROWS: {
   },
   {
     id: "security_compliance",
-    donors: "Enterprise security / GRC / compliance budgets",
-    optimizes: "Mature maintenance, security posture",
+    donors: "Enterprise security and platform teams",
+    optimizes: "Patch velocity and maintenance continuity",
     eligibility:
       "Automatic: SECURITY.md on default branch, or popularity/issue-count heuristics.",
   },
   {
     id: "deep_deps",
     donors: "Platform engineering, foundations",
-    optimizes: "Foundational / fragile stack",
+    optimizes: "Foundational / fragile dependencies",
     eligibility:
       "Automatic: higher criticality score + lower bus factor + below mega-star cap (tunable via env).",
   },
@@ -45,16 +45,17 @@ export function PoolTypesGuide() {
         <h2 className="text-xl font-semibold">Funding pool types</h2>
         <p className="text-muted-foreground mt-3 leading-relaxed">
           OpenGet runs <strong className="text-foreground font-medium">four parallel pools</strong> per month. Each
-          pool has its own balance and weekly distribution run. When you donate, you pick a pool to match your
-          narrative (e.g. compliance vs. community).
+          pool has its own balance and weekly distribution run. When you donate, you pick a pool that matches
+          your funding intent&mdash;whether that&apos;s broad community support, security maintenance, foundational
+          infrastructure, or early-stage innovation.
         </p>
         <p className="text-muted-foreground mt-3 leading-relaxed">
           <strong className="text-foreground font-medium">Repos do not all receive every pool.</strong> Each listed
           repository gets an automatic <span className="font-mono text-xs">eligible_pool_types</span> set by the nightly
           GitHub job (stars, forks, criticality, bus factor, SECURITY.md, recency). Weekly payouts for pool{" "}
           <span className="font-mono text-xs">T</span> only flow to repos that include <span className="font-mono text-xs">T</span>{" "}
-          in that set. Contributor scoring (4-factor) is unchanged; only which pool&apos;s budget a repo can share is
-          filtered.
+          in that set. Contributor scoring uses a <strong className="text-foreground font-normal">6-factor model</strong>{" "}
+          that rewards merged PRs, code reviews, release management, and issue triage&mdash;not just lines of code.
         </p>
       </div>
 
@@ -95,13 +96,15 @@ export function PoolTypesGuide() {
             first successful run stores JSON eligibility.
           </li>
           <li>
-            <span className="text-foreground">Contributors</span>: Must register, connect payouts, and meet the public{" "}
-            <strong className="text-foreground font-normal">4-factor score</strong>. Pool choice does not change that
-            score.
+            <span className="text-foreground">Contributors and maintainers</span>: Must register, connect payouts, and
+            meet the public <strong className="text-foreground font-normal">6-factor score</strong>. The model
+            weights merged PRs (40%), review activity (15%), PR volume (10%), release and triage work (10%),
+            breadth of contribution (10%), and total contributions (15%). Repo owners who actively review, merge,
+            and release are compensated for that stewardship alongside code authors.
           </li>
           <li>
-            <span className="text-foreground">Governance</span>: Donors cannot direct money to specific PRs—only to a
-            pool. Distribution within that pool is algorithmic. See the project README (Governance section).
+            <span className="text-foreground">Governance</span>: Donors cannot direct money to specific PRs&mdash;only
+            to a pool. Distribution within that pool is algorithmic. See the project README (Governance section).
           </li>
         </ul>
       </div>
@@ -126,9 +129,9 @@ export function PoolTypesGuide() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/50 pt-4">
-        Thresholds are configurable with environment variables on the fetch-contributors function (see{" "}
-        <span className="font-mono">docs/POOL_TYPES.md</span>). Canonical spec lives in that file—keep it aligned with
-        this page.
+        Eligibility thresholds (popularity, criticality, bus factor) are tunable via environment variables on
+        the nightly scoring function. All pool rules are algorithmic and applied automatically&mdash;no manual
+        curation required.
       </p>
     </section>
   );

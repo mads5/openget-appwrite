@@ -19,6 +19,8 @@ export interface Repo {
   eligible_pool_types?: string[];
   /** Short AI-generated blurb (cached on first view when OPENAI_API_KEY is configured server-side). */
   ai_summary?: string | null;
+  /** SPDX license identifier from GitHub (e.g. "MIT", "Apache-2.0"). */
+  license?: string | null;
   listed_by: string;
   contributor_count: number;
   contributors_fetched_at: string | null;
@@ -63,6 +65,8 @@ export interface RepoContribution {
   lines_removed: number;
   reviews: number;
   issues_closed: number;
+  review_comments: number;
+  releases_count: number;
   score: number;
   last_contribution_at: string | null;
 }
