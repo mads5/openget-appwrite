@@ -52,6 +52,22 @@ async function executeFunction<T>(action: string, body?: Record<string, unknown>
   }
 }
 
+async function executeFunctionById<T>(functionId: string, body?: Record<string, unknown>): Promise<T> {
+  const execution = await functions.createExecution(
+    functionId,
+    JSON.stringify(body ?? {}),
+    false,
+    undefined,
+    ExecutionMethod.POST,
+    { "content-type": "application/json" },
+  );
+  if (execution.responseStatusCode >= 400) {
+    const err = JSON.parse(execution.responseBody || "{}") as { error?: string };
+    throw new Error(err.error || `Function error: ${execution.responseStatusCode}`);
+  }
+  return JSON.parse(execution.responseBody) as T;
+}
+
 function docAttrs(doc: Models.Document): Record<string, unknown> {
   return doc as unknown as Record<string, unknown>;
 }
@@ -209,14 +225,61 @@ export async function getRepoContributors(repoId: string) {
 
 export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
   const token = await getGithubAccessTokenFromSession();
-  return executeFunction<GitHubRepoInfo[]>(
-    "get-my-repos",
-    token ? { github_access_token: token } : undefined,
-  );
+  try {
+    return await executeFunction<GitHubRepoInfo[]>(
+      "get-my-repos",
+      token ? { github_access_token: token } : undefined,
+    );
+  } catch (err) {
+    // Fallback for transient openget-api failures (e.g. 503) so /list-repo stays usable.
+    if (!token) throw err;
+    let currentUserId: string | null = null;
+    try {
+      const me = await account.get();
+      currentUserId = me.$id;
+    } catch {
+      currentUserId = null;
+    }
+    const ghRes = await fetch(
+      "https://api.github.com/user/repos?sort=stars&per_page=100&affiliation=owner,collaborator,organization_member",
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "User-Agent": "OpenGet-Web",
+        },
+      },
+    );
+    if (!ghRes.ok) throw err;
+    const repos = (await ghRes.json()) as Array<Record<string, unknown>>;
+    const listedDocs = await databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(500)]);
+    const listedByName = new Map(listedDocs.documents.map((d) => [String((d as Record<string, unknown>).full_name ?? ""), d]));
+    return repos.map((r) => {
+      const fullName = String(r.full_name ?? "");
+      const listed = listedByName.get(fullName);
+      return {
+        full_name: fullName,
+        html_url: String(r.html_url ?? ""),
+        description: (r.description as string | null) ?? null,
+        language: (r.language as string | null) ?? null,
+        stargazers_count: Number(r.stargazers_count ?? 0),
+        forks_count: Number(r.forks_count ?? 0),
+        already_listed: Boolean(listed),
+        listed_by_me: currentUserId != null && listed != null && String((listed as Record<string, unknown>).listed_by ?? "") === currentUserId,
+        repo_id: listed?.$id ?? null,
+      };
+    });
+  }
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  const raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+  let raw: Record<string, unknown>;
+  try {
+    raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+  } catch {
+    // Fallback to dedicated function id if openget-api is unavailable.
+    raw = await executeFunctionById<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+  }
   const $id = String(raw.$id ?? raw.id ?? "");
   return mapRepo({ ...raw, $id } as unknown as Models.Document);
 }

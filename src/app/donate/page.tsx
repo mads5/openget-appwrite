@@ -93,7 +93,7 @@ export default function DonatePage() {
 
   const poolRepos = allRepos.filter((r) => {
     const eligible = r.eligible_pool_types;
-    if (!eligible || eligible.length === 0) return true;
+    if (!eligible || eligible.length === 0) return false;
     return eligible.includes(selectedPoolType);
   });
   const topPoolRepos = [...poolRepos]
@@ -256,10 +256,16 @@ export default function DonatePage() {
           )}
         </div>
       )}
+      {poolRepos.length === 0 && (
+        <div className="mb-6 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+          No repos are currently classified for this pool type yet. This can happen right after new repos are listed;
+          initial classification and contributor sync will appear after fetch completes.
+        </div>
+      )}
 
       {donatingPool && (
         <div className="mb-8">
-          <PoolCard pool={donatingPool} />
+          <PoolCard pool={donatingPool} hideFinancialTotals />
         </div>
       )}
 

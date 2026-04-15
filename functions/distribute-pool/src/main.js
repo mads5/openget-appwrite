@@ -8,6 +8,7 @@ import { filterReposForPoolType } from "./pool-eligibility.js";
 
 const DATABASE_ID = "openget-db";
 const PLATFORM_FEE_RATE = 0.01;
+const PLATFORM_FEE_MIN_CENTS = 50;
 const MIN_PAYOUT_CENTS = 50;
 const COLLECTION_POOLS = "pools";
 const COLLECTION_REPOS = "repos";
@@ -32,6 +33,18 @@ function makeDb() {
 
 function daysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
+}
+
+function calculatePlatformFeeCents(amountCents, totalPoolCents = 0) {
+  const amount = Math.max(0, Number(amountCents || 0));
+  const poolTotal = Math.max(0, Number(totalPoolCents || 0));
+  let rate = PLATFORM_FEE_RATE;
+  if (poolTotal < 100000) rate = 0.03;
+  else if (poolTotal < 1000000) rate = 0.02;
+  else rate = 0.01;
+  const pctFee = Math.ceil(amount * rate);
+  const fee = Math.max(PLATFORM_FEE_MIN_CENTS, pctFee);
+  return Math.min(amount, fee);
 }
 
 function getActiveMonthInfo() {
@@ -99,8 +112,12 @@ async function ensureCollectingPools(databases) {
 }
 
 async function activatePool(databases, pool) {
-  const fee = Math.ceil((pool.total_amount_cents || 0) * PLATFORM_FEE_RATE);
-  const distributable = (pool.total_amount_cents || 0) - fee;
+  const existingFee = Number(pool.platform_fee_cents || 0);
+  const fee =
+    existingFee > 0
+      ? existingFee
+      : calculatePlatformFeeCents(pool.total_amount_cents || 0, pool.total_amount_cents || 0);
+  const distributable = Math.max(0, (pool.total_amount_cents || 0) - fee);
   const [y, m] = pool.round_start.split("-").map(Number);
   const totalDays = daysInMonth(y, m);
   const dailyBudget = Math.floor(distributable / totalDays);

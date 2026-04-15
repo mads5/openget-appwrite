@@ -3,7 +3,7 @@ import {
   computeRepoDistributionWeight,
   filterReposForDistribution,
 } from './repo-distribution.js';
-import { filterReposForPoolType } from './pool-eligibility.js';
+import { filterReposForPoolType, computeEligiblePoolTypes } from './pool-eligibility.js';
 import {
   DEFAULT_CHECKOUT_POOL_TYPE,
   POOL_TYPES,
@@ -12,6 +12,7 @@ import {
 
 const DATABASE_ID = 'openget-db';
 const PLATFORM_FEE_RATE = 0.01;
+const PLATFORM_FEE_MIN_CENTS = 50;
 
 const COL = {
   REPOS: 'repos',
@@ -27,6 +28,23 @@ const COL = {
 };
 
 const MIN_PAYOUT_CENTS = 50;
+
+function calculatePlatformFeeCents(amountCents, totalPoolCents = 0) {
+  const amount = Math.max(0, Number(amountCents || 0));
+  const poolTotal = Math.max(0, Number(totalPoolCents || 0));
+
+  // Tiered fee to keep platform sustainable for small pools/donations.
+  // - Early/small pools: slightly higher percentage + floor
+  // - Large pools: keep fee lower to stay donor-friendly
+  let rate = PLATFORM_FEE_RATE;
+  if (poolTotal < 100000) rate = 0.03; // < $1,000 pooled: 3%
+  else if (poolTotal < 1000000) rate = 0.02; // < $10,000 pooled: 2%
+  else rate = 0.01; // large pools: 1%
+
+  const pctFee = Math.ceil(amount * rate);
+  const fee = Math.max(PLATFORM_FEE_MIN_CENTS, pctFee);
+  return Math.min(amount, fee);
+}
 
 /**
  * @param {import('node-appwrite').Models.Document[]} documents
@@ -94,6 +112,129 @@ async function fetchGithubUser(token) {
   const u = await ghRes.json();
   if (!u?.login) return null;
   return { login: String(u.login), id: u.id != null ? String(u.id) : null };
+}
+
+function daysSince(dateLike) {
+  try {
+    if (!dateLike) return 120;
+    return (Date.now() - new Date(dateLike).getTime()) / 86400000;
+  } catch {
+    return 120;
+  }
+}
+
+async function fetchContributorsSnapshot(fullName, ghHeaders, log) {
+  const all = [];
+  for (let page = 1; page <= 3; page++) {
+    const res = await fetch(
+      `https://api.github.com/repos/${fullName}/contributors?per_page=100&page=${page}`,
+      { headers: ghHeaders },
+    );
+    if (!res.ok) {
+      log(`contributors snapshot failed for ${fullName}: ${res.status}`);
+      break;
+    }
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    all.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return all;
+}
+
+async function syncRepoContributorsFromGithub(db, repoDoc, ghHeaders, log) {
+  const snapshot = await fetchContributorsSnapshot(repoDoc.full_name, ghHeaders, log);
+  if (!Array.isArray(snapshot) || snapshot.length === 0) {
+    await db.updateDocument(DATABASE_ID, COL.REPOS, repoDoc.$id, {
+      contributors_fetched_at: new Date().toISOString(),
+    });
+    return 0;
+  }
+
+  let synced = 0;
+  for (const entry of snapshot) {
+    const username = entry?.login;
+    if (!username) continue;
+
+    const existing = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+      Query.equal('github_username', String(username)),
+      Query.limit(1),
+    ]);
+
+    const commits = Number(entry.contributions || 0);
+    const score = commits * 10;
+
+    let contribDoc;
+    if (existing.documents.length > 0) {
+      contribDoc = existing.documents[0];
+    } else {
+      contribDoc = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
+        github_username: String(username),
+        github_id: entry.id != null ? String(entry.id) : null,
+        avatar_url: entry.avatar_url || null,
+        user_id: null,
+        total_score: 0,
+        repo_count: 0,
+        total_contributions: 0,
+      });
+    }
+
+    const existingRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+      Query.equal('contributor_id', contribDoc.$id),
+      Query.equal('repo_id', repoDoc.$id),
+      Query.limit(1),
+    ]);
+
+    const rcData = {
+      contributor_id: contribDoc.$id,
+      repo_id: repoDoc.$id,
+      repo_full_name: repoDoc.full_name,
+      commits,
+      prs_merged: 0,
+      lines_added: 0,
+      lines_removed: 0,
+      reviews: 0,
+      issues_closed: 0,
+      review_comments: 0,
+      releases_count: 0,
+      score,
+      last_contribution_at: new Date().toISOString(),
+    };
+
+    if (existingRc.documents.length > 0) {
+      await db.updateDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, existingRc.documents[0].$id, rcData);
+    } else {
+      await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), rcData);
+    }
+
+    const allContribs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+      Query.equal('contributor_id', contribDoc.$id),
+      Query.limit(500),
+    ]);
+    const totalScore = allContribs.documents.reduce((s, d) => s + (d.score || 0), 0);
+    const totalContributions = allContribs.documents.reduce(
+      (s, d) =>
+        s +
+        (d.commits || 0) +
+        (d.prs_merged || 0) +
+        (d.reviews || 0) +
+        (d.issues_closed || 0),
+      0,
+    );
+    await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
+      total_score: totalScore,
+      repo_count: allContribs.total,
+      total_contributions: totalContributions,
+    });
+
+    synced++;
+  }
+
+  await db.updateDocument(DATABASE_ID, COL.REPOS, repoDoc.$id, {
+    contributor_count: synced,
+    contributors_fetched_at: new Date().toISOString(),
+  });
+  return synced;
 }
 
 /**
@@ -181,6 +322,22 @@ export default async ({ req, res, log, error }) => {
         if (!ghRes.ok) return res.json({ error: 'GitHub repo not found' }, 404);
         const gh = await ghRes.json();
 
+        const hasSecurityMd = await fetch(
+          `https://api.github.com/repos/${fullName}/contents/SECURITY.md`,
+          { headers: ghHeaders },
+        )
+          .then((r) => r.status === 200)
+          .catch(() => false);
+        const eligibleTypes = computeEligiblePoolTypes({
+          stars: gh.stargazers_count || 0,
+          forks: gh.forks_count || 0,
+          criticality_score: 0.5,
+          bus_factor: 3,
+          open_issues: gh.open_issues_count || 0,
+          days_since_push: daysSince(gh.pushed_at),
+          has_security_md: hasSecurityMd,
+        });
+
         const doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), {
           github_url: gh.html_url,
           owner: gh.owner.login,
@@ -193,7 +350,9 @@ export default async ({ req, res, log, error }) => {
           repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
           criticality_score: 0.5,
           bus_factor: 3,
-          has_security_md: false,
+          has_security_md: hasSecurityMd,
+          license: gh.license?.spdx_id || null,
+          eligible_pool_types: JSON.stringify(eligibleTypes),
           listed_by: userId,
           contributor_count: 0,
         });
@@ -225,7 +384,14 @@ export default async ({ req, res, log, error }) => {
           log(`list-repo: linking lister as contributor: ${e.message}`);
         }
 
-        return res.json({ id: doc.$id, ...doc });
+        let syncedContributors = 0;
+        try {
+          syncedContributors = await syncRepoContributorsFromGithub(db, doc, ghHeaders, log);
+        } catch (e) {
+          log(`list-repo: initial contributor sync failed: ${e.message}`);
+        }
+
+        return res.json({ id: doc.$id, ...doc, contributor_count: syncedContributors });
       }
 
       // ---- GET MY REPOS ----
@@ -556,12 +722,11 @@ export default async ({ req, res, log, error }) => {
           if (donationId && poolId) {
             const donation = await db.getDocument(DATABASE_ID, COL.DONATIONS, donationId);
             const amountCents = donation.amount_cents;
-            const feeCents = Math.ceil(amountCents * PLATFORM_FEE_RATE);
+            const pool = await db.getDocument(DATABASE_ID, COL.POOLS, poolId);
+            const feeCents = calculatePlatformFeeCents(amountCents, pool.total_amount_cents || 0);
             const distributable = amountCents - feeCents;
 
             await db.updateDocument(DATABASE_ID, COL.DONATIONS, donationId, { status: 'confirmed' });
-
-            const pool = await db.getDocument(DATABASE_ID, COL.POOLS, poolId);
             await db.updateDocument(DATABASE_ID, COL.POOLS, poolId, {
               total_amount_cents: (pool.total_amount_cents || 0) + amountCents,
               platform_fee_cents: (pool.platform_fee_cents || 0) + feeCents,
@@ -669,8 +834,12 @@ export default async ({ req, res, log, error }) => {
           );
           const activated = [];
           for (const p of matched) {
-            const fee = Math.ceil((p.total_amount_cents || 0) * PLATFORM_FEE_RATE);
-            const distributable = (p.total_amount_cents || 0) - fee;
+            const existingFee = Number(p.platform_fee_cents || 0);
+            const fee =
+              existingFee > 0
+                ? existingFee
+                : calculatePlatformFeeCents(p.total_amount_cents || 0, p.total_amount_cents || 0);
+            const distributable = Math.max(0, (p.total_amount_cents || 0) - fee);
             const [y, m] = p.round_start.split('-').map(Number);
             const totalDays = new Date(y, m, 0).getDate();
             const dailyBudget = Math.floor(distributable / totalDays);
