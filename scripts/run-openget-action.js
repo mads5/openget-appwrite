@@ -80,19 +80,29 @@ if (action === 'fetch-contributors') {
         offset,
         batchSize,
       });
+      const firstError = Array.isArray(data?.errors) && data.errors.length
+        ? data.errors[0].error || 'unknown error'
+        : null;
+
       if (status >= 400) {
-        console.error(`  [fail] ${repo.full_name}`);
+        console.error(`  [fail] ${repo.full_name}${firstError ? ` (${firstError})` : ''}`);
         failures++;
         break;
       }
 
       done = Boolean(data?.done);
+      if (data?.failed) {
+        console.error(`  [fail] ${repo.full_name}${firstError ? ` (${firstError})` : ''}`);
+        failures++;
+        break;
+      }
       if (done) {
         console.log(`  [ok] ${repo.full_name}`);
       } else if (typeof data?.next_offset === 'number' && data.next_offset > offset) {
         offset = data.next_offset;
       } else {
-        console.error(`  [fail] ${repo.full_name} (invalid chunk progress)`);
+        const reason = firstError || 'invalid chunk progress';
+        console.error(`  [fail] ${repo.full_name} (${reason})`);
         failures++;
         break;
       }

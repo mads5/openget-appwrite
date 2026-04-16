@@ -170,19 +170,28 @@ async function fetchHasSecurityMdWithHeaders(owner, repoName, ghHeaders) {
   return res.status === 200;
 }
 
+// GitHub's /stats/contributors endpoint returns 202 Accepted while the stats
+// cache is being (re)computed. Cold or newly listed repos can take 60s+ to
+// warm up, so we poll with a mild backoff well under the 300s function timeout.
 async function fetchStatsContributorsWithHeaders(owner, repo, ghHeaders) {
   const url = `https://api.github.com/repos/${owner}/${repo}/stats/contributors`;
-  for (let attempt = 0; attempt < 8; attempt++) {
+  const maxAttempts = 24;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const res = await fetch(url, { headers: ghHeaders });
     if (res.status === 202) {
-      await sleep(3000);
+      const wait = Math.min(8000, 2000 + attempt * 500);
+      await sleep(wait);
       continue;
+    }
+    if (res.status === 204) {
+      return [];
     }
     if (!res.ok) {
       const t = await res.text();
       throw new Error(`stats/contributors ${res.status}: ${t}`);
     }
-    return res.json();
+    const body = await res.json();
+    return Array.isArray(body) ? body : [];
   }
   throw new Error('GitHub stats/contributors did not become ready in time');
 }
@@ -1844,6 +1853,24 @@ export default async ({ req, res, log, error }) => {
             }
             error(`${full}: ${e.message}`);
             summary.errors.push({ repo: full, error: e.message });
+
+            // In per-repo mode return a well-formed response so external drivers
+            // (e.g. scripts/run-openget-action.js) can advance to the next repo
+            // instead of misinterpreting the missing next_offset/done fields as
+            // "invalid chunk progress".
+            if (body.repoId) {
+              return res.json({
+                ...summary,
+                repo_id: repoDoc.$id,
+                repo_full_name: full,
+                processed_in_chunk: 0,
+                total_contributors: 0,
+                next_offset: null,
+                done: true,
+                failed: true,
+                error: e.message,
+              });
+            }
           }
         }
 
