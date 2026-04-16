@@ -171,15 +171,17 @@ async function fetchHasSecurityMdWithHeaders(owner, repoName, ghHeaders) {
 }
 
 // GitHub's /stats/contributors endpoint returns 202 Accepted while the stats
-// cache is being (re)computed. Cold or newly listed repos can take 60s+ to
-// warm up, so we poll with a mild backoff well under the 300s function timeout.
-async function fetchStatsContributorsWithHeaders(owner, repo, ghHeaders) {
+// cache is being (re)computed. Cold or low-traffic repos can stay in that
+// state indefinitely (observed 150s+ with no progress), so we poll for a
+// bounded window and then return null so the caller can gracefully degrade
+// to the /contributors snapshot (which doesn't have this behavior).
+async function fetchStatsContributorsWithHeaders(owner, repo, ghHeaders, log) {
   const url = `https://api.github.com/repos/${owner}/${repo}/stats/contributors`;
-  const maxAttempts = 24;
+  const maxAttempts = 12;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const res = await fetch(url, { headers: ghHeaders });
     if (res.status === 202) {
-      const wait = Math.min(8000, 2000 + attempt * 500);
+      const wait = Math.min(6000, 2000 + attempt * 500);
       await sleep(wait);
       continue;
     }
@@ -193,7 +195,10 @@ async function fetchStatsContributorsWithHeaders(owner, repo, ghHeaders) {
     const body = await res.json();
     return Array.isArray(body) ? body : [];
   }
-  throw new Error('GitHub stats/contributors did not become ready in time');
+  if (typeof log === 'function') {
+    log(`stats/contributors not ready for ${owner}/${repo} after ${maxAttempts} attempts; falling back to contributor snapshot only`);
+  }
+  return null;
 }
 
 function currentMonthKey() {
@@ -1598,7 +1603,15 @@ export default async ({ req, res, log, error }) => {
               repoDoc.license = repoLicense;
             }
 
-            const stats = await fetchStatsContributorsWithHeaders(owner, repoName, ghHeaders);
+            const rawStats = await fetchStatsContributorsWithHeaders(owner, repoName, ghHeaders, log);
+            const statsUnavailable = rawStats === null;
+            const stats = Array.isArray(rawStats) ? rawStats : [];
+            if (statsUnavailable) {
+              summary.errors.push({
+                repo: full,
+                warning: 'stats/contributors unavailable; falling back to contributor snapshot without commit/line counts',
+              });
+            }
             const canonicalLogins = [];
             const snapshotByLogin = new Map();
             const byLogin = new Map();
