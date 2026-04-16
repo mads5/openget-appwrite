@@ -35,7 +35,7 @@ Open source runs the world, but most contributors never see a dollar. Sponsorshi
 
 ## The Solution
 
-OpenGet creates a **monthly donation pool** and distributes it **weekly** to contributors using a **6-factor scoring model** that measures real contributions — merged PRs, code reviews, release management, issue triage — not just star counts.
+OpenGet creates a **monthly donation pool** and shares it **weekly** with contributors using a **6-factor scoring model**. It rewards real work like merged PRs, reviews, releases, and issue work — not just popularity.
 
 ---
 
@@ -55,17 +55,17 @@ OpenGet creates a **monthly donation pool** and distributes it **weekly** to con
 
 | Step | What Happens |
 |------|-------------|
-| **1. List** | Sign in with GitHub, pick a repo. OpenGet auto-discovers all contributors via the GitHub Stats API. |
+| **1. List** | Sign in with GitHub, pick a repo. OpenGet saves the repo right away and starts finding contributors. |
 | **2. Donate** | Anyone donates to the monthly pool (9 currencies via Stripe, UPI stub for INR). Donations target the **collecting** pool for next month. |
-| **3. Score** | `fetch-contributors` runs nightly — refreshes repo metadata, scrapes contribution stats, computes monthly PR counts, and applies the **6-factor scoring model**. |
-| **4. Distribute** | `distribute-pool` runs every Monday — splits the week's budget across repos (sqrt-weighted by repo score), then to eligible contributors (weighted by `total_score`). Min payout: **$0.50**. |
+| **3. Score** | A nightly GitHub Actions job calls `openget-api` to refresh repo data, check contribution activity, and update contributor scores. |
+| **4. Distribute** | A weekly GitHub Actions job calls `openget-api` every Monday to split the week's budget across repos, then across eligible contributors. Min payout: **$0.50**. |
 | **5. Get Paid** | Contributors register on OpenGet, connect Stripe Express, and receive weekly payouts directly to their bank. |
 
 ---
 
 ## Scoring Formula
 
-Contributors are scored using a **6-factor model** designed to reward real work — both code authorship and stewardship — and punish gaming:
+Contributors are scored using a **6-factor model** designed to reward real work and reduce gaming:
 
 ```
 Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + (F5 * 0.15) + (F6 * 0.10)
@@ -73,12 +73,12 @@ Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + 
 
 | Factor | Weight | Formula | What It Measures |
 |--------|:------:|---------|-----------------|
-| **F1** Total Contributions | 15% | `log2(total + 1) / log2(1001)` | Commits + merged PRs + reviews + issues closed (log-scaled) |
-| **F2** PRs Raised | 10% | `min(raised, 100) / 100` | Monthly PR activity, capped at 100 |
-| **F3** PRs Merged | **40%** | `min(merged, 80) / 80` | Monthly merged PRs — the heaviest signal, capped at 80 |
-| **F4** Qualified Repos | 10% | `log2(min(repos, 20) + 1) / log2(21)` | Repos contributed to (excluding self-owned, low-quality) |
-| **F5** Review Activity | 15% | `log2(min(reviews, 200) + 1) / log2(201)` | PR reviews + review comments across repos (log-scaled) |
-| **F6** Release & Triage | 10% | `log2(min(releases, 30) + 1) / log2(31)` | Release tags created + issues resolved (log-scaled) |
+| **F1** Total Contributions | 15% | `log2(total + 1) / log2(1001)` | General contribution activity |
+| **F2** PRs Raised | 10% | `min(raised, 100) / 100` | PRs opened this month |
+| **F3** PRs Merged | **40%** | `min(merged, 80) / 80` | PRs actually merged |
+| **F4** Qualified Repos | 10% | `log2(min(repos, 20) + 1) / log2(21)` | Real repos helped outside your own |
+| **F5** Review Activity | 15% | `log2(min(reviews, 200) + 1) / log2(201)` | Reviews and review comments |
+| **F6** Release & Triage | 10% | `log2(min(releases, 30) + 1) / log2(31)` | Release work and issue handling |
 
 ### Anti-Fraud Safeguards
 
@@ -119,10 +119,10 @@ Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + 
 
 | Concept | Detail |
 |---------|--------|
-| **Platform fee** | 1% deducted per donation, tracked in `platform_fees` |
+| **Platform fee** | Tiered fee with a small minimum floor, tracked in `platform_fees` |
 | **Daily budget** | `distributable_cents / days_in_month` |
 | **Weekly budget** | `daily_budget * 7` (or remaining, whichever is less) |
-| **Strategic pools** | Four parallel lanes per month; donors pick at checkout. Each **listed repo** gets automatic `eligible_pool_types` from nightly GitHub signals—repos do not all share every pool’s budget. See [docs/POOL_TYPES.md](docs/POOL_TYPES.md). |
+| **Strategic pools** | Four parallel lanes per month; donors pick at checkout. Each **listed repo** gets automatic `eligible_pool_types` from OpenGet's scoring run, so repos do not all share every pool's budget. See [docs/POOL_TYPES.md](docs/POOL_TYPES.md). |
 | **Repo weighting** | `sqrt(stars+forks) × (0.35 + 0.65 × criticality_score) × (1 + min(1.5, 1/bus_factor))` — nightly GitHub heuristic for **criticality** (v1) and **bus factor** (authors needed for ~50% of commits), reducing pure star-count bias. |
 | **Contributor weighting** | `total_score` within each repo's budget |
 | **Minimum payout** | $0.50 — smaller amounts roll over |
@@ -134,7 +134,7 @@ OpenGet does **not** let donors direct payouts to specific pull requests. Funds 
 
 ## For enterprises
 
-Patch velocity, dependency continuity, ecosystem-level funding, and neutral governance are summarized in-app on **`/enterprise`** and in [docs/POOL_TYPES.md](docs/POOL_TYPES.md). Tax treatment depends on your jurisdiction; involve counsel before contractual commitments.
+Patch speed, project health, simple pooled funding, and fair distribution are summarized in-app on **`/enterprise`** and in [docs/POOL_TYPES.md](docs/POOL_TYPES.md).
 
 ---
 
@@ -196,12 +196,8 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 │  │   Auth   │  │ Database │  │         Functions             │  │
 │  │  GitHub  │  │ 10 cols  │  │                               │  │
 │  │  OAuth   │  │          │  │  openget-api (action router)  │  │
-│  └──────────┘  └──────────┘  │  fetch-contributors (cron)   │  │
-│                               │  distribute-pool   (cron)   │  │
-│                               │  create-checkout             │  │
-│                               │  stripe-webhook              │  │
-│                               │  stripe-connect              │  │
-│                               │  + 5 more                    │  │
+│  └──────────┘  └──────────┘  │  one runtime function         │  │
+│                               │  for app + admin actions      │  │
 │                               └──────────────────────────────┘  │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
@@ -211,6 +207,7 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
               │  GitHub API (v3)      │
               │  Stripe Checkout      │
               │  Stripe Connect       │
+              │  GitHub Actions cron  │
               └───────────────────────┘
 ```
 
@@ -271,8 +268,8 @@ openget-appwrite/
 │
 ├── functions/                      # Appwrite Functions (each has own package.json)
 │   ├── openget-api/                #   Consolidated action router
-│   ├── fetch-contributors/         #   Nightly: GitHub scrape + 4-factor scoring
-│   ├── distribute-pool/            #   Weekly: dual-pool distribution engine
+│   ├── fetch-contributors/         #   Legacy standalone scoring job
+│   ├── distribute-pool/            #   Legacy standalone distribution job
 │   ├── create-checkout/            #   Stripe Checkout session
 │   ├── stripe-webhook/             #   Stripe payment confirmation
 │   ├── stripe-connect/             #   Stripe Express onboarding
@@ -322,7 +319,7 @@ openget-appwrite/
 | `APPWRITE_API_KEY` | **Yes** | — | Server API key (database + users perms) |
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
-| `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `fetch-contributors`, `list-repo`, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
+| `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
 | `STRIPE_SECRET_KEY` | **Yes** | — | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | **Yes** | — | Stripe webhook signing secret |
 | `STRIPE_CONNECT_REFRESH_URL` | No | — | Redirect after Connect refresh |
@@ -393,9 +390,9 @@ cd scripts && npm install
 APPWRITE_API_KEY=your_key node deploy-functions.js
 ```
 
-Creates functions (if missing), bundles `node_modules`, and uploads deployments. **`openget-api` is deployed first.** If Appwrite reports **maximum number of functions** for your plan, **creating** a new function can fail, but **uploading** a new deployment to a function that **already exists** still runs—so your router can be updated without adding more function slots.
+Creates functions (if missing), bundles `node_modules`, and uploads deployments. **`openget-api` is deployed first** and is the free-tier default.
 
-GitHub Actions sets **`DEPLOY_FUNCTION_IDS=openget-api`** so CI only updates the router the Next app uses (avoids failing the job when other function IDs are not provisioned). To deploy **all** functions from this repo, run locally **without** that variable (and ensure your plan has enough function slots).
+GitHub Actions sets **`DEPLOY_FUNCTION_IDS=openget-api`** so CI only updates the router the Next app uses. To deploy **all** functions from this repo, run locally without that variable and make sure your Appwrite plan has enough function slots.
 
 </details>
 
@@ -423,12 +420,12 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 
 **PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
 
-### Scheduled Functions
+### Scheduled Jobs
 
-| Function | Schedule | Purpose |
-|:---------|:---------|:--------|
-| `fetch-contributors` | Daily at 2:00 AM UTC | Refresh repo metadata, scrape GitHub, compute 4-factor scores |
-| `distribute-pool` | Weekly Monday at midnight UTC | Distribute weekly budget from active pool |
+| Trigger | Schedule | Purpose |
+|:--------|:---------|:--------|
+| `openget-nightly-scoring.yml` | Daily at 2:00 AM UTC | Calls `openget-api` with `action=fetch-contributors` |
+| `openget-weekly-distribution.yml` | Weekly Monday at midnight UTC | Calls `openget-api` with `action=distribute-pool` |
 
 ---
 
@@ -436,7 +433,15 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 
 ### Automatic Function Deploy
 
-Pushes to `master` / `main` run [`.github/workflows/deploy-appwrite-functions.yml`](.github/workflows/deploy-appwrite-functions.yml), which executes [`scripts/deploy-functions.js`](scripts/deploy-functions.js) (including **`openget-api`**). Add the **`APPWRITE_API_KEY`** repository secret to enable deployments; optional **`APPWRITE_ENDPOINT`** and **`APPWRITE_PROJECT_ID`** override defaults. If the secret is missing, the workflow skips deployment so forks do not fail CI.
+Pushes to `master` / `main` run [`.github/workflows/deploy-appwrite-functions.yml`](.github/workflows/deploy-appwrite-functions.yml), which executes [`scripts/deploy-functions.js`](scripts/deploy-functions.js) for **`openget-api`**. Add the **`APPWRITE_API_KEY`** repository secret to enable deployments; optional **`APPWRITE_ENDPOINT`** and **`APPWRITE_PROJECT_ID`** override defaults. If the secret is missing, the workflow skips deployment so forks do not fail CI.
+
+### Scheduled Scoring And Payouts
+
+GitHub Actions now handles the schedule on free tier:
+
+1. [`.github/workflows/openget-nightly-scoring.yml`](.github/workflows/openget-nightly-scoring.yml) calls `openget-api` with `action=fetch-contributors`.
+2. [`.github/workflows/openget-weekly-distribution.yml`](.github/workflows/openget-weekly-distribution.yml) calls `openget-api` with `action=distribute-pool`.
+3. Both workflows also support `workflow_dispatch`, so you can run them manually from GitHub when needed.
 
 ### Automatic Schema Sync
 

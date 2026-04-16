@@ -273,13 +273,7 @@ export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  let raw: Record<string, unknown>;
-  try {
-    raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
-  } catch {
-    // Fallback to dedicated function id if openget-api is unavailable.
-    raw = await executeFunctionById<Record<string, unknown>>("list-repo", { github_url: githubUrl });
-  }
+  const raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
   const $id = String(raw.$id ?? raw.id ?? "");
   return mapRepo({ ...raw, $id } as unknown as Models.Document);
 }
@@ -312,6 +306,20 @@ export async function getContributor(id: string): Promise<ContributorDetail> {
   ]);
   const repos = rcResult.documents.map(mapRepoContributionDoc);
   return { ...base, repos };
+}
+
+export async function getMyContributor(): Promise<Contributor | null> {
+  try {
+    const me = await account.get();
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [
+      Query.equal("user_id", me.$id),
+      Query.limit(1),
+    ]);
+    if (result.total > 0) return mapContributor(result.documents[0]);
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function registerContributor(): Promise<Contributor> {

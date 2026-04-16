@@ -1,4 +1,4 @@
-# Deploy all configured Appwrite Functions (including openget-api) after merge to main.
+# Deploy the single free-tier runtime function after merge to main.
 # Add repo secret: APPWRITE_API_KEY (required). Optional: APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID.
 # If APPWRITE_API_KEY is unset, the job exits successfully without deploying (forks / local forks).
 
@@ -35,7 +35,7 @@ jobs:
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
           APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
-          # Next.js only calls `openget-api`; deploy that first. Full multi-function deploy can hit plan limits — run locally without this if you have capacity.
+          # Free-tier default: keep scheduling outside Appwrite and deploy only the router.
           DEPLOY_FUNCTION_IDS: openget-api
         run: |
           if [ -z "${APPWRITE_API_KEY}" ]; then

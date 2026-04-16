@@ -13,23 +13,33 @@ const client = new Client()
 const functions = new Functions(client);
 
 /**
- * Appwrite only applies `execute` on **create**. Existing functions keep stale execute access unless updated.
- * Client calls then fail with: "No permissions provided for action 'execute'".
- * Cron-only functions use `execute: []` — we skip syncing so their access is unchanged.
+ * Existing Appwrite functions can drift from repo config.
+ * Sync execute access for HTTP functions and schedule/timeout for cron jobs too.
  */
-async function syncExecuteFromConfig(functionId, config) {
-  if (!config.execute?.length) return;
+async function syncFunctionSettings(functionId, config) {
   try {
     const existing = await functions.get(functionId);
-    const execute = [...new Set(config.execute)];
-    await functions.update({
+    const payload = {
       functionId,
       name: existing.name,
-      execute,
-    });
-    console.log(`  [ok] Execute access: ${execute.join(', ')}`);
+      timeout: config.timeout,
+      schedule: config.schedule || '',
+    };
+
+    if (Array.isArray(config.execute) && config.execute.length > 0) {
+      payload.execute = [...new Set(config.execute)];
+    }
+
+    await functions.update(payload);
+
+    if (payload.execute) {
+      console.log(`  [ok] Execute access: ${payload.execute.join(', ')}`);
+    }
+    if (config.schedule) {
+      console.log(`  [ok] Schedule: ${config.schedule}`);
+    }
   } catch (e) {
-    console.error(`  [warn] Could not sync execute access for ${functionId}:`, e.message);
+    console.error(`  [warn] Could not sync settings for ${functionId}:`, e.message);
   }
 }
 
@@ -37,11 +47,12 @@ async function syncExecuteFromConfig(functionId, config) {
 const FUNCTIONS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'functions');
 
 const FUNCTION_CONFIG = {
-  /** Central HTTP router used by the Next.js app (`FUNCTION_ID` in `src/lib/api.ts`). Must be deployed for API changes to take effect. */
-  'openget-api': { name: 'OpenGet API', execute: ['any', 'users'], events: [], timeout: 120 },
+  /** Single runtime function on free tier: router + manual jobs + GitHub-cron targets. */
+  'openget-api': { name: 'OpenGet API', execute: ['any', 'users'], events: [], timeout: 300 },
   'list-repo': { name: 'List Repo', execute: ['users'], events: [], timeout: 30 },
   'get-my-repos': { name: 'Get My Repos', execute: ['users'], events: [], timeout: 30 },
   'get-repo-contributors': { name: 'Get Repo Contributors', execute: ['any'], events: [], timeout: 30 },
+  /** Legacy standalone cron function. Keep config only for paid-tier / migration scenarios. */
   'fetch-contributors': { name: 'Fetch Contributors', execute: [], events: [], timeout: 300, schedule: '0 2 * * *' },
   'register-contributor': { name: 'Register Contributor', execute: ['users'], events: [], timeout: 30 },
   'create-checkout': { name: 'Create Checkout', execute: ['users'], events: [], timeout: 30 },
@@ -49,6 +60,7 @@ const FUNCTION_CONFIG = {
   'stripe-connect': { name: 'Stripe Connect', execute: ['users'], events: [], timeout: 30 },
   'upi-payment': { name: 'UPI Payment', execute: ['users'], events: [], timeout: 30 },
   'get-earnings': { name: 'Get Earnings', execute: ['users'], events: [], timeout: 30 },
+  /** Legacy standalone cron function. Keep config only for paid-tier / migration scenarios. */
   'distribute-pool': { name: 'Distribute Pool', execute: [], events: [], timeout: 300, schedule: '0 0 * * 1' },
 };
 
@@ -123,7 +135,7 @@ async function deployFunction(functionId) {
       entrypoint: 'src/main.js',
     });
     console.log(`  [ok] Deployed: ${functionId}`);
-    await syncExecuteFromConfig(functionId, config);
+    await syncFunctionSettings(functionId, config);
     return true;
   } catch (err) {
     console.error(`  [error] Deploy failed for ${functionId}:`, err.message);
@@ -147,7 +159,7 @@ async function main() {
     return statSync(full).isDirectory() && FUNCTION_CONFIG[d];
   });
 
-  /** Comma-separated IDs (e.g. `openget-api` only) — used by CI when the Appwrite plan cannot create every function. */
+  /** Comma-separated IDs (default in CI: `openget-api`) for free-tier safe deploys. */
   const only = process.env.DEPLOY_FUNCTION_IDS?.split(',').map((s) => s.trim()).filter(Boolean);
   if (only?.length) {
     functionDirs = functionDirs.filter((d) => only.includes(d));

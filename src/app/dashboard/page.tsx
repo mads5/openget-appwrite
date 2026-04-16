@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getEarnings, registerContributor, onboardStripeConnect } from "@/lib/api";
+import { getEarnings, registerContributor, onboardStripeConnect, getMyContributor } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,8 @@ export default function DashboardPage() {
   useEffect(() => {
     account.get().then(async (u) => {
       setUser(u);
+      const myContrib = await getMyContributor();
+      if (myContrib) setRegistered(true);
       try {
         const earningsData = await getEarnings();
         setEarnings(earningsData);
@@ -37,7 +39,7 @@ export default function DashboardPage() {
           setRegistered(true);
         }
       } catch {
-        // No earnings yet
+        // Earnings unavailable
       }
       setLoading(false);
     }).catch(() => {

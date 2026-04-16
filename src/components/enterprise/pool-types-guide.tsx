@@ -17,24 +17,24 @@ const ROWS: {
   },
   {
     id: "innovation",
-    donors: "Grants, incubators, retroactive-style backers",
-    optimizes: "Early-stage and high-upside projects",
+    donors: "People who want to help newer projects",
+    optimizes: "Early-stage projects with growth potential",
     eligibility:
-      "Automatic: low stars+forks, or moderate criticality with recent activity (tunable via env).",
+      "Usually smaller projects, or projects that are active and still growing.",
   },
   {
     id: "security_compliance",
-    donors: "Enterprise security and platform teams",
-    optimizes: "Patch velocity and maintenance continuity",
+    donors: "Teams focused on safety and stability",
+    optimizes: "Projects that need regular maintenance and security care",
     eligibility:
-      "Automatic: SECURITY.md on default branch, or popularity/issue-count heuristics.",
+      "Projects with SECURITY.md, or projects that look mature and actively maintained.",
   },
   {
     id: "deep_deps",
-    donors: "Platform engineering, foundations",
-    optimizes: "Foundational / fragile dependencies",
+    donors: "Donors who want to support core building blocks",
+    optimizes: "Important dependencies that many other projects rely on",
     eligibility:
-      "Automatic: higher criticality score + lower bus factor + below mega-star cap (tunable via env).",
+      "Projects that look important, but may rely on only a small number of maintainers.",
   },
 ];
 
@@ -45,17 +45,15 @@ export function PoolTypesGuide() {
         <h2 className="text-xl font-semibold">Funding pool types</h2>
         <p className="text-muted-foreground mt-3 leading-relaxed">
           OpenGet runs <strong className="text-foreground font-medium">four parallel pools</strong> per month. Each
-          pool has its own balance and weekly distribution run. When you donate, you pick a pool that matches
-          your funding intent&mdash;whether that&apos;s broad community support, security maintenance, foundational
-          infrastructure, or early-stage innovation.
+          pool has its own balance and weekly payout run. When you donate, you pick the kind of work you want
+          to support.
         </p>
         <p className="text-muted-foreground mt-3 leading-relaxed">
           <strong className="text-foreground font-medium">Repos do not all receive every pool.</strong> Each listed
-          repository gets an automatic <span className="font-mono text-xs">eligible_pool_types</span> set by the nightly
-          GitHub job (stars, forks, criticality, bus factor, SECURITY.md, recency). Weekly payouts for pool{" "}
-          <span className="font-mono text-xs">T</span> only flow to repos that include <span className="font-mono text-xs">T</span>{" "}
-          in that set. Contributor scoring uses a <strong className="text-foreground font-normal">6-factor model</strong>{" "}
-          that rewards merged PRs, code reviews, release management, and issue triage&mdash;not just lines of code.
+          repository is placed into pool types automatically by OpenGet. That means money from one pool only goes
+          to repos that match that pool. Contributor scoring uses a{" "}
+          <strong className="text-foreground font-normal">6-factor model</strong> that rewards coding, reviewing,
+          releases, and issue work.
         </p>
       </div>
 
@@ -92,19 +90,16 @@ export function PoolTypesGuide() {
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
             <span className="text-foreground">Repos</span>: Listed once on OpenGet; eligibility per pool is recomputed
-            when the nightly job runs. Missing data (pre-migration) falls back to participating in all pools until the
-            first successful run stores JSON eligibility.
+            during the regular scoring run.
           </li>
           <li>
             <span className="text-foreground">Contributors and maintainers</span>: Must register, connect payouts, and
-            meet the public <strong className="text-foreground font-normal">6-factor score</strong>. The model
-            weights merged PRs (40%), review activity (15%), PR volume (10%), release and triage work (10%),
-            breadth of contribution (10%), and total contributions (15%). Repo owners who actively review, merge,
-            and release are compensated for that stewardship alongside code authors.
+            meet the public <strong className="text-foreground font-normal">6-factor score</strong>. In simple terms,
+            OpenGet rewards real work: merged PRs, reviews, releases, issue work, and steady contribution over time.
           </li>
           <li>
             <span className="text-foreground">Governance</span>: Donors cannot direct money to specific PRs&mdash;only
-            to a pool. Distribution within that pool is algorithmic. See the project README (Governance section).
+            to a pool. OpenGet then shares the money using public rules.
           </li>
         </ul>
       </div>
@@ -119,7 +114,7 @@ export function PoolTypesGuide() {
           <li>
             <span className="text-foreground">Enterprises</span> → often{" "}
             <span className="font-mono text-xs text-primary">security_compliance</span> or{" "}
-            <span className="font-mono text-xs text-primary">deep_deps</span> for risk and supply-chain narratives.
+            <span className="font-mono text-xs text-primary">deep_deps</span>.
           </li>
           <li>
             <span className="text-foreground">Innovation / research</span> →{" "}
@@ -129,9 +124,7 @@ export function PoolTypesGuide() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/50 pt-4">
-        Eligibility thresholds (popularity, criticality, bus factor) are tunable via environment variables on
-        the nightly scoring function. All pool rules are algorithmic and applied automatically&mdash;no manual
-        curation required.
+        Pool matching is automatic. Donors do not need to review repos one by one.
       </p>
     </section>
   );

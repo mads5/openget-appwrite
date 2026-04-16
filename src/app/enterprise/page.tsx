@@ -22,10 +22,8 @@ export default function EnterprisePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">For enterprises</h1>
         <p className="text-muted-foreground mt-3 leading-relaxed">
-          Your upstream patches sit in review queues because maintainers are unpaid and stretched thin.
-          OpenGet keeps the projects you depend on <strong className="text-foreground font-medium">staffed,
-          reviewed, and releasing</strong>&mdash;through pooled, algorithmic funding instead of managing
-          dozens of individual maintainer contracts.
+          OpenGet helps fund the open-source projects you depend on. Instead of trying to sponsor
+          people one by one, you donate into a pool and OpenGet shares that money using clear rules.
         </p>
       </div>
 
@@ -33,34 +31,28 @@ export default function EnterprisePage() {
         <h2 className="text-xl font-semibold">Why fund through OpenGet</h2>
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
-            <span className="text-foreground">Faster patch velocity</span>: Funded maintainers review upstream
-            patches faster. A security fix waiting weeks in a review queue is weeks of exposure for your users.
-            OpenGet reduces that queue by keeping maintainers engaged and compensated.
+            <span className="text-foreground">Faster reviews</span>: When projects are funded, maintainers can spend
+            more time reviewing patches, fixing bugs, and helping releases move faster.
           </li>
           <li>
-            <span className="text-foreground">Dependency continuity</span>: If a critical dependency goes
-            unmaintained, you face migration costs, emergency forks, or unpatched vulnerabilities. OpenGet is
-            insurance against project abandonment&mdash;sustained funding keeps the bus factor healthy.
+            <span className="text-foreground">Healthier dependencies</span>: If an important library is ignored for
+            too long, everyone who depends on it is affected. OpenGet helps keep those projects active.
           </li>
           <li>
-            <span className="text-foreground">Ecosystem-level funding</span>: Fund all your Python security
-            dependencies through one pool instead of negotiating 15 individual contracts. Pick a pool type
-            that matches your risk profile and the algorithm handles distribution.
+            <span className="text-foreground">Simple funding</span>: You can support a whole area of open source in
+            one step instead of managing lots of separate sponsorships.
           </li>
           <li>
-            <span className="text-foreground">Operational receipts</span>: Pooled contributions produce traceable
-            distribution records (weekly runs, pool types, listed repos) suitable for internal reporting and
-            procurement workflows.
+            <span className="text-foreground">Clear records</span>: OpenGet keeps simple records of donations,
+            pools, and payouts so teams can track what happened.
           </li>
           <li>
-            <span className="text-foreground">Neutrality</span>: Donors do not pick individual PRs for payment.
-            A public 6-factor scoring model and repo weighting rules determine eligibility&mdash;no single
-            employer captures a maintainer&apos;s roadmap.
+            <span className="text-foreground">Fair sharing</span>: Donors do not pick one PR or one person to pay.
+            The platform uses public rules so the money is shared more fairly.
           </li>
           <li>
-            <span className="text-foreground">Tax documentation support</span>: OpenGet generates structured
-            funding records (donor, amount, pool, allocation period, recipient repos) that your tax team can
-            incorporate into R&D credit documentation. Consult your tax advisor for eligibility.
+            <span className="text-foreground">Useful reports</span>: OpenGet can show where donations went and which
+            repos were included in each pool.
           </li>
         </ul>
       </section>
@@ -69,10 +61,9 @@ export default function EnterprisePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Live snapshot (impact export)</CardTitle>
+          <CardTitle className="text-lg">Live snapshot</CardTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            High-level snapshot from the database (same data as the API). Detailed CSV/PDF exports can build on this
-            later.
+            A quick view of what OpenGet is tracking right now.
           </p>
         </CardHeader>
         <CardContent>
@@ -133,8 +124,7 @@ export default function EnterprisePage() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Tax treatment and regulatory applicability depend on your jurisdiction and entity structure. Treat this
-        page as product guidance, not legal or tax advice; involve counsel before contractual commitments.
+        This page explains how OpenGet works. It is not legal or tax advice.
       </p>
     </div>
   );

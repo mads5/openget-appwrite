@@ -1,0 +1,51 @@
+name: OpenGet weekly distribution
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Optional distribute-pool mode
+        required: false
+        default: weekly
+      force:
+        description: Force mode for guarded operations like finalize-month
+        required: false
+        default: 'false'
+
+concurrency:
+  group: openget-weekly-distribution
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Trigger distribution through openget-api
+        working-directory: scripts
+        env:
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          OPENGET_ACTION: distribute-pool
+          OPENGET_MODE: ${{ github.event.inputs.mode || 'weekly' }}
+          OPENGET_FORCE: ${{ github.event.inputs.force || 'false' }}
+        run: |
+          if [ -z "${APPWRITE_API_KEY}" ]; then
+            echo "APPWRITE_API_KEY not set, skipping scheduled run."
+            exit 0
+          fi
+          node run-openget-action.js

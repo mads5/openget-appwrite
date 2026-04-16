@@ -150,7 +150,7 @@ export default function RepoDetailPage() {
                   : String(Math.round(repo.bus_factor))
                 : "—",
           },
-          { label: "Contributors", value: String(repo.contributor_count) },
+          { label: "Contributors", value: String(contributors.length || repo.contributor_count) },
           {
             label: "Last fetched",
             value: repo.contributors_fetched_at
