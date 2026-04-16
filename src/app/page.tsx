@@ -16,7 +16,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col">
-      <section className="container flex flex-col items-center justify-center gap-6 py-24 text-center">
+      <section className="container flex flex-col items-center justify-center gap-6 py-16 text-center sm:py-24">
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm text-primary mb-2">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
@@ -24,7 +24,7 @@ export default function HomePage() {
           </span>
           Monthly Funding Round Active
         </div>
-        <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
           Reward the People Behind
           <br />
           <span className="text-primary">Open Source</span>
@@ -33,12 +33,12 @@ export default function HomePage() {
           List your repo. We find the contributors. Donors fund a monthly pool.
           Contributors get paid weekly based on their code quality. Simple.
         </p>
-        <div className="flex gap-4">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
           <Link href="/list-repo">
-            <Button size="lg">List Your Repo</Button>
+            <Button size="lg" className="w-full sm:w-auto">List Your Repo</Button>
           </Link>
           <Link href="/donate">
-            <Button size="lg" variant="outline">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto">
               Donate to the Pool
             </Button>
           </Link>
@@ -46,7 +46,7 @@ export default function HomePage() {
       </section>
 
       <section className="container py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+        <h2 className="text-2xl font-bold text-center mb-12 sm:text-3xl">How It Works</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <Card>
             <CardHeader>
@@ -91,7 +91,7 @@ export default function HomePage() {
       </section>
 
       <section className="container py-16 border-t border-border/50">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
             { label: "Repos Listed", value: String(stats.repos) },
             { label: "Contributors", value: String(stats.contributors) },
@@ -99,7 +99,7 @@ export default function HomePage() {
             { label: "Donors", value: String(stats.donors) },
           ].map((stat) => (
             <div key={stat.label}>
-              <div className="text-3xl font-bold text-primary">{stat.value}</div>
+              <div className="text-2xl font-bold text-primary sm:text-3xl">{stat.value}</div>
               <div className="text-sm text-muted-foreground mt-1">
                 {stat.label}
               </div>

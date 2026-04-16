@@ -26,10 +26,19 @@
 }
 
 @layer base {
+  html {
+    overflow-x: clip;
+  }
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  img,
+  video,
+  svg {
+    max-width: 100%;
+    height: auto;
   }
 }

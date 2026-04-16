@@ -91,7 +91,7 @@ export function RepoTable({ repos }: RepoTableProps) {
           id="repo-sort"
           value={sort}
           onChange={(e) => setSort(e.target.value as SortPreset)}
-          className="flex h-9 w-full sm:w-auto min-w-[220px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex min-h-[44px] w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-0 sm:h-9 sm:w-auto sm:min-w-[220px] sm:text-sm"
         >
           <option value="stars_desc">Stars (highest first)</option>
           <option value="stars_asc">Stars (lowest first)</option>
@@ -145,10 +145,10 @@ export function RepoTable({ repos }: RepoTableProps) {
             {sorted.map((repo, i) => (
               <tr key={repo.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-3 py-3 text-muted-foreground text-sm align-top">{i + 1}</td>
-                <td className="px-3 py-3 align-top">
+                <td className="px-3 py-3 align-top min-w-0">
                   <Link
                     href={`/repos/${repo.id}`}
-                    className="font-medium hover:text-primary transition-colors"
+                    className="font-medium hover:text-primary transition-colors break-all"
                   >
                     {repo.full_name}
                   </Link>

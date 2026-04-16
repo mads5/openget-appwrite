@@ -22,7 +22,7 @@ export default function ReposPage() {
     <div className="container py-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="max-w-3xl">
-          <h1 className="text-3xl font-bold">Listed Repos</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Listed Repos</h1>
           <p className="text-muted-foreground mt-1">
             Open-source projects on OpenGet. Contributors to these repos can earn from sponsored pools.
           </p>
@@ -34,7 +34,7 @@ export default function ReposPage() {
           </p>
         </div>
         <Link href="/list-repo">
-          <Button>List Your Repo</Button>
+          <Button size="lg">List Your Repo</Button>
         </Link>
       </div>
 

@@ -55,35 +55,35 @@ export function PoolCard({ pool, hideFinancialTotals = false }: PoolCardProps) {
         {hideFinancialTotals ? (
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
-              <div className="text-2xl font-bold">{pool.donor_count}</div>
+              <div className="text-xl font-bold sm:text-2xl">{pool.donor_count}</div>
               <div className="text-xs text-muted-foreground mt-1">Donors</div>
             </div>
             <div>
-              <div className="text-2xl font-bold">{daysLeft}</div>
+              <div className="text-xl font-bold sm:text-2xl">{daysLeft}</div>
               <div className="text-xs text-muted-foreground mt-1">Days Left</div>
             </div>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 gap-4 text-center sm:grid-cols-3">
               <div>
-                <div className="text-2xl font-bold text-primary">
+                <div className="text-xl font-bold text-primary sm:text-2xl">
                   {formatCents(pool.total_amount_cents)}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">Total Pool</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{pool.donor_count}</div>
+                <div className="text-xl font-bold sm:text-2xl">{pool.donor_count}</div>
                 <div className="text-xs text-muted-foreground mt-1">Donors</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{daysLeft}</div>
+                <div className="text-xl font-bold sm:text-2xl">{daysLeft}</div>
                 <div className="text-xs text-muted-foreground mt-1">Days Left</div>
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Estimated distributable</span>
-              <span className="font-medium text-foreground">{formatCents(distributable)}</span>
+              <span className="min-w-0">Estimated distributable</span>
+              <span className="shrink-0 font-medium text-foreground">{formatCents(distributable)}</span>
             </div>
           </>
         )}

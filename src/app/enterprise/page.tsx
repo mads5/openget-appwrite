@@ -20,7 +20,7 @@ export default function EnterprisePage() {
   return (
     <div className="container py-10 max-w-3xl mx-auto space-y-10">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">For enterprises</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">For enterprises</h1>
         <p className="text-muted-foreground mt-3 leading-relaxed">
           OpenGet helps fund the open-source projects you depend on. Instead of trying to sponsor
           people one by one, you donate into a pool and OpenGet shares that money using clear rules.
@@ -87,8 +87,8 @@ export default function EnterprisePage() {
                   )}
                   {impact.collecting.map((p) => (
                     <li key={p.id} className="flex justify-between gap-4 border-b border-border/40 pb-1">
-                      <span className="font-mono text-xs">{p.pool_type || "—"}</span>
-                      <span className="tabular-nums">${(p.total_amount_cents / 100).toFixed(2)}</span>
+                      <span className="min-w-0 truncate font-mono text-xs">{p.pool_type || "—"}</span>
+                      <span className="shrink-0 tabular-nums">${(p.total_amount_cents / 100).toFixed(2)}</span>
                     </li>
                   ))}
                 </ul>
@@ -101,7 +101,7 @@ export default function EnterprisePage() {
                   )}
                   {impact.active.map((p) => (
                     <li key={p.id} className="flex justify-between gap-4 border-b border-border/40 pb-1">
-                      <span className="font-mono text-xs">{p.pool_type || "—"}</span>
+                      <span className="min-w-0 truncate font-mono text-xs">{p.pool_type || "—"}</span>
                       <span className="tabular-nums">
                         remaining ${(p.remaining_cents / 100).toFixed(2)}
                       </span>

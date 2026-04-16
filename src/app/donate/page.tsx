@@ -184,7 +184,7 @@ export default function DonatePage() {
   return (
     <div className="container py-8 max-w-2xl mx-auto">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Donate to the Pool</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Donate to the Pool</h1>
         <p className="text-muted-foreground mt-2">
           Your donation goes to a monthly shared pool. Every week, funds are
           distributed to contributors based on their code quality scores.
@@ -201,7 +201,7 @@ export default function DonatePage() {
               key={pt}
               type="button"
               onClick={() => setSelectedPoolType(pt)}
-              className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+              className={`min-h-[44px] rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
                 selectedPoolType === pt
                   ? "border-primary bg-primary/10"
                   : "border-border hover:border-primary/50"
@@ -275,15 +275,15 @@ export default function DonatePage() {
           <CardContent className="pt-6 text-center">
             {qrPaid ? (
               <div>
-                <div className="text-5xl mb-4 text-green-500">&#10003;</div>
+                <div className="text-4xl mb-4 text-green-500 sm:text-5xl">&#10003;</div>
                 <h2 className="text-xl font-bold mb-2">Payment Received!</h2>
                 <p className="text-muted-foreground mb-4">
                   Your donation of {fmt(amount)} has been received.
                   Thank you for supporting open source!
                 </p>
-                <div className="flex gap-3 justify-center">
-                  <Button variant="outline" onClick={closeQr}>Donate Again</Button>
-                  <Button asChild><a href="/contributors">View Contributors</a></Button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={closeQr}>Donate Again</Button>
+                  <Button className="w-full sm:w-auto" asChild><a href="/contributors">View Contributors</a></Button>
                 </div>
               </div>
             ) : (
@@ -295,13 +295,13 @@ export default function DonatePage() {
                 <img
                   src={qrImageUrl}
                   alt="UPI QR Code"
-                  className="mx-auto w-56 h-56 rounded-lg border border-border bg-white p-2"
+                  className="mx-auto w-full max-w-56 aspect-square rounded-lg border border-border bg-white p-2"
                 />
                 <div className="mt-4 flex items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                   <span className="text-sm text-muted-foreground">Waiting for payment...</span>
                 </div>
-                <Button variant="ghost" size="sm" className="mt-3" onClick={closeQr}>
+                <Button variant="ghost" className="mt-3" onClick={closeQr}>
                   Cancel
                 </Button>
               </div>
@@ -320,7 +320,7 @@ export default function DonatePage() {
             <select
               value={currency.code}
               onChange={(e) => handleCurrencyChange(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
             >
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>{c.label}</option>
@@ -341,7 +341,6 @@ export default function DonatePage() {
               <Button
                 key={a}
                 variant={amount === a ? "default" : "outline"}
-                size="sm"
                 onClick={() => setAmount(a)}
               >
                 {fmt(a)}
@@ -361,7 +360,7 @@ export default function DonatePage() {
                 const v = Number(e.target.value);
                 setAmount(Math.max(currency.code === "jpy" ? 50 : 100, Math.round(currency.code === "jpy" ? v : v * 100)));
               }}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
             />
           </div>
 
@@ -374,7 +373,7 @@ export default function DonatePage() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Thanks for building great open source!"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
             />
           </div>
 
