@@ -36,7 +36,13 @@ async function callFunction(body) {
   const responseText = execution.responseBody || '{}';
   console.log(`HTTP status: ${status}`);
   console.log(responseText);
-  return status;
+  let data = null;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    data = null;
+  }
+  return { status, data };
 }
 
 // fetch-contributors: process one repo per function execution to avoid Appwrite
@@ -45,6 +51,7 @@ async function callFunction(body) {
 if (action === 'fetch-contributors') {
   console.log(`Function: ${functionId}`);
   console.log('Action: fetch-contributors (per-repo mode)');
+  const batchSize = Math.max(1, Math.min(10, Number(process.env.OPENGET_BATCH_SIZE || 4)));
 
   let repos;
   try {
@@ -62,12 +69,33 @@ if (action === 'fetch-contributors') {
   let failures = 0;
   for (const repo of repos) {
     console.log(`--- ${repo.full_name} (${repo.$id}) ---`);
-    const status = await callFunction({ action: 'fetch-contributors', repoId: repo.$id });
-    if (status >= 400) {
-      console.error(`  [fail] ${repo.full_name}`);
-      failures++;
-    } else {
-      console.log(`  [ok] ${repo.full_name}`);
+    let offset = 0;
+    let done = false;
+
+    while (!done) {
+      console.log(`  chunk offset=${offset} batchSize=${batchSize}`);
+      const { status, data } = await callFunction({
+        action: 'fetch-contributors',
+        repoId: repo.$id,
+        offset,
+        batchSize,
+      });
+      if (status >= 400) {
+        console.error(`  [fail] ${repo.full_name}`);
+        failures++;
+        break;
+      }
+
+      done = Boolean(data?.done);
+      if (done) {
+        console.log(`  [ok] ${repo.full_name}`);
+      } else if (typeof data?.next_offset === 'number' && data.next_offset > offset) {
+        offset = data.next_offset;
+      } else {
+        console.error(`  [fail] ${repo.full_name} (invalid chunk progress)`);
+        failures++;
+        break;
+      }
     }
     console.log('');
   }
@@ -88,7 +116,7 @@ if (force) body.force = true;
 console.log(`Function: ${functionId}`);
 console.log(`Action: ${action}`);
 
-const status = await callFunction(body);
+const { status } = await callFunction(body);
 if (status >= 400) {
   process.exit(1);
 }

@@ -52,6 +52,32 @@ async function executeFunction<T>(action: string, body?: Record<string, unknown>
   }
 }
 
+function isTransientFunctionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /Function error: (502|503|504)\b/.test(err.message);
+}
+
+async function executeFunctionWithRetry<T>(
+  action: string,
+  body: Record<string, unknown> | undefined,
+  options?: { retries?: number; initialDelayMs?: number },
+): Promise<T> {
+  const retries = Math.max(0, options?.retries ?? 2);
+  const initialDelayMs = Math.max(100, options?.initialDelayMs ?? 600);
+
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await executeFunction<T>(action, body);
+    } catch (err) {
+      if (!isTransientFunctionError(err) || attempt >= retries) throw err;
+      const delayMs = initialDelayMs * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      attempt += 1;
+    }
+  }
+}
+
 async function executeFunctionById<T>(functionId: string, body?: Record<string, unknown>): Promise<T> {
   const execution = await functions.createExecution(
     functionId,
@@ -199,12 +225,31 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
 
 export async function listRepos(page = 1, perPage = 500): Promise<{ repos: Repo[]; total: number }> {
   try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [
-      Query.orderDesc("stars"),
-      Query.limit(Math.min(perPage, 500)),
-      Query.offset((page - 1) * perPage),
+    const [result, repoContribs] = await Promise.all([
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [
+        Query.orderDesc("stars"),
+        Query.limit(Math.min(perPage, 500)),
+        Query.offset((page - 1) * perPage),
+      ]),
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPO_CONTRIBUTIONS, [
+        Query.limit(5000),
+        Query.select(["repo_id"]),
+      ]),
     ]);
-    return { repos: result.documents.map(mapRepo), total: result.total };
+    const liveCountByRepo = new Map<string, number>();
+    for (const rc of repoContribs.documents as Array<Models.Document>) {
+      const repoId = String((rc as unknown as Record<string, unknown>).repo_id ?? "");
+      if (!repoId) continue;
+      liveCountByRepo.set(repoId, (liveCountByRepo.get(repoId) ?? 0) + 1);
+    }
+    return {
+      repos: result.documents.map((doc) => {
+        const mapped = mapRepo(doc);
+        const liveCount = liveCountByRepo.get(mapped.id);
+        return liveCount != null ? { ...mapped, contributor_count: liveCount } : mapped;
+      }),
+      total: result.total,
+    };
   } catch {
     return { repos: [], total: 0 };
   }
@@ -273,7 +318,7 @@ export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  const raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+  const raw = await executeFunctionWithRetry<Record<string, unknown>>("list-repo", { github_url: githubUrl });
   const $id = String(raw.$id ?? raw.id ?? "");
   return mapRepo({ ...raw, $id } as unknown as Models.Document);
 }

@@ -266,6 +266,91 @@ async function fetchMonthlyPrStats(owner, repo, username, monthKey, ghHeaders) {
   return { raised, merged };
 }
 
+async function reconcileRepoContributorCount(db, repoId, options = {}) {
+  const repoContribs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+    Query.equal('repo_id', repoId),
+    Query.limit(1),
+  ]);
+  const patch = { contributor_count: repoContribs.total };
+  if (options.touchFetchedAt) {
+    patch.contributors_fetched_at = new Date().toISOString();
+  }
+  await db.updateDocument(DATABASE_ID, COL.REPOS, repoId, patch);
+  return repoContribs.total;
+}
+
+async function recomputeContributorAggregate(db, contributorId, monthKey) {
+  let contributorUsername = null;
+  try {
+    const contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, contributorId);
+    contributorUsername = contributor.github_username ? String(contributor.github_username) : null;
+  } catch {
+    contributorUsername = null;
+  }
+
+  const allRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+    Query.equal('contributor_id', contributorId),
+    Query.limit(5000),
+  ]);
+
+  const totalContributions = allRc.documents.reduce(
+    (s, rc) =>
+      s + (rc.commits || 0) + (rc.prs_merged || 0) + (rc.reviews || 0) + (rc.issues_closed || 0),
+    0,
+  );
+  const totalReviews = allRc.documents.reduce(
+    (s, rc) => s + (rc.reviews || 0) + (rc.review_comments || 0),
+    0,
+  );
+  const totalReleases = allRc.documents.reduce((s, rc) => s + (rc.releases_count || 0), 0);
+
+  const allMs = await db.listDocuments(DATABASE_ID, COL.MONTHLY_STATS, [
+    Query.equal('contributor_id', contributorId),
+    Query.equal('month', monthKey),
+    Query.limit(5000),
+  ]);
+
+  let prsRaisedMonth = 0;
+  let prsMergedMonth = 0;
+  for (const ms of allMs.documents) {
+    prsRaisedMonth += ms.prs_raised || 0;
+    prsMergedMonth += ms.prs_merged || 0;
+  }
+
+  let qualifiedRepoCount = 0;
+  for (const rc of allRc.documents) {
+    try {
+      const repo = await db.getDocument(DATABASE_ID, COL.REPOS, rc.repo_id);
+      const repoScore = repo.repo_score ?? ((repo.stars || 0) + (repo.forks || 0));
+      const isOwner =
+        repo.owner &&
+        contributorUsername &&
+        repo.owner.toLowerCase() === contributorUsername.toLowerCase();
+      if (isOwner) continue;
+      if (repoScore < MIN_REPO_SCORE) continue;
+      if ((rc.prs_merged || 0) < 1) continue;
+      qualifiedRepoCount++;
+    } catch {
+      continue;
+    }
+  }
+
+  const score = computeContributorScore(
+    totalContributions,
+    prsRaisedMonth,
+    prsMergedMonth,
+    qualifiedRepoCount,
+    totalReviews,
+    totalReleases,
+  );
+
+  await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contributorId, {
+    total_score: score,
+    total_contributions: totalContributions,
+    repo_count: allRc.total,
+  });
+}
+
 async function fetchReleasesForRepoWithHeaders(owner, repo, ghHeaders) {
   await sleep(200);
   const url = `https://api.github.com/repos/${owner}/${repo}/releases?per_page=100`;
@@ -563,10 +648,7 @@ async function fetchContributorsSnapshot(fullName, ghHeaders, log) {
 async function syncRepoContributorsFromGithub(db, repoDoc, ghHeaders, log) {
   const snapshot = await fetchContributorsSnapshot(repoDoc.full_name, ghHeaders, log);
   if (!Array.isArray(snapshot) || snapshot.length === 0) {
-    await db.updateDocument(DATABASE_ID, COL.REPOS, repoDoc.$id, {
-      contributors_fetched_at: new Date().toISOString(),
-    });
-    return 0;
+    return reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
   }
 
   let synced = 0;
@@ -625,33 +707,12 @@ async function syncRepoContributorsFromGithub(db, repoDoc, ghHeaders, log) {
       await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), rcData);
     }
 
-    const allContribs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-      Query.equal('contributor_id', contribDoc.$id),
-      Query.limit(500),
-    ]);
-    const totalScore = allContribs.documents.reduce((s, d) => s + (d.score || 0), 0);
-    const totalContributions = allContribs.documents.reduce(
-      (s, d) =>
-        s +
-        (d.commits || 0) +
-        (d.prs_merged || 0) +
-        (d.reviews || 0) +
-        (d.issues_closed || 0),
-      0,
-    );
-    await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribDoc.$id, {
-      total_score: totalScore,
-      repo_count: allContribs.total,
-      total_contributions: totalContributions,
-    });
+    await recomputeContributorAggregate(db, contribDoc.$id, currentMonthKey());
 
     synced++;
   }
 
-  await db.updateDocument(DATABASE_ID, COL.REPOS, repoDoc.$id, {
-    contributor_count: synced,
-    contributors_fetched_at: new Date().toISOString(),
-  });
+  await reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
   return synced;
 }
 
@@ -797,8 +858,7 @@ export default async ({ req, res, log, error }) => {
             await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contrib.$id, {
               repo_count: rcCount.total,
             });
-            await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, { contributor_count: 1 });
-            contributorCount = 1;
+            contributorCount = await reconcileRepoContributorCount(db, doc.$id);
           }
         } catch (e) {
           log(`list-repo: linking lister as contributor: ${e.message}`);
@@ -1021,6 +1081,7 @@ export default async ({ req, res, log, error }) => {
                 last_contribution_at: new Date().toISOString(),
               });
             }
+            await reconcileRepoContributorCount(db, repo.$id);
           }
           const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
             Query.equal('contributor_id', contribDoc.$id), Query.limit(1),
@@ -1417,6 +1478,8 @@ export default async ({ req, res, log, error }) => {
         };
         const monthKey = currentMonthKey();
         const summary = { repos_processed: 0, contributors_upserted: 0, errors: [] };
+        const batchSize = Math.max(1, Math.min(10, Number(body.batchSize || 4)));
+        const offset = Math.max(0, Number(body.offset || 0));
 
         // When repoId is supplied, process only that one repo (called per-repo from the
         // nightly script to avoid Appwrite function timeouts on large repos).
@@ -1460,13 +1523,13 @@ export default async ({ req, res, log, error }) => {
             }
 
             const stats = await fetchStatsContributorsWithHeaders(owner, repoName, ghHeaders);
-            const logins = new Set();
+            const logins = [];
             const byLogin = new Map();
 
             for (const row of stats) {
               const login = row.author?.login;
-              if (!login) continue;
-              logins.add(login);
+              if (!login || byLogin.has(login)) continue;
+              logins.push(login);
               let commits = 0;
               let lines_added = 0;
               let lines_removed = 0;
@@ -1479,7 +1542,7 @@ export default async ({ req, res, log, error }) => {
             }
 
             const { bus_factor: busFactor } = estimateBusFactor(stats);
-            const crit = ghSnapshot ? computeCriticalityV1(ghSnapshot, logins.size) : 0.5;
+            const crit = ghSnapshot ? computeCriticalityV1(ghSnapshot, logins.length) : 0.5;
 
             let pushAgeDays = 120;
             try {
@@ -1520,7 +1583,10 @@ export default async ({ req, res, log, error }) => {
               if (author) releasesByAuthor.set(author, (releasesByAuthor.get(author) || 0) + 1);
             }
 
-            for (const login of logins) {
+            const chunkLogins = body.repoId ? logins.slice(offset, offset + batchSize) : logins;
+            const touchedContributorIds = new Set();
+
+            for (const login of chunkLogins) {
               const base = byLogin.get(login) || { commits: 0, lines_added: 0, lines_removed: 0 };
 
               await sleep(2000);
@@ -1586,6 +1652,7 @@ export default async ({ req, res, log, error }) => {
               } else {
                 contributorId = existingC.documents[0].$id;
               }
+              touchedContributorIds.add(contributorId);
 
               const existingRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
                 Query.equal('repo_id', repoDoc.$id),
@@ -1643,84 +1710,38 @@ export default async ({ req, res, log, error }) => {
               }
             }
 
-            await db.updateDocument(DATABASE_ID, COL.REPOS, repoDoc.$id, {
-              contributor_count: logins.size,
-              contributors_fetched_at: new Date().toISOString(),
-            });
+            for (const contributorId of touchedContributorIds) {
+              await recomputeContributorAggregate(db, contributorId, monthKey);
+            }
+            const reconciledCount = await reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
 
             summary.repos_processed++;
-            log(`Processed contributors for ${full}`);
+            log(`Processed contributors for ${full} (${chunkLogins.length}/${logins.length} in this chunk)`);
+
+            if (body.repoId) {
+              const nextOffset = offset + chunkLogins.length;
+              return res.json({
+                ...summary,
+                repo_id: repoDoc.$id,
+                repo_full_name: full,
+                processed_in_chunk: chunkLogins.length,
+                total_contributors: logins.length,
+                contributor_count: reconciledCount,
+                next_offset: nextOffset < logins.length ? nextOffset : null,
+                done: nextOffset >= logins.length,
+              });
+            }
           } catch (e) {
+            if (repoDoc?.$id) {
+              try {
+                await reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
+              } catch {
+                /* ignore reconciliation failure in error path */
+              }
+            }
             error(`${full}: ${e.message}`);
             summary.errors.push({ repo: full, error: e.message });
           }
-        }
-
-        log('Recomputing 6-factor contributor scores…');
-        const allContributors = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [Query.limit(5000)]);
-
-        for (const c of allContributors.documents) {
-          const allRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-            Query.equal('contributor_id', c.$id),
-            Query.limit(5000),
-          ]);
-
-          const totalContributions = allRc.documents.reduce(
-            (s, rc) =>
-              s + (rc.commits || 0) + (rc.prs_merged || 0) + (rc.reviews || 0) + (rc.issues_closed || 0),
-            0,
-          );
-          const totalReviews = allRc.documents.reduce(
-            (s, rc) => s + (rc.reviews || 0) + (rc.review_comments || 0),
-            0,
-          );
-          const totalReleases = allRc.documents.reduce((s, rc) => s + (rc.releases_count || 0), 0);
-
-          const allMs = await db.listDocuments(DATABASE_ID, COL.MONTHLY_STATS, [
-            Query.equal('contributor_id', c.$id),
-            Query.equal('month', monthKey),
-            Query.limit(5000),
-          ]);
-
-          let prsRaisedMonth = 0;
-          let prsMergedMonth = 0;
-          for (const ms of allMs.documents) {
-            prsRaisedMonth += ms.prs_raised || 0;
-            prsMergedMonth += ms.prs_merged || 0;
-          }
-
-          let qualifiedRepoCount = 0;
-          for (const rc of allRc.documents) {
-            try {
-              const repo = await db.getDocument(DATABASE_ID, COL.REPOS, rc.repo_id);
-              const repoScore = repo.repo_score ?? ((repo.stars || 0) + (repo.forks || 0));
-              const isOwner =
-                repo.owner &&
-                c.github_username &&
-                repo.owner.toLowerCase() === c.github_username.toLowerCase();
-              if (isOwner) continue;
-              if (repoScore < MIN_REPO_SCORE) continue;
-              if ((rc.prs_merged || 0) < 1) continue;
-              qualifiedRepoCount++;
-            } catch {
-              continue;
-            }
-          }
-
-          const score = computeContributorScore(
-            totalContributions,
-            prsRaisedMonth,
-            prsMergedMonth,
-            qualifiedRepoCount,
-            totalReviews,
-            totalReleases,
-          );
-
-          await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, c.$id, {
-            total_score: score,
-            total_contributions: totalContributions,
-            repo_count: allRc.total,
-          });
         }
 
         return res.json(summary);
