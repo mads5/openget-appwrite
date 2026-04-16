@@ -66,7 +66,7 @@ export default function ContributorDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-4 mt-1 text-muted-foreground">
-            <span>Score: <strong className="text-foreground">{contributor.total_score.toFixed(0)}</strong></span>
+            <span>Score: <strong className="text-foreground">{contributor.total_score.toFixed(3)}</strong></span>
             <span>{contributor.repo_count} repos</span>
             <a
               href={`https://github.com/${contributor.github_username}`}
@@ -92,7 +92,7 @@ export default function ContributorDetailPage() {
                 >
                   {rc.repo_full_name}
                 </Link>
-                <Badge variant="default">{rc.score.toFixed(0)} pts</Badge>
+                <Badge variant="default">{rc.score.toFixed(3)} pts</Badge>
               </div>
             </CardHeader>
             <CardContent>

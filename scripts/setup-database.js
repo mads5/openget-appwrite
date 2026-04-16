@@ -221,6 +221,7 @@ async function setupRepos() {
   await addStringAttribute(id, 'eligible_pool_types', 2000, false);
   await addBooleanAttribute(id, 'has_security_md', false, false);
   await addStringAttribute(id, 'ai_summary', 4000, false);
+  await addStringAttribute(id, 'license', 100, false);
 }
 
 async function setupContributors() {
@@ -247,6 +248,8 @@ async function setupRepoContributions() {
   await addIntegerAttribute(id, 'lines_removed', false, 0);
   await addIntegerAttribute(id, 'reviews', false, 0);
   await addIntegerAttribute(id, 'issues_closed', false, 0);
+  await addIntegerAttribute(id, 'review_comments', false, 0);
+  await addIntegerAttribute(id, 'releases_count', false, 0);
   await addFloatAttribute(id, 'score', false, 0);
   await addStringAttribute(id, 'last_contribution_at', 50, false);
 }

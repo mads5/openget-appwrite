@@ -52,6 +52,48 @@ async function executeFunction<T>(action: string, body?: Record<string, unknown>
   }
 }
 
+function isTransientFunctionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /Function error: (502|503|504)\b/.test(err.message);
+}
+
+async function executeFunctionWithRetry<T>(
+  action: string,
+  body: Record<string, unknown> | undefined,
+  options?: { retries?: number; initialDelayMs?: number },
+): Promise<T> {
+  const retries = Math.max(0, options?.retries ?? 4);
+  const initialDelayMs = Math.max(100, options?.initialDelayMs ?? 800);
+
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await executeFunction<T>(action, body);
+    } catch (err) {
+      if (!isTransientFunctionError(err) || attempt >= retries) throw err;
+      const delayMs = initialDelayMs * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      attempt += 1;
+    }
+  }
+}
+
+async function executeFunctionById<T>(functionId: string, body?: Record<string, unknown>): Promise<T> {
+  const execution = await functions.createExecution(
+    functionId,
+    JSON.stringify(body ?? {}),
+    false,
+    undefined,
+    ExecutionMethod.POST,
+    { "content-type": "application/json" },
+  );
+  if (execution.responseStatusCode >= 400) {
+    const err = JSON.parse(execution.responseBody || "{}") as { error?: string };
+    throw new Error(err.error || `Function error: ${execution.responseStatusCode}`);
+  }
+  return JSON.parse(execution.responseBody) as T;
+}
+
 function docAttrs(doc: Models.Document): Record<string, unknown> {
   return doc as unknown as Record<string, unknown>;
 }
@@ -96,6 +138,7 @@ export function mapRepo(doc: Models.Document): Repo {
       d.ai_summary != null && String(d.ai_summary).trim() !== ""
         ? String(d.ai_summary)
         : null,
+    license: (d.license as string | null) ?? null,
     listed_by: String(d.listed_by ?? ""),
     contributor_count: Number(d.contributor_count ?? 0),
     contributors_fetched_at: (d.contributors_fetched_at as string | null) ?? null,
@@ -171,6 +214,8 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
     lines_removed: Number(d.lines_removed ?? 0),
     reviews: Number(d.reviews ?? 0),
     issues_closed: Number(d.issues_closed ?? 0),
+    review_comments: Number(d.review_comments ?? 0),
+    releases_count: Number(d.releases_count ?? 0),
     score: Number(d.score ?? 0),
     last_contribution_at: (d.last_contribution_at as string | null) ?? null,
   };
@@ -180,12 +225,33 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
 
 export async function listRepos(page = 1, perPage = 500): Promise<{ repos: Repo[]; total: number }> {
   try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [
-      Query.orderDesc("stars"),
-      Query.limit(Math.min(perPage, 500)),
-      Query.offset((page - 1) * perPage),
+    const [result, repoContribs] = await Promise.all([
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [
+        Query.orderDesc("stars"),
+        Query.limit(Math.min(perPage, 500)),
+        Query.offset((page - 1) * perPage),
+      ]),
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPO_CONTRIBUTIONS, [
+        Query.limit(5000),
+        Query.select(["repo_id"]),
+      ]),
     ]);
-    return { repos: result.documents.map(mapRepo), total: result.total };
+    const liveCountByRepo = new Map<string, number>();
+    for (const rc of repoContribs.documents as Array<Models.Document>) {
+      const repoId = String((rc as unknown as Record<string, unknown>).repo_id ?? "");
+      if (!repoId) continue;
+      liveCountByRepo.set(repoId, (liveCountByRepo.get(repoId) ?? 0) + 1);
+    }
+    return {
+      repos: result.documents.map((doc) => {
+        const mapped = mapRepo(doc);
+        const liveCount = liveCountByRepo.get(mapped.id);
+        return liveCount != null
+          ? { ...mapped, contributor_count: Math.max(mapped.contributor_count, liveCount) }
+          : mapped;
+      }),
+      total: result.total,
+    };
   } catch {
     return { repos: [], total: 0 };
   }
@@ -206,16 +272,64 @@ export async function getRepoContributors(repoId: string) {
 
 export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
   const token = await getGithubAccessTokenFromSession();
-  return executeFunction<GitHubRepoInfo[]>(
-    "get-my-repos",
-    token ? { github_access_token: token } : undefined,
-  );
+  try {
+    return await executeFunction<GitHubRepoInfo[]>(
+      "get-my-repos",
+      token ? { github_access_token: token } : undefined,
+    );
+  } catch (err) {
+    // Fallback for transient openget-api failures (e.g. 503) so /list-repo stays usable.
+    if (!token) throw err;
+    let currentUserId: string | null = null;
+    try {
+      const me = await account.get();
+      currentUserId = me.$id;
+    } catch {
+      currentUserId = null;
+    }
+    const ghRes = await fetch(
+      "https://api.github.com/user/repos?sort=stars&per_page=100&affiliation=owner,collaborator,organization_member",
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "User-Agent": "OpenGet-Web",
+        },
+      },
+    );
+    if (!ghRes.ok) throw err;
+    const repos = (await ghRes.json()) as Array<Record<string, unknown>>;
+    const listedDocs = await databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(500)]);
+    const listedByName = new Map(listedDocs.documents.map((d) => [String((d as Record<string, unknown>).full_name ?? ""), d]));
+    return repos.map((r) => {
+      const fullName = String(r.full_name ?? "");
+      const listed = listedByName.get(fullName);
+      return {
+        full_name: fullName,
+        html_url: String(r.html_url ?? ""),
+        description: (r.description as string | null) ?? null,
+        language: (r.language as string | null) ?? null,
+        stargazers_count: Number(r.stargazers_count ?? 0),
+        forks_count: Number(r.forks_count ?? 0),
+        already_listed: Boolean(listed),
+        listed_by_me: currentUserId != null && listed != null && String((listed as Record<string, unknown>).listed_by ?? "") === currentUserId,
+        repo_id: listed?.$id ?? null,
+      };
+    });
+  }
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  const raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
-  const $id = String(raw.$id ?? raw.id ?? "");
-  return mapRepo({ ...raw, $id } as unknown as Models.Document);
+  try {
+    const raw = await executeFunctionWithRetry<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+    const $id = String(raw.$id ?? raw.id ?? "");
+    return mapRepo({ ...raw, $id } as unknown as Models.Document);
+  } catch (err) {
+    if (isTransientFunctionError(err)) {
+      throw new Error("OpenGet is temporarily unavailable while listing this repo. Please try again in a few seconds.");
+    }
+    throw err;
+  }
 }
 
 export async function delistRepo(repoId: string): Promise<void> {
@@ -246,6 +360,20 @@ export async function getContributor(id: string): Promise<ContributorDetail> {
   ]);
   const repos = rcResult.documents.map(mapRepoContributionDoc);
   return { ...base, repos };
+}
+
+export async function getMyContributor(): Promise<Contributor | null> {
+  try {
+    const me = await account.get();
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [
+      Query.equal("user_id", me.$id),
+      Query.limit(1),
+    ]);
+    if (result.total > 0) return mapContributor(result.documents[0]);
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function registerContributor(): Promise<Contributor> {

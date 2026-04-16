@@ -8,9 +8,10 @@ import { POOL_TYPE_LABELS, type PoolTypeId } from "@/lib/pool-types";
 
 interface PoolCardProps {
   pool: Pool;
+  hideFinancialTotals?: boolean;
 }
 
-export function PoolCard({ pool }: PoolCardProps) {
+export function PoolCard({ pool, hideFinancialTotals = false }: PoolCardProps) {
   const daysLeft = Math.max(
     0,
     Math.ceil(
@@ -28,7 +29,8 @@ export function PoolCard({ pool }: PoolCardProps) {
     year: "numeric",
   });
 
-  const distributable = pool.distributable_amount_cents ?? Math.round(pool.total_amount_cents * 0.99);
+  const distributable =
+    pool.distributable_amount_cents ?? Math.max(0, pool.total_amount_cents - pool.platform_fee_cents);
 
   const typeId = pool.pool_type as PoolTypeId | undefined;
   const typeLabel =
@@ -50,26 +52,41 @@ export function PoolCard({ pool }: PoolCardProps) {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-primary">
-              {formatCents(pool.total_amount_cents)}
+        {hideFinancialTotals ? (
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold">{pool.donor_count}</div>
+              <div className="text-xs text-muted-foreground mt-1">Donors</div>
             </div>
-            <div className="text-xs text-muted-foreground mt-1">Total Pool</div>
+            <div>
+              <div className="text-2xl font-bold">{daysLeft}</div>
+              <div className="text-xs text-muted-foreground mt-1">Days Left</div>
+            </div>
           </div>
-          <div>
-            <div className="text-2xl font-bold">{pool.donor_count}</div>
-            <div className="text-xs text-muted-foreground mt-1">Donors</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{daysLeft}</div>
-            <div className="text-xs text-muted-foreground mt-1">Days Left</div>
-          </div>
-        </div>
-        <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Distributed to contributors (99%)</span>
-          <span className="font-medium text-foreground">{formatCents(distributable)}</span>
-        </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-primary">
+                  {formatCents(pool.total_amount_cents)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Total Pool</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{pool.donor_count}</div>
+                <div className="text-xs text-muted-foreground mt-1">Donors</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{daysLeft}</div>
+                <div className="text-xs text-muted-foreground mt-1">Days Left</div>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Estimated distributable</span>
+              <span className="font-medium text-foreground">{formatCents(distributable)}</span>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

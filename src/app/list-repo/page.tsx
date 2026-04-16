@@ -48,7 +48,12 @@ export default function ListRepoPage() {
       );
       setMessage("Repo listed! We're discovering contributors now.");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to list repo");
+      const fallback = "Failed to list repo. Please try again.";
+      if (err instanceof Error && /temporarily unavailable/i.test(err.message)) {
+        setMessage("OpenGet is temporarily unavailable while listing this repo. Please try again in a few seconds.");
+      } else {
+        setMessage(err instanceof Error ? err.message : fallback);
+      }
     } finally {
       setListing(null);
     }

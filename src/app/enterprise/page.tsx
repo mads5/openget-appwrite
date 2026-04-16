@@ -22,10 +22,8 @@ export default function EnterprisePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">For enterprises</h1>
         <p className="text-muted-foreground mt-3 leading-relaxed">
-          OpenGet is not a generic tip jar. It is a <strong className="text-foreground font-medium">neutral</strong>,{" "}
-          rules-based way to fund maintainers across your actual dependency surface—with invoices, pooled
-          governance, and algorithmic payouts instead of one-off contracts that can create vendor capture and IP
-          ambiguity.
+          OpenGet helps fund the open-source projects you depend on. Instead of trying to sponsor
+          people one by one, you donate into a pool and OpenGet shares that money using clear rules.
         </p>
       </div>
 
@@ -33,22 +31,28 @@ export default function EnterprisePage() {
         <h2 className="text-xl font-semibold">Why fund through OpenGet</h2>
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
-            <span className="text-foreground">Supply-chain risk</span>: Unpaid critical dependencies are continuity
-            and security risk—not only a goodwill issue.
+            <span className="text-foreground">Faster reviews</span>: When projects are funded, maintainers can spend
+            more time reviewing patches, fixing bugs, and helping releases move faster.
           </li>
           <li>
-            <span className="text-foreground">Operational receipts</span>: Pooled contributions produce traceable
-            distribution records (weekly runs, pool types, listed repos) suitable for internal reporting.
+            <span className="text-foreground">Healthier dependencies</span>: If an important library is ignored for
+            too long, everyone who depends on it is affected. OpenGet helps keep those projects active.
           </li>
           <li>
-            <span className="text-foreground">Neutrality</span>: Donors do not pick individual PRs for payment;
-            eligibility follows public scoring and repo weighting rules—reducing capture compared to hiring
-            maintainers onto a single roadmap.
+            <span className="text-foreground">Simple funding</span>: You can support a whole area of open source in
+            one step instead of managing lots of separate sponsorships.
           </li>
           <li>
-            <span className="text-foreground">CSR / ESG alignment</span>: Depending on your jurisdiction and entity
-            structure, sustainability and digital-infrastructure programs may map to CSR or ESG narratives—verify with
-            your finance and legal teams.
+            <span className="text-foreground">Clear records</span>: OpenGet keeps simple records of donations,
+            pools, and payouts so teams can track what happened.
+          </li>
+          <li>
+            <span className="text-foreground">Fair sharing</span>: Donors do not pick one PR or one person to pay.
+            The platform uses public rules so the money is shared more fairly.
+          </li>
+          <li>
+            <span className="text-foreground">Useful reports</span>: OpenGet can show where donations went and which
+            repos were included in each pool.
           </li>
         </ul>
       </section>
@@ -57,10 +61,9 @@ export default function EnterprisePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Live snapshot (impact export)</CardTitle>
+          <CardTitle className="text-lg">Live snapshot</CardTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            High-level snapshot from the database (same data as the API). Detailed CSV/PDF exports can build on this
-            later.
+            A quick view of what OpenGet is tracking right now.
           </p>
         </CardHeader>
         <CardContent>
@@ -121,8 +124,7 @@ export default function EnterprisePage() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Regulatory claims (for example EU CRA deadlines or fine amounts) change over time. Treat marketing copy as
-        non-legal guidance; involve counsel before contractual commitments.
+        This page explains how OpenGet works. It is not legal or tax advice.
       </p>
     </div>
   );

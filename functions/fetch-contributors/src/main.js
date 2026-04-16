@@ -8,15 +8,19 @@ const COLLECTION_REPO_CONTRIBUTIONS = "repo_contributions";
 const COLLECTION_MONTHLY_STATS = "monthly_contributor_stats";
 
 const WEIGHTS = {
-  total_contributions: 0.20,
-  prs_raised: 0.15,
-  prs_merged: 0.55,
+  total_contributions: 0.15,
+  prs_raised: 0.10,
+  prs_merged: 0.40,
   repo_count: 0.10,
+  review_activity: 0.15,
+  release_triage: 0.10,
 };
 
 const PR_RAISED_CAP = 100;
 const PR_MERGED_CAP = 80;
 const QUALIFIED_REPO_CAP = 20;
+const REVIEW_CAP = 200;
+const RELEASE_CAP = 30;
 const MIN_REPO_SCORE = 5;
 
 function makeDb() {
@@ -168,12 +172,18 @@ async function fetchMonthlyPrStats(owner, repo, username, monthKey) {
   return { raised, merged };
 }
 
-function computeContributorScore(totalContributions, prsRaised, prsMerged, qualifiedRepoCount) {
+async function fetchReleasesForRepo(owner, repo) {
+  await sleep(200);
+  const url = `https://api.github.com/repos/${owner}/${repo}/releases?per_page=100`;
+  const res = await fetch(url, { headers: ghHeaders() });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+function computeContributorScore(totalContributions, prsRaised, prsMerged, qualifiedRepoCount, totalReviews, totalReleases) {
   const f1 = Math.log2(totalContributions + 1) / Math.log2(1001);
-  const raisedCapped = Math.min(prsRaised, PR_RAISED_CAP);
-  const mergedCapped = Math.min(prsMerged, PR_MERGED_CAP);
-  const f2 = raisedCapped / PR_RAISED_CAP;
-  const f3 = mergedCapped / PR_MERGED_CAP;
+  const f2 = Math.min(prsRaised, PR_RAISED_CAP) / PR_RAISED_CAP;
+  const f3 = Math.min(prsMerged, PR_MERGED_CAP) / PR_MERGED_CAP;
 
   let mergeRatioPenalty = 1.0;
   if (prsRaised > 5 && prsMerged > 0) {
@@ -182,14 +192,17 @@ function computeContributorScore(totalContributions, prsRaised, prsMerged, quali
     else if (ratio < 0.5) mergeRatioPenalty = 0.75;
   }
 
-  const repoCapped = Math.min(qualifiedRepoCount, QUALIFIED_REPO_CAP);
-  const f4 = Math.log2(repoCapped + 1) / Math.log2(QUALIFIED_REPO_CAP + 1);
+  const f4 = Math.log2(Math.min(qualifiedRepoCount, QUALIFIED_REPO_CAP) + 1) / Math.log2(QUALIFIED_REPO_CAP + 1);
+  const f5 = Math.log2(Math.min(totalReviews || 0, REVIEW_CAP) + 1) / Math.log2(REVIEW_CAP + 1);
+  const f6 = Math.log2(Math.min(totalReleases || 0, RELEASE_CAP) + 1) / Math.log2(RELEASE_CAP + 1);
 
   const raw =
     f1 * WEIGHTS.total_contributions +
     f2 * WEIGHTS.prs_raised * mergeRatioPenalty +
     f3 * WEIGHTS.prs_merged +
-    f4 * WEIGHTS.repo_count;
+    f4 * WEIGHTS.repo_count +
+    f5 * WEIGHTS.review_activity +
+    f6 * WEIGHTS.release_triage;
 
   return Math.round(raw * 1000) / 1000;
 }
@@ -215,14 +228,17 @@ export default async ({ req, res, log, error }) => {
           ghSnapshot = await ghRes.json();
           const newScore =
             (ghSnapshot.stargazers_count || 0) + (ghSnapshot.forks_count || 0);
+          const repoLicense = ghSnapshot.license?.spdx_id || null;
           await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, repoDoc.$id, {
             stars: ghSnapshot.stargazers_count || 0,
             forks: ghSnapshot.forks_count || 0,
             repo_score: newScore,
+            license: repoLicense,
           });
           repoDoc.stars = ghSnapshot.stargazers_count || 0;
           repoDoc.forks = ghSnapshot.forks_count || 0;
           repoDoc.repo_score = newScore;
+          repoDoc.license = repoLicense;
         }
 
         const stats = await fetchStatsContributors(owner, repoName);
@@ -284,6 +300,13 @@ export default async ({ req, res, log, error }) => {
         repoDoc.has_security_md = hasSecurityMd;
         repoDoc.eligible_pool_types = JSON.stringify(eligibleTypes);
 
+        const repoReleases = await fetchReleasesForRepo(owner, repoName);
+        const releasesByAuthor = new Map();
+        for (const rel of repoReleases) {
+          const author = rel.author?.login;
+          if (author) releasesByAuthor.set(author, (releasesByAuthor.get(author) || 0) + 1);
+        }
+
         for (const login of logins) {
           const base = byLogin.get(login) || { commits: 0, lines_added: 0, lines_removed: 0 };
 
@@ -293,11 +316,16 @@ export default async ({ req, res, log, error }) => {
           const issues_closed = await githubSearchCount(owner, repoName, `is:issue is:closed author:${login}`);
           await sleep(200);
           const reviews = await githubSearchCount(owner, repoName, `is:pr reviewed-by:${login}`);
+          await sleep(200);
+          const review_comments = await githubSearchCount(owner, repoName, `is:pr commenter:${login} -author:${login}`);
+          const releases_count = releasesByAuthor.get(login) || 0;
 
           const perRepoScore =
             base.commits * 10 +
             prs_merged * 25 +
             reviews * 15 +
+            review_comments * 5 +
+            releases_count * 20 +
             issues_closed * 10 +
             Math.log10(base.lines_added + base.lines_removed + 1) * 5;
 
@@ -345,6 +373,8 @@ export default async ({ req, res, log, error }) => {
             lines_removed: base.lines_removed,
             reviews,
             issues_closed,
+            review_comments,
+            releases_count,
             score: perRepoScore,
             last_contribution_at: now,
           };
@@ -392,7 +422,7 @@ export default async ({ req, res, log, error }) => {
       }
     }
 
-    log("Recomputing 4-factor contributor scores…");
+    log("Recomputing 6-factor contributor scores…");
     const allContributors = await databases.listDocuments(DATABASE_ID, COLLECTION_CONTRIBUTORS, [Query.limit(5000)]);
 
     for (const c of allContributors.documents) {
@@ -402,6 +432,14 @@ export default async ({ req, res, log, error }) => {
 
       const totalContributions = allRc.documents.reduce(
         (s, rc) => s + (rc.commits || 0) + (rc.prs_merged || 0) + (rc.reviews || 0) + (rc.issues_closed || 0), 0
+      );
+
+      const totalReviews = allRc.documents.reduce(
+        (s, rc) => s + (rc.reviews || 0) + (rc.review_comments || 0), 0
+      );
+
+      const totalReleases = allRc.documents.reduce(
+        (s, rc) => s + (rc.releases_count || 0), 0
       );
 
       const allMs = await databases.listDocuments(DATABASE_ID, COLLECTION_MONTHLY_STATS, [
@@ -431,7 +469,7 @@ export default async ({ req, res, log, error }) => {
         }
       }
 
-      const score = computeContributorScore(totalContributions, prsRaisedMonth, prsMergedMonth, qualifiedRepoCount);
+      const score = computeContributorScore(totalContributions, prsRaisedMonth, prsMergedMonth, qualifiedRepoCount, totalReviews, totalReleases);
 
       await databases.updateDocument(DATABASE_ID, COLLECTION_CONTRIBUTORS, c.$id, {
         total_score: score,
