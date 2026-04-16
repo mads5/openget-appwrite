@@ -22,20 +22,50 @@ const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(a
 const functions = new Functions(client);
 const databases = new Databases(client);
 
+// Appwrite caps synchronous function executions at ~30s on the gateway, which
+// is less than our function's 300s timeout. Create the execution asynchronously
+// and poll the execution record so slow chunks (e.g. GitHub stats cache warm-up)
+// don't get cut off mid-run.
+const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_MS = Number(process.env.OPENGET_EXECUTION_TIMEOUT_MS || 360000);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function callFunction(body) {
-  const execution = await functions.createExecution(
+  let execution = await functions.createExecution(
     functionId,
     JSON.stringify(body),
-    false,
+    true,
     undefined,
     ExecutionMethod.POST,
     { 'content-type': 'application/json' },
   );
 
+  const deadline = Date.now() + MAX_POLL_MS;
+  while (execution.status !== 'completed' && execution.status !== 'failed') {
+    if (Date.now() > deadline) {
+      console.error(`  [timeout] execution ${execution.$id} still ${execution.status} after ${MAX_POLL_MS}ms`);
+      return { status: 504, data: { error: 'execution polling timeout', execution_id: execution.$id } };
+    }
+    await sleep(POLL_INTERVAL_MS);
+    try {
+      execution = await functions.getExecution(functionId, execution.$id);
+    } catch (err) {
+      console.error(`  [poll error] ${err.message}`);
+      return { status: 502, data: { error: err.message, execution_id: execution.$id } };
+    }
+  }
+
   const status = execution.responseStatusCode || 0;
   const responseText = execution.responseBody || '{}';
   console.log(`HTTP status: ${status}`);
   console.log(responseText);
+
+  if (execution.status === 'failed') {
+    const errDetail = execution.errors || execution.logs || '';
+    if (errDetail) console.error(`  [execution failed] ${String(errDetail).slice(0, 500)}`);
+  }
+
   let data = null;
   try {
     data = JSON.parse(responseText);
