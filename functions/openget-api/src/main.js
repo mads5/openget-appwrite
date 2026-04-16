@@ -279,6 +279,35 @@ async function reconcileRepoContributorCount(db, repoId, options = {}) {
   return repoContribs.total;
 }
 
+async function findContributorByGithubLogin(db, login) {
+  const existing = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+    Query.equal('github_username', String(login)),
+    Query.limit(1),
+  ]);
+  return existing.documents[0] || null;
+}
+
+async function ensureContributorFromGithub(db, ghHeaders, login, snapshotEntry = null) {
+  const existing = await findContributorByGithubLogin(db, login);
+  if (existing) return existing;
+
+  let githubUser = snapshotEntry || null;
+  if (!githubUser) {
+    const ghUserRes = await fetch(`https://api.github.com/users/${login}`, { headers: ghHeaders });
+    githubUser = ghUserRes.ok ? await ghUserRes.json() : {};
+  }
+
+  return db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
+    github_username: String(login),
+    github_id: githubUser?.id != null ? String(githubUser.id) : null,
+    avatar_url: githubUser?.avatar_url ?? null,
+    user_id: null,
+    total_score: 0,
+    repo_count: 0,
+    total_contributions: 0,
+  });
+}
+
 async function recomputeContributorAggregate(db, contributorId, monthKey) {
   let contributorUsername = null;
   try {
@@ -835,6 +864,18 @@ export default async ({ req, res, log, error }) => {
           listed_by: userId,
           contributor_count: 0,
         });
+        let seededContributorCount = 0;
+
+        try {
+          const snapshot = await fetchContributorsSnapshot(fullName, ghHeaders, log);
+          seededContributorCount = Array.isArray(snapshot) ? snapshot.length : 0;
+          await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, {
+            contributor_count: seededContributorCount,
+            contributors_fetched_at: new Date().toISOString(),
+          });
+        } catch (e) {
+          log(`list-repo: initial contributor count failed: ${e.message}`);
+        }
 
         // Link the lister as initial contributor so repo_count updates immediately
         let contributorCount = 0;
@@ -866,7 +907,7 @@ export default async ({ req, res, log, error }) => {
 
         // Full contributor sync is handled by the nightly fetch-contributors job.
         // Running it synchronously here causes timeouts for repos with many contributors.
-        return res.json({ id: doc.$id, ...doc, contributor_count: contributorCount });
+        return res.json({ id: doc.$id, ...doc, contributor_count: Math.max(seededContributorCount, contributorCount) });
       }
 
       // ---- GET MY REPOS ----
@@ -949,12 +990,7 @@ export default async ({ req, res, log, error }) => {
           }
           for (const contribId of affected) {
             try {
-              const remaining = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-                Query.equal('contributor_id', contribId), Query.limit(1),
-              ]);
-              await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contribId, {
-                repo_count: remaining.total,
-              });
+              await recomputeContributorAggregate(db, contribId, currentMonthKey());
             } catch {}
           }
         } catch (e) {
@@ -971,7 +1007,7 @@ export default async ({ req, res, log, error }) => {
         if (!repoId) return res.json({ contributors: [] });
 
         const contribs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-          Query.equal('repo_id', repoId), Query.limit(200),
+          Query.equal('repo_id', repoId), Query.limit(5000),
         ]);
 
         const contributors = await Promise.all(contribs.documents.map(async (rc) => {
@@ -1505,6 +1541,7 @@ export default async ({ req, res, log, error }) => {
           const [owner, repoName] = full.split('/');
           try {
             let ghSnapshot = null;
+            const contributorSnapshot = await fetchContributorsSnapshot(full, ghHeaders, log);
             const ghRes = await fetch(`https://api.github.com/repos/${full}`, { headers: ghHeaders });
             if (ghRes.ok) {
               ghSnapshot = await ghRes.json();
@@ -1523,13 +1560,24 @@ export default async ({ req, res, log, error }) => {
             }
 
             const stats = await fetchStatsContributorsWithHeaders(owner, repoName, ghHeaders);
-            const logins = [];
+            const canonicalLogins = [];
+            const snapshotByLogin = new Map();
             const byLogin = new Map();
+
+            for (const entry of Array.isArray(contributorSnapshot) ? contributorSnapshot : []) {
+              const login = entry?.login;
+              if (!login || snapshotByLogin.has(login)) continue;
+              canonicalLogins.push(login);
+              snapshotByLogin.set(login, entry);
+            }
 
             for (const row of stats) {
               const login = row.author?.login;
               if (!login || byLogin.has(login)) continue;
-              logins.push(login);
+              if (!snapshotByLogin.has(login)) {
+                canonicalLogins.push(login);
+                snapshotByLogin.set(login, null);
+              }
               let commits = 0;
               let lines_added = 0;
               let lines_removed = 0;
@@ -1542,7 +1590,7 @@ export default async ({ req, res, log, error }) => {
             }
 
             const { bus_factor: busFactor } = estimateBusFactor(stats);
-            const crit = ghSnapshot ? computeCriticalityV1(ghSnapshot, logins.length) : 0.5;
+            const crit = ghSnapshot ? computeCriticalityV1(ghSnapshot, canonicalLogins.length) : 0.5;
 
             let pushAgeDays = 120;
             try {
@@ -1583,8 +1631,28 @@ export default async ({ req, res, log, error }) => {
               if (author) releasesByAuthor.set(author, (releasesByAuthor.get(author) || 0) + 1);
             }
 
-            const chunkLogins = body.repoId ? logins.slice(offset, offset + batchSize) : logins;
-            const touchedContributorIds = new Set();
+            const existingRcDocs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+              Query.equal('repo_id', repoDoc.$id),
+              Query.limit(5000),
+            ]);
+            const canonicalLoginSet = new Set(canonicalLogins);
+            const contributorsNeedingRecompute = new Set();
+
+            for (const rc of existingRcDocs.documents) {
+              let contributorDoc = null;
+              try {
+                contributorDoc = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
+              } catch {
+                contributorDoc = null;
+              }
+              const login = contributorDoc?.github_username ? String(contributorDoc.github_username) : null;
+              if (login && !canonicalLoginSet.has(login)) {
+                contributorsNeedingRecompute.add(rc.contributor_id);
+                await db.deleteDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, rc.$id);
+              }
+            }
+
+            const chunkLogins = body.repoId ? canonicalLogins.slice(offset, offset + batchSize) : canonicalLogins;
 
             for (const login of chunkLogins) {
               const base = byLogin.get(login) || { commits: 0, lines_added: 0, lines_removed: 0 };
@@ -1628,31 +1696,18 @@ export default async ({ req, res, log, error }) => {
                 issues_closed * 10 +
                 Math.log10(base.lines_added + base.lines_removed + 1) * 5;
 
-              const existingC = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
-                Query.equal('github_username', login),
-                Query.limit(1),
-              ]);
-
               const nowIso = new Date().toISOString();
-              let contributorId;
-              if (existingC.total === 0) {
-                const ghUserRes = await fetch(`https://api.github.com/users/${login}`, { headers: ghHeaders });
-                const ghUser = ghUserRes.ok ? await ghUserRes.json() : {};
-                const created = await db.createDocument(DATABASE_ID, COL.CONTRIBUTORS, ID.unique(), {
-                  github_username: login,
-                  github_id: ghUser.id != null ? String(ghUser.id) : null,
-                  avatar_url: ghUser.avatar_url ?? null,
-                  user_id: null,
-                  total_score: 0,
-                  repo_count: 0,
-                  total_contributions: 0,
-                });
-                contributorId = created.$id;
+              const contributorDoc = await ensureContributorFromGithub(
+                db,
+                ghHeaders,
+                login,
+                snapshotByLogin.get(login),
+              );
+              const contributorId = contributorDoc.$id;
+              if (!contributorDoc.total_score && !contributorDoc.total_contributions && !contributorDoc.repo_count) {
                 summary.contributors_upserted++;
-              } else {
-                contributorId = existingC.documents[0].$id;
               }
-              touchedContributorIds.add(contributorId);
+              contributorsNeedingRecompute.add(contributorId);
 
               const existingRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
                 Query.equal('repo_id', repoDoc.$id),
@@ -1710,13 +1765,13 @@ export default async ({ req, res, log, error }) => {
               }
             }
 
-            for (const contributorId of touchedContributorIds) {
+            for (const contributorId of contributorsNeedingRecompute) {
               await recomputeContributorAggregate(db, contributorId, monthKey);
             }
             const reconciledCount = await reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
 
             summary.repos_processed++;
-            log(`Processed contributors for ${full} (${chunkLogins.length}/${logins.length} in this chunk)`);
+            log(`Processed contributors for ${full} (${chunkLogins.length}/${canonicalLogins.length} in this chunk)`);
 
             if (body.repoId) {
               const nextOffset = offset + chunkLogins.length;
@@ -1725,10 +1780,10 @@ export default async ({ req, res, log, error }) => {
                 repo_id: repoDoc.$id,
                 repo_full_name: full,
                 processed_in_chunk: chunkLogins.length,
-                total_contributors: logins.length,
+                total_contributors: canonicalLogins.length,
                 contributor_count: reconciledCount,
-                next_offset: nextOffset < logins.length ? nextOffset : null,
-                done: nextOffset >= logins.length,
+                next_offset: nextOffset < canonicalLogins.length ? nextOffset : null,
+                done: nextOffset >= canonicalLogins.length,
               });
             }
           } catch (e) {

@@ -85,7 +85,7 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
               <td className="text-right px-4 py-3">
                 {c.total_score > 0 ? (
                   <Badge variant={i < 10 ? "default" : "secondary"}>
-                    {c.total_score.toFixed(0)}
+                    {c.total_score.toFixed(3)}
                   </Badge>
                 ) : scoreFallback ? (
                   <Badge

@@ -62,8 +62,8 @@ async function executeFunctionWithRetry<T>(
   body: Record<string, unknown> | undefined,
   options?: { retries?: number; initialDelayMs?: number },
 ): Promise<T> {
-  const retries = Math.max(0, options?.retries ?? 2);
-  const initialDelayMs = Math.max(100, options?.initialDelayMs ?? 600);
+  const retries = Math.max(0, options?.retries ?? 4);
+  const initialDelayMs = Math.max(100, options?.initialDelayMs ?? 800);
 
   let attempt = 0;
   for (;;) {
@@ -246,7 +246,9 @@ export async function listRepos(page = 1, perPage = 500): Promise<{ repos: Repo[
       repos: result.documents.map((doc) => {
         const mapped = mapRepo(doc);
         const liveCount = liveCountByRepo.get(mapped.id);
-        return liveCount != null ? { ...mapped, contributor_count: liveCount } : mapped;
+        return liveCount != null
+          ? { ...mapped, contributor_count: Math.max(mapped.contributor_count, liveCount) }
+          : mapped;
       }),
       total: result.total,
     };
@@ -318,9 +320,16 @@ export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  const raw = await executeFunctionWithRetry<Record<string, unknown>>("list-repo", { github_url: githubUrl });
-  const $id = String(raw.$id ?? raw.id ?? "");
-  return mapRepo({ ...raw, $id } as unknown as Models.Document);
+  try {
+    const raw = await executeFunctionWithRetry<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+    const $id = String(raw.$id ?? raw.id ?? "");
+    return mapRepo({ ...raw, $id } as unknown as Models.Document);
+  } catch (err) {
+    if (isTransientFunctionError(err)) {
+      throw new Error("OpenGet is temporarily unavailable while listing this repo. Please try again in a few seconds.");
+    }
+    throw err;
+  }
 }
 
 export async function delistRepo(repoId: string): Promise<void> {
