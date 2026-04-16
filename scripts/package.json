@@ -2,7 +2,8 @@
   "name": "openget-scripts",
   "type": "module",
   "scripts": {
-    "db:sync": "node setup-database.js"
+    "db:sync": "node setup-database.js",
+    "backfill:contributors": "node backfill-repo-contributors.js"
   },
   "dependencies": {
     "node-appwrite": "^23.1.0"
