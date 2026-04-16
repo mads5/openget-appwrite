@@ -1,4 +1,4 @@
-import { Client, Databases, Query, Users, ID } from 'node-appwrite';
+import { Client, Databases, Query, Users, ID, Functions, ExecutionMethod } from 'node-appwrite';
 import {
   computeRepoDistributionWeight,
   filterReposForDistribution,
@@ -657,7 +657,9 @@ function daysSince(dateLike) {
 
 async function fetchContributorsSnapshot(fullName, ghHeaders, log) {
   const all = [];
-  for (let page = 1; page <= 3; page++) {
+  // Up to 10 pages x 100 per page = 1,000 contributors. Covers all practical OSS repos
+  // without abusing GitHub rate limits. Loop exits early once a page returns < 100 rows.
+  for (let page = 1; page <= 10; page++) {
     const res = await fetch(
       `https://api.github.com/repos/${fullName}/contributors?per_page=100&page=${page}`,
       { headers: ghHeaders },
@@ -789,6 +791,27 @@ function initClient() {
     .setKey(process.env.APPWRITE_API_KEY);
 }
 
+/**
+ * Fire-and-forget async self-invocation so long-running work (per-repo contributor sync)
+ * can continue past the caller's response without blocking the HTTP reply.
+ */
+async function triggerSelfAsync(client, payload, log) {
+  const functionId = process.env.APPWRITE_FUNCTION_ID || 'openget-api';
+  try {
+    const fnClient = new Functions(client);
+    await fnClient.createExecution(
+      functionId,
+      JSON.stringify(payload),
+      true,
+      '/',
+      ExecutionMethod.POST,
+      { 'content-type': 'application/json' },
+    );
+  } catch (e) {
+    log(`triggerSelfAsync(${payload?.action || 'unknown'}): ${e.message}`);
+  }
+}
+
 export default async ({ req, res, log, error }) => {
   const client = initClient();
   const db = new Databases(client);
@@ -905,8 +928,15 @@ export default async ({ req, res, log, error }) => {
           log(`list-repo: linking lister as contributor: ${e.message}`);
         }
 
-        // Full contributor sync is handled by the nightly fetch-contributors job.
-        // Running it synchronously here causes timeouts for repos with many contributors.
+        // Kick off a full contributor sync asynchronously so the HTTP reply stays fast
+        // while every GitHub contributor gets a contributors + repo_contributions row.
+        // The fetch-contributors action self-chains additional chunks until done.
+        await triggerSelfAsync(
+          client,
+          { action: 'fetch-contributors', repoId: doc.$id, offset: 0 },
+          log,
+        );
+
         return res.json({ id: doc.$id, ...doc, contributor_count: Math.max(seededContributorCount, contributorCount) });
       }
 
@@ -1775,6 +1805,24 @@ export default async ({ req, res, log, error }) => {
 
             if (body.repoId) {
               const nextOffset = offset + chunkLogins.length;
+              const hasMore = nextOffset < canonicalLogins.length;
+
+              // Self-chain the next chunk so the sync keeps running without an external
+              // driver (e.g. when triggered from list-repo). External drivers such as
+              // scripts/run-openget-action.js key off `done` so their loop still works.
+              if (hasMore) {
+                await triggerSelfAsync(
+                  client,
+                  {
+                    action: 'fetch-contributors',
+                    repoId: body.repoId,
+                    offset: nextOffset,
+                    batchSize,
+                  },
+                  log,
+                );
+              }
+
               return res.json({
                 ...summary,
                 repo_id: repoDoc.$id,
@@ -1782,8 +1830,8 @@ export default async ({ req, res, log, error }) => {
                 processed_in_chunk: chunkLogins.length,
                 total_contributors: canonicalLogins.length,
                 contributor_count: reconciledCount,
-                next_offset: nextOffset < canonicalLogins.length ? nextOffset : null,
-                done: nextOffset >= canonicalLogins.length,
+                next_offset: hasMore ? nextOffset : null,
+                done: !hasMore,
               });
             }
           } catch (e) {

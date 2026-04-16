@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:sync": "npm ci --prefix scripts --no-audit --no-fund && npm run db:sync --prefix scripts"
+    "db:sync": "npm ci --prefix scripts --no-audit --no-fund && npm run db:sync --prefix scripts",
+    "backfill:contributors": "npm ci --prefix scripts --no-audit --no-fund && node scripts/backfill-repo-contributors.js"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
