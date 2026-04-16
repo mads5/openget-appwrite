@@ -1832,7 +1832,7 @@ export default async ({ req, res, log, error }) => {
                 );
               }
 
-              return res.json({
+              const successPayload = {
                 ...summary,
                 repo_id: repoDoc.$id,
                 repo_full_name: full,
@@ -1841,7 +1841,12 @@ export default async ({ req, res, log, error }) => {
                 contributor_count: reconciledCount,
                 next_offset: hasMore ? nextOffset : null,
                 done: !hasMore,
-              });
+              };
+              // Appwrite async executions do not store response bodies, so also
+              // emit the payload to stdout with a sentinel so external drivers
+              // (scripts/run-openget-action.js) can recover it from execution.logs.
+              log(`__OPENGET_SUMMARY__${JSON.stringify(successPayload)}`);
+              return res.json(successPayload);
             }
           } catch (e) {
             if (repoDoc?.$id) {
@@ -1859,7 +1864,7 @@ export default async ({ req, res, log, error }) => {
             // instead of misinterpreting the missing next_offset/done fields as
             // "invalid chunk progress".
             if (body.repoId) {
-              return res.json({
+              const failurePayload = {
                 ...summary,
                 repo_id: repoDoc.$id,
                 repo_full_name: full,
@@ -1869,7 +1874,9 @@ export default async ({ req, res, log, error }) => {
                 done: true,
                 failed: true,
                 error: e.message,
-              });
+              };
+              log(`__OPENGET_SUMMARY__${JSON.stringify(failurePayload)}`);
+              return res.json(failurePayload);
             }
           }
         }

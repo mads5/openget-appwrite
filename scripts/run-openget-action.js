@@ -56,22 +56,35 @@ async function callFunction(body) {
     }
   }
 
-  const status = execution.responseStatusCode || 0;
-  const responseText = execution.responseBody || '{}';
+  const status = execution.responseStatusCode || (execution.status === 'completed' ? 200 : 0);
+  const responseText = execution.responseBody || '';
   console.log(`HTTP status: ${status}`);
-  console.log(responseText);
+
+  // Appwrite async executions don't persist response bodies, so the function
+  // also emits its summary to stdout with a sentinel. Prefer the response body
+  // (sync path) and fall back to parsing the sentinel out of execution.logs.
+  let data = null;
+  if (responseText) {
+    console.log(responseText);
+    try { data = JSON.parse(responseText); } catch { data = null; }
+  }
+  if (!data && typeof execution.logs === 'string') {
+    const match = execution.logs.match(/__OPENGET_SUMMARY__(\{.*\})/);
+    if (match) {
+      try {
+        data = JSON.parse(match[1]);
+        console.log(JSON.stringify(data));
+      } catch {
+        /* keep data null, fall through */
+      }
+    }
+  }
 
   if (execution.status === 'failed') {
     const errDetail = execution.errors || execution.logs || '';
     if (errDetail) console.error(`  [execution failed] ${String(errDetail).slice(0, 500)}`);
   }
 
-  let data = null;
-  try {
-    data = JSON.parse(responseText);
-  } catch {
-    data = null;
-  }
   return { status, data };
 }
 
