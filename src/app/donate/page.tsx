@@ -3,12 +3,25 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getActivePool, createCheckoutSession, createUpiQr, checkUpiQrStatus } from "@/lib/api";
+import {
+  getActivePool,
+  listCollectingPools,
+  listRepos,
+  createCheckoutSession,
+  createUpiQr,
+  checkUpiQrStatus,
+} from "@/lib/api";
 import { PoolCard } from "@/components/pool/pool-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Pool } from "@/types";
+import type { Pool, CollectingPoolSummary, Repo } from "@/types";
+import {
+  DEFAULT_POOL_TYPE,
+  POOL_TYPES,
+  POOL_TYPE_LABELS,
+  type PoolTypeId,
+} from "@/lib/pool-types";
 import type { Models } from "appwrite";
 
 const CURRENCIES = [
@@ -26,6 +39,9 @@ const CURRENCIES = [
 export default function DonatePage() {
   const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [pool, setPool] = useState<Pool | null>(null);
+  const [collectingSummaries, setCollectingSummaries] = useState<CollectingPoolSummary[]>([]);
+  const [allRepos, setAllRepos] = useState<Repo[]>([]);
+  const [selectedPoolType, setSelectedPoolType] = useState<PoolTypeId>(DEFAULT_POOL_TYPE);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState(
     () => CURRENCIES.find(c => c.code === (process.env.NEXT_PUBLIC_CURRENCY || "usd").toLowerCase()) || CURRENCIES[0]
@@ -44,8 +60,45 @@ export default function DonatePage() {
     Promise.all([
       account.get().then(setUser).catch(() => setUser(null)),
       getActivePool().then(setPool),
+      listCollectingPools().then(setCollectingSummaries),
+      listRepos().then((r) => setAllRepos(r.repos)),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const selectedCollectingSummary =
+    collectingSummaries.find(
+      (s) => (s.pool_type || DEFAULT_POOL_TYPE) === selectedPoolType,
+    ) ?? collectingSummaries[0];
+
+  const donatingPool: Pool | null = selectedCollectingSummary
+    ? {
+        id: selectedCollectingSummary.id,
+        name: selectedCollectingSummary.name,
+        description: selectedCollectingSummary.description,
+        total_amount_cents: selectedCollectingSummary.total_amount_cents,
+        platform_fee_cents: 0,
+        distributable_amount_cents: Math.round(
+          selectedCollectingSummary.total_amount_cents * 0.99,
+        ),
+        daily_budget_cents: 0,
+        remaining_cents: 0,
+        donor_count: selectedCollectingSummary.donor_count,
+        status: "collecting",
+        round_start: selectedCollectingSummary.round_start,
+        round_end: selectedCollectingSummary.round_end,
+        pool_type: selectedCollectingSummary.pool_type,
+        created_at: selectedCollectingSummary.round_start,
+      }
+    : pool;
+
+  const poolRepos = allRepos.filter((r) => {
+    const eligible = r.eligible_pool_types;
+    if (!eligible || eligible.length === 0) return false;
+    return eligible.includes(selectedPoolType);
+  });
+  const topPoolRepos = [...poolRepos]
+    .sort((a, b) => b.stars - a.stars)
+    .slice(0, 5);
 
   useEffect(() => {
     return () => {
@@ -74,7 +127,12 @@ export default function DonatePage() {
     setDonating(true);
     setError(null);
     try {
-      const { checkout_url } = await createCheckoutSession(amount, message || undefined, currency.code);
+      const { checkout_url } = await createCheckoutSession(
+        amount,
+        message || undefined,
+        currency.code,
+        selectedPoolType,
+      );
       window.location.href = checkout_url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start payment. Try again.");
@@ -126,16 +184,88 @@ export default function DonatePage() {
   return (
     <div className="container py-8 max-w-2xl mx-auto">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Donate to the Pool</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Donate to the Pool</h1>
         <p className="text-muted-foreground mt-2">
           Your donation goes to a monthly shared pool. Every week, funds are
           distributed to contributors based on their code quality scores.
         </p>
       </div>
 
-      {pool && (
+      <div className="mb-6">
+        <label className="text-sm text-muted-foreground block mb-2">
+          Funding pool
+        </label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {POOL_TYPES.map((pt) => (
+            <button
+              key={pt}
+              type="button"
+              onClick={() => setSelectedPoolType(pt)}
+              className={`min-h-[44px] rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                selectedPoolType === pt
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              <span className="font-medium">{POOL_TYPE_LABELS[pt]}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Donations are earmarked for this lane. See{" "}
+          <a href="/enterprise" className="underline underline-offset-2">
+            For enterprises
+          </a>{" "}
+          for pool details and scoring.
+        </p>
+      </div>
+
+      {poolRepos.length > 0 && (
+        <div className="mb-6 rounded-lg border border-border p-4">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-sm font-medium">
+              {poolRepos.length} {poolRepos.length === 1 ? "repo" : "repos"} in this pool
+            </h3>
+            <a
+              href="/repos"
+              className="text-xs text-primary underline underline-offset-2"
+            >
+              View all repos
+            </a>
+          </div>
+          <div className="space-y-2">
+            {topPoolRepos.map((r) => (
+              <a
+                key={r.id}
+                href={`/repos/${r.id}`}
+                className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50 transition-colors"
+              >
+                <span className="truncate font-mono text-xs">{r.full_name}</span>
+                <span className="flex items-center gap-2 shrink-0 text-muted-foreground text-xs">
+                  {r.language && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{r.language}</Badge>}
+                  {r.license && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{r.license}</Badge>}
+                  <span className="tabular-nums">{r.stars.toLocaleString()} stars</span>
+                </span>
+              </a>
+            ))}
+          </div>
+          {poolRepos.length > 5 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              and {poolRepos.length - 5} more...
+            </p>
+          )}
+        </div>
+      )}
+      {poolRepos.length === 0 && (
+        <div className="mb-6 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+          No repos are currently classified for this pool type yet. This can happen right after new repos are listed;
+          initial classification and contributor sync will appear after fetch completes.
+        </div>
+      )}
+
+      {donatingPool && (
         <div className="mb-8">
-          <PoolCard pool={pool} />
+          <PoolCard pool={donatingPool} hideFinancialTotals />
         </div>
       )}
 
@@ -145,15 +275,15 @@ export default function DonatePage() {
           <CardContent className="pt-6 text-center">
             {qrPaid ? (
               <div>
-                <div className="text-5xl mb-4 text-green-500">&#10003;</div>
+                <div className="text-4xl mb-4 text-green-500 sm:text-5xl">&#10003;</div>
                 <h2 className="text-xl font-bold mb-2">Payment Received!</h2>
                 <p className="text-muted-foreground mb-4">
                   Your donation of {fmt(amount)} has been received.
                   Thank you for supporting open source!
                 </p>
-                <div className="flex gap-3 justify-center">
-                  <Button variant="outline" onClick={closeQr}>Donate Again</Button>
-                  <Button asChild><a href="/contributors">View Contributors</a></Button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={closeQr}>Donate Again</Button>
+                  <Button className="w-full sm:w-auto" asChild><a href="/contributors">View Contributors</a></Button>
                 </div>
               </div>
             ) : (
@@ -165,13 +295,13 @@ export default function DonatePage() {
                 <img
                   src={qrImageUrl}
                   alt="UPI QR Code"
-                  className="mx-auto w-56 h-56 rounded-lg border border-border bg-white p-2"
+                  className="mx-auto w-full max-w-56 aspect-square rounded-lg border border-border bg-white p-2"
                 />
                 <div className="mt-4 flex items-center justify-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                   <span className="text-sm text-muted-foreground">Waiting for payment...</span>
                 </div>
-                <Button variant="ghost" size="sm" className="mt-3" onClick={closeQr}>
+                <Button variant="ghost" className="mt-3" onClick={closeQr}>
                   Cancel
                 </Button>
               </div>
@@ -190,7 +320,7 @@ export default function DonatePage() {
             <select
               value={currency.code}
               onChange={(e) => handleCurrencyChange(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
             >
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>{c.label}</option>
@@ -211,7 +341,6 @@ export default function DonatePage() {
               <Button
                 key={a}
                 variant={amount === a ? "default" : "outline"}
-                size="sm"
                 onClick={() => setAmount(a)}
               >
                 {fmt(a)}
@@ -231,7 +360,7 @@ export default function DonatePage() {
                 const v = Number(e.target.value);
                 setAmount(Math.max(currency.code === "jpy" ? 50 : 100, Math.round(currency.code === "jpy" ? v : v * 100)));
               }}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
             />
           </div>
 
@@ -244,7 +373,7 @@ export default function DonatePage() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Thanks for building great open source!"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm"
             />
           </div>
 

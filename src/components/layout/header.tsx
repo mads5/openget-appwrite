@@ -14,6 +14,7 @@ const OAUTH_FAIL_MSG =
 export function Header() {
   const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const refreshUser = () => {
@@ -61,50 +62,108 @@ export function Header() {
     }
   };
 
+  const navLinks = [
+    { href: "/repos", label: "Repos" },
+    { href: "/contributors", label: "Contributors" },
+    { href: "/donate", label: "Donate" },
+    { href: "/enterprise", label: "For enterprises" },
+    ...(user
+      ? [
+          { href: "/list-repo", label: "List a Repo" },
+          { href: "/dashboard", label: "Dashboard" },
+        ]
+      : []),
+  ];
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="container flex h-16 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-6">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="OpenGet" width={48} height={48} className="rounded-xl" />
-            <span className="font-bold text-xl">
+            <span className="font-bold text-lg sm:text-xl">
               Open<span className="text-primary">Get</span>
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/repos" className="text-muted-foreground hover:text-foreground transition-colors">Repos</Link>
-            <Link href="/contributors" className="text-muted-foreground hover:text-foreground transition-colors">Contributors</Link>
-            <Link href="/donate" className="text-muted-foreground hover:text-foreground transition-colors">Donate</Link>
-            {user && (
-              <>
-                <Link href="/list-repo" className="text-muted-foreground hover:text-foreground transition-colors">List a Repo</Link>
-                <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">Dashboard</Link>
-              </>
-            )}
+            {navLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-4 max-w-[min(100vw-2rem,24rem)] sm:max-w-none">
-          {authError && (
-            <p className="text-xs text-amber-500 text-right leading-snug order-first sm:order-none sm:max-w-xs">
-              {authError}
-            </p>
-          )}
-          {user ? (
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {user.name || user.email}
-              </span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            className="md:hidden"
+            onClick={() => setMobileNavOpen((prev) => !prev)}
+            aria-expanded={mobileNavOpen}
+            aria-label="Toggle navigation menu"
+          >
+            {mobileNavOpen ? "Close" : "Menu"}
+          </Button>
+          <div className="hidden sm:flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-4 max-w-[24rem] sm:max-w-none">
+            {authError && (
+              <p className="text-xs text-amber-500 text-right leading-snug order-first sm:order-none sm:max-w-xs">
+                {authError}
+              </p>
+            )}
+            {user ? (
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  {user.name || user.email}
+                </span>
+                <Button type="button" variant="ghost" size="sm" onClick={handleSignOut}>
+                  Sign out
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" onClick={handleSignIn} size="sm">
+                Sign in with GitHub
+              </Button>
+            )}
+          </div>
+          <div className="sm:hidden">
+            {user ? (
               <Button type="button" variant="ghost" size="sm" onClick={handleSignOut}>
                 Sign out
               </Button>
-            </div>
-          ) : (
-            <Button type="button" onClick={handleSignIn} size="sm">
-              Sign in with GitHub
-            </Button>
-          )}
+            ) : (
+              <Button type="button" onClick={handleSignIn} size="sm">
+                Sign in
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+      {authError && !mobileNavOpen && (
+        <div className="container border-t border-border/50 py-2 sm:hidden">
+          <p className="text-xs text-amber-500 leading-snug">{authError}</p>
+        </div>
+      )}
+      {mobileNavOpen && (
+        <div className="container border-t border-border/50 py-3 md:hidden">
+          <nav className="flex flex-col gap-1">
+            {navLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex min-h-[44px] items-center rounded-md px-2 py-2.5 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          {authError && (
+            <p className="mt-3 text-xs text-amber-500 leading-snug">
+              {authError}
+            </p>
+          )}
+        </div>
+      )}
     </header>
   );
 }

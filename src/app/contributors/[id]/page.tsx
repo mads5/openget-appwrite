@@ -44,7 +44,7 @@ export default function ContributorDetailPage() {
 
   return (
     <div className="container py-8">
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex flex-col items-start gap-4 mb-8 sm:flex-row sm:items-center">
         {contributor.avatar_url ? (
           <img
             src={contributor.avatar_url}
@@ -57,16 +57,16 @@ export default function ContributorDetailPage() {
           </div>
         )}
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{contributor.github_username}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold sm:text-3xl">{contributor.github_username}</h1>
             {contributor.is_registered && (
               <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20">
                 Registered
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-4 mt-1 text-muted-foreground">
-            <span>Score: <strong className="text-foreground">{contributor.total_score.toFixed(0)}</strong></span>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-muted-foreground">
+            <span>Score: <strong className="text-foreground">{contributor.total_score.toFixed(3)}</strong></span>
             <span>{contributor.repo_count} repos</span>
             <a
               href={`https://github.com/${contributor.github_username}`}
@@ -85,21 +85,21 @@ export default function ContributorDetailPage() {
         {contributor.repos?.map((rc) => (
           <Card key={rc.repo_id}>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <Link
                   href={`/repos/${rc.repo_id}`}
-                  className="font-medium hover:text-primary transition-colors"
+                  className="min-w-0 flex-1 truncate font-medium hover:text-primary transition-colors"
                 >
                   {rc.repo_full_name}
                 </Link>
-                <Badge variant="default">{rc.score.toFixed(0)} pts</Badge>
+                <Badge variant="default" className="shrink-0">{rc.score.toFixed(3)} pts</Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="mb-3">
                 <Progress value={(rc.score / maxScore) * 100} className="h-2" />
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center text-xs">
                 <div>
                   <div className="font-bold text-foreground">{rc.commits}</div>
                   <div className="text-muted-foreground">Commits</div>

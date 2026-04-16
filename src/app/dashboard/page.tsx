@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getEarnings, registerContributor, onboardStripeConnect } from "@/lib/api";
+import { getEarnings, registerContributor, onboardStripeConnect, getMyContributor } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,8 @@ export default function DashboardPage() {
   useEffect(() => {
     account.get().then(async (u) => {
       setUser(u);
+      const myContrib = await getMyContributor();
+      if (myContrib) setRegistered(true);
       try {
         const earningsData = await getEarnings();
         setEarnings(earningsData);
@@ -37,7 +39,7 @@ export default function DashboardPage() {
           setRegistered(true);
         }
       } catch {
-        // No earnings yet
+        // Earnings unavailable
       }
       setLoading(false);
     }).catch(() => {
@@ -95,6 +97,7 @@ export default function DashboardPage() {
         </p>
         <Button
           type="button"
+          size="lg"
           onClick={(e) => {
             e.preventDefault();
             startGithubOAuthSession(account, "/dashboard", "/dashboard?auth_error=true");
@@ -133,7 +136,7 @@ export default function DashboardPage() {
                   Register your GitHub username on OpenGet so you can receive
                   payouts from repos you contribute to.
                 </p>
-                <Button onClick={handleRegister} disabled={registering}>
+                <Button size="lg" onClick={handleRegister} disabled={registering}>
                   {registering ? "Registering..." : "Register Now"}
                 </Button>
               </CardContent>
@@ -145,15 +148,15 @@ export default function DashboardPage() {
               <CardTitle>Earnings</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2">
                 <div>
-                  <div className="text-3xl font-bold text-primary">
+                  <div className="text-2xl font-bold text-primary sm:text-3xl">
                     {formatCents(earnings?.total_earned_cents ?? 0)}
                   </div>
                   <div className="text-sm text-muted-foreground">Total Earned</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold">
+                  <div className="text-2xl font-bold sm:text-3xl">
                     {formatCents(earnings?.pending_cents ?? 0)}
                   </div>
                   <div className="text-sm text-muted-foreground">Pending</div>
@@ -172,7 +175,7 @@ export default function DashboardPage() {
                   {earnings.payouts.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
+                      className="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-border/50 last:border-0"
                     >
                       <div className="text-sm">
                         {new Date(p.created_at).toLocaleDateString()}
@@ -217,6 +220,7 @@ export default function DashboardPage() {
               </p>
               <Button
                 variant="outline"
+                size="lg"
                 className="w-full"
                 onClick={handleStripeConnect}
                 disabled={connectingStripe}

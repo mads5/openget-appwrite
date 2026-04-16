@@ -175,6 +175,32 @@ async function addFloatAttribute(collectionId, key, required, defaultValue) {
   }
 }
 
+/**
+ * @param {string} collectionId
+ * @param {string} key
+ * @param {boolean} required
+ * @param {boolean} [defaultValue]
+ */
+async function addBooleanAttribute(collectionId, key, required, defaultValue) {
+  try {
+    await databases.createBooleanAttribute(
+      DATABASE_ID,
+      collectionId,
+      key,
+      required,
+      defaultValue,
+    );
+    await waitForAttribute(collectionId, key);
+    console.log('    + boolean', key, required ? '(required)' : '(optional)');
+  } catch (err) {
+    if (isConflict(err)) {
+      console.log('    ~ boolean', key, '(already exists)');
+    } else {
+      throw err;
+    }
+  }
+}
+
 async function setupRepos() {
   const id = 'repos';
   await ensureCollection(id, 'Repos');
@@ -187,9 +213,15 @@ async function setupRepos() {
   await addIntegerAttribute(id, 'stars', false, 0);
   await addIntegerAttribute(id, 'forks', false, 0);
   await addIntegerAttribute(id, 'repo_score', false, 0);
+  await addFloatAttribute(id, 'criticality_score', false, 0);
+  await addFloatAttribute(id, 'bus_factor', false, 0);
   await addStringAttribute(id, 'listed_by', 100, true);
   await addIntegerAttribute(id, 'contributor_count', false, 0);
   await addStringAttribute(id, 'contributors_fetched_at', 50, false);
+  await addStringAttribute(id, 'eligible_pool_types', 2000, false);
+  await addBooleanAttribute(id, 'has_security_md', false, false);
+  await addStringAttribute(id, 'ai_summary', 4000, false);
+  await addStringAttribute(id, 'license', 100, false);
 }
 
 async function setupContributors() {
@@ -216,6 +248,8 @@ async function setupRepoContributions() {
   await addIntegerAttribute(id, 'lines_removed', false, 0);
   await addIntegerAttribute(id, 'reviews', false, 0);
   await addIntegerAttribute(id, 'issues_closed', false, 0);
+  await addIntegerAttribute(id, 'review_comments', false, 0);
+  await addIntegerAttribute(id, 'releases_count', false, 0);
   await addFloatAttribute(id, 'score', false, 0);
   await addStringAttribute(id, 'last_contribution_at', 50, false);
 }
@@ -234,6 +268,7 @@ async function setupPools() {
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'round_start', 50, true);
   await addStringAttribute(id, 'round_end', 50, true);
+  await addStringAttribute(id, 'pool_type', 40, false);
 }
 
 async function setupDonations() {

@@ -19,7 +19,7 @@ export default function ContributorsPage() {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Contributors</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Contributors</h1>
         <p className="text-muted-foreground mt-1">
           Open-source contributors ranked by their code quality score.
           Register to receive your share of the funding pool.

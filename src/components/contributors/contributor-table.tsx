@@ -33,8 +33,8 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden">
-      <table className="w-full">
+    <div className="rounded-lg border overflow-x-auto">
+      <table className="w-full min-w-[560px]">
         <thead className="bg-muted/50">
           <tr>
             <th className="text-left px-4 py-3 text-sm font-medium">#</th>
@@ -63,20 +63,20 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
               <td className="px-4 py-3">
                 <Link
                   href={`/contributors/${c.id}`}
-                  className="flex items-center gap-3 hover:text-primary transition-colors"
+                  className="flex min-w-0 items-center gap-3 hover:text-primary transition-colors"
                 >
                   {c.avatar_url ? (
                     <img
                       src={c.avatar_url}
                       alt={c.github_username}
-                      className="h-8 w-8 rounded-full"
+                      className="h-8 w-8 shrink-0 rounded-full"
                     />
                   ) : (
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                    <div className="h-8 w-8 shrink-0 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
                       {c.github_username[0].toUpperCase()}
                     </div>
                   )}
-                  <span className="font-medium">{c.github_username}</span>
+                  <span className="min-w-0 truncate font-medium">{c.github_username}</span>
                 </Link>
               </td>
               <td className="text-right px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
@@ -85,7 +85,7 @@ export function ContributorTable({ contributors }: ContributorTableProps) {
               <td className="text-right px-4 py-3">
                 {c.total_score > 0 ? (
                   <Badge variant={i < 10 ? "default" : "secondary"}>
-                    {c.total_score.toFixed(0)}
+                    {c.total_score.toFixed(3)}
                   </Badge>
                 ) : scoreFallback ? (
                   <Badge

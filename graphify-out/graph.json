@@ -9,7 +9,7 @@
       "source_file": "next-env.d.ts",
       "source_location": "L1",
       "id": "next_env_d",
-      "community": 9
+      "community": 11
     },
     {
       "label": "next.config.js",
@@ -17,7 +17,7 @@
       "source_file": "next.config.js",
       "source_location": "L1",
       "id": "next_config",
-      "community": 10
+      "community": 12
     },
     {
       "label": "postcss.config.js",
@@ -25,7 +25,7 @@
       "source_file": "postcss.config.js",
       "source_location": "L1",
       "id": "postcss_config",
-      "community": 11
+      "community": 13
     },
     {
       "label": "tailwind.config.ts",
@@ -33,7 +33,7 @@
       "source_file": "tailwind.config.ts",
       "source_location": "L1",
       "id": "tailwind_config",
-      "community": 12
+      "community": 14
     },
     {
       "label": "main.js",
@@ -71,7 +71,7 @@
       "label": "daysInMonth()",
       "file_type": "code",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L27",
+      "source_location": "L33",
       "id": "main_daysinmonth",
       "community": 0
     },
@@ -79,47 +79,151 @@
       "label": "getActiveMonthInfo()",
       "file_type": "code",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L31",
+      "source_location": "L37",
       "id": "main_getactivemonthinfo",
       "community": 0
     },
     {
-      "label": "ensureCollectingPool()",
+      "label": "ensureCollectingPools()",
       "file_type": "code",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L42",
-      "id": "main_ensurecollectingpool",
+      "source_location": "L48",
+      "id": "main_ensurecollectingpools",
       "community": 0
     },
     {
       "label": "activatePool()",
       "file_type": "code",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L75",
+      "source_location": "L101",
       "id": "main_activatepool",
       "community": 0
     },
     {
-      "label": "getOrActivatePool()",
+      "label": "listActivePools()",
       "file_type": "code",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L93",
-      "id": "main_getoractivatepool",
+      "source_location": "L126",
+      "id": "main_listactivepools",
+      "community": 0
+    },
+    {
+      "label": "activateAllCollectingForCurrentMonth()",
+      "file_type": "code",
+      "source_file": "functions\\distribute-pool\\src\\main.js",
+      "source_location": "L134",
+      "id": "main_activateallcollectingforcurrentmonth",
+      "community": 0
+    },
+    {
+      "label": "ensureActivePools()",
+      "file_type": "code",
+      "source_file": "functions\\distribute-pool\\src\\main.js",
+      "source_location": "L152",
+      "id": "main_ensureactivepools",
       "community": 0
     },
     {
       "label": "distributeWeekly()",
       "file_type": "code",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L182",
+      "source_location": "L297",
       "id": "main_distributeweekly",
       "community": 0
+    },
+    {
+      "label": "pool-eligibility.js",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L1",
+      "id": "pool_eligibility",
+      "community": 5
+    },
+    {
+      "label": "envInt()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L9",
+      "id": "pool_eligibility_envint",
+      "community": 5
+    },
+    {
+      "label": "envFloat()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L15",
+      "id": "pool_eligibility_envfloat",
+      "community": 5
+    },
+    {
+      "label": "computeEligiblePoolTypes()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L21",
+      "id": "pool_eligibility_computeeligiblepooltypes",
+      "community": 5
+    },
+    {
+      "label": "parseEligiblePoolTypesJson()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L67",
+      "id": "pool_eligibility_parseeligiblepooltypesjson",
+      "community": 5
+    },
+    {
+      "label": "repoEligibleForPool()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L78",
+      "id": "pool_eligibility_repoeligibleforpool",
+      "community": 5
+    },
+    {
+      "label": "filterReposForPoolType()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L85",
+      "id": "pool_eligibility_filterreposforpooltype",
+      "community": 5
+    },
+    {
+      "label": "pool-types.ts",
+      "file_type": "code",
+      "source_file": "src\\lib\\pool-types.ts",
+      "source_location": "L1",
+      "id": "pool_types",
+      "community": 1
+    },
+    {
+      "label": "repo-distribution.js",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\repo-distribution.js",
+      "source_location": "L1",
+      "id": "repo_distribution",
+      "community": 7
+    },
+    {
+      "label": "computeRepoDistributionWeight()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\repo-distribution.js",
+      "source_location": "L10",
+      "id": "repo_distribution_computerepodistributionweight",
+      "community": 7
+    },
+    {
+      "label": "filterReposForDistribution()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\repo-distribution.js",
+      "source_location": "L30",
+      "id": "repo_distribution_filterreposfordistribution",
+      "community": 7
     },
     {
       "label": "ghHeaders()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L35",
+      "source_location": "L36",
       "id": "main_ghheaders",
       "community": 0
     },
@@ -127,7 +231,7 @@
       "label": "sleep()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L45",
+      "source_location": "L46",
       "id": "main_sleep",
       "community": 0
     },
@@ -135,15 +239,23 @@
       "label": "githubSearchCount()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L49",
+      "source_location": "L50",
       "id": "main_githubsearchcount",
+      "community": 0
+    },
+    {
+      "label": "fetchHasSecurityMd()",
+      "file_type": "code",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L66",
+      "id": "main_fetchhassecuritymd",
       "community": 0
     },
     {
       "label": "fetchStatsContributors()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L65",
+      "source_location": "L73",
       "id": "main_fetchstatscontributors",
       "community": 0
     },
@@ -151,7 +263,7 @@
       "label": "currentMonthKey()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L82",
+      "source_location": "L90",
       "id": "main_currentmonthkey",
       "community": 0
     },
@@ -159,15 +271,39 @@
       "label": "monthDateRange()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L89",
+      "source_location": "L97",
       "id": "main_monthdaterange",
+      "community": 0
+    },
+    {
+      "label": "totalCommitsFromStatsRow()",
+      "file_type": "code",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L104",
+      "id": "main_totalcommitsfromstatsrow",
+      "community": 0
+    },
+    {
+      "label": "estimateBusFactor()",
+      "file_type": "code",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L113",
+      "id": "main_estimatebusfactor",
+      "community": 0
+    },
+    {
+      "label": "computeCriticalityV1()",
+      "file_type": "code",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L134",
+      "id": "main_computecriticalityv1",
       "community": 0
     },
     {
       "label": "fetchMonthlyPrStats()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L96",
+      "source_location": "L156",
       "id": "main_fetchmonthlyprstats",
       "community": 0
     },
@@ -175,7 +311,7 @@
       "label": "computeContributorScore()",
       "file_type": "code",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L111",
+      "source_location": "L171",
       "id": "main_computecontributorscore",
       "community": 0
     },
@@ -204,10 +340,18 @@
       "community": 0
     },
     {
+      "label": "resolveCollectingPoolForType()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L35",
+      "id": "main_resolvecollectingpoolfortype",
+      "community": 0
+    },
+    {
       "label": "getGithubIdentityToken()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L29",
+      "source_location": "L52",
       "id": "main_getgithubidentitytoken",
       "community": 0
     },
@@ -215,7 +359,7 @@
       "label": "resolveGithubAccessTokenForRepos()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L48",
+      "source_location": "L71",
       "id": "main_resolvegithubaccesstokenforrepos",
       "community": 0
     },
@@ -223,7 +367,7 @@
       "label": "fetchGithubUser()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L66",
+      "source_location": "L89",
       "id": "main_fetchgithubuser",
       "community": 0
     },
@@ -231,7 +375,7 @@
       "label": "resolveGithubUsernameForRegistration()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L79",
+      "source_location": "L102",
       "id": "main_resolvegithubusernameforregistration",
       "community": 0
     },
@@ -239,8 +383,24 @@
       "label": "initClient()",
       "file_type": "code",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L113",
+      "source_location": "L136",
       "id": "main_initclient",
+      "community": 0
+    },
+    {
+      "label": "listActivePoolsInner()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L653",
+      "id": "main_listactivepoolsinner",
+      "community": 0
+    },
+    {
+      "label": "activateAllCollectingForCurrentMonthInner()",
+      "file_type": "code",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L660",
+      "id": "main_activateallcollectingforcurrentmonthinner",
       "community": 0
     },
     {
@@ -262,42 +422,42 @@
     {
       "label": "deploy-functions.js",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L1",
       "id": "deploy_functions",
-      "community": 5
+      "community": 6
     },
     {
       "label": "syncExecuteFromConfig()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L20",
       "id": "deploy_functions_syncexecutefromconfig",
-      "community": 5
+      "community": 6
     },
     {
       "label": "createTarGz()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L55",
       "id": "deploy_functions_createtargz",
-      "community": 5
+      "community": 6
     },
     {
       "label": "deployFunction()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L66",
       "id": "deploy_functions_deployfunction",
-      "community": 5
+      "community": 6
     },
     {
       "label": "main()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L136",
       "id": "deploy_functions_main",
-      "community": 5
+      "community": 6
     },
     {
       "label": "deploy-single-function.js",
@@ -305,7 +465,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-single-function.js",
       "source_location": "L1",
       "id": "deploy_single_function",
-      "community": 6
+      "community": 8
     },
     {
       "label": "syncOpengetApiExecute()",
@@ -313,7 +473,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-single-function.js",
       "source_location": "L4",
       "id": "deploy_single_function_syncopengetapiexecute",
-      "community": 6
+      "community": 8
     },
     {
       "label": "main()",
@@ -321,7 +481,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-single-function.js",
       "source_location": "L30",
       "id": "deploy_single_function_main",
-      "community": 6
+      "community": 8
     },
     {
       "label": "setup-database.js",
@@ -329,7 +489,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L1",
       "id": "setup_database",
-      "community": 3
+      "community": 4
     },
     {
       "label": "isConflict()",
@@ -337,7 +497,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L19",
       "id": "setup_database_isconflict",
-      "community": 3
+      "community": 4
     },
     {
       "label": "sleep()",
@@ -345,7 +505,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L23",
       "id": "setup_database_sleep",
-      "community": 3
+      "community": 4
     },
     {
       "label": "waitForAttribute()",
@@ -353,7 +513,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L29",
       "id": "setup_database_waitforattribute",
-      "community": 3
+      "community": 4
     },
     {
       "label": "ensureDatabase()",
@@ -361,7 +521,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L44",
       "id": "setup_database_ensuredatabase",
-      "community": 3
+      "community": 4
     },
     {
       "label": "ensureCollection()",
@@ -369,7 +529,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L74",
       "id": "setup_database_ensurecollection",
-      "community": 3
+      "community": 4
     },
     {
       "label": "addStringAttribute()",
@@ -377,7 +537,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L101",
       "id": "setup_database_addstringattribute",
-      "community": 3
+      "community": 4
     },
     {
       "label": "addIntegerAttribute()",
@@ -385,7 +545,7 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L128",
       "id": "setup_database_addintegerattribute",
-      "community": 3
+      "community": 4
     },
     {
       "label": "addFloatAttribute()",
@@ -393,95 +553,103 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L156",
       "id": "setup_database_addfloatattribute",
-      "community": 3
+      "community": 4
+    },
+    {
+      "label": "addBooleanAttribute()",
+      "file_type": "code",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L184",
+      "id": "setup_database_addbooleanattribute",
+      "community": 4
     },
     {
       "label": "setupRepos()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L178",
+      "source_location": "L204",
       "id": "setup_database_setuprepos",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupContributors()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L195",
+      "source_location": "L226",
       "id": "setup_database_setupcontributors",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupRepoContributions()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L207",
+      "source_location": "L238",
       "id": "setup_database_setuprepocontributions",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupPools()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L223",
+      "source_location": "L254",
       "id": "setup_database_setuppools",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupDonations()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L239",
+      "source_location": "L271",
       "id": "setup_database_setupdonations",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupPayouts()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L250",
+      "source_location": "L282",
       "id": "setup_database_setuppayouts",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupPlatformFees()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L262",
+      "source_location": "L294",
       "id": "setup_database_setupplatformfees",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupMonthlyContributorStats()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L270",
+      "source_location": "L302",
       "id": "setup_database_setupmonthlycontributorstats",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupWeeklyDistributions()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L280",
+      "source_location": "L312",
       "id": "setup_database_setupweeklydistributions",
-      "community": 3
+      "community": 4
     },
     {
       "label": "setupUsers()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L291",
+      "source_location": "L323",
       "id": "setup_database_setupusers",
-      "community": 3
+      "community": 4
     },
     {
       "label": "main()",
       "file_type": "code",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L303",
+      "source_location": "L335",
       "id": "setup_database_main",
-      "community": 3
+      "community": 4
     },
     {
       "label": "middleware.ts",
@@ -489,7 +657,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L1",
       "id": "middleware",
-      "community": 7
+      "community": 9
     },
     {
       "label": "middleware()",
@@ -497,7 +665,7 @@
       "source_file": "src\\middleware.ts",
       "source_location": "L4",
       "id": "middleware_middleware",
-      "community": 7
+      "community": 9
     },
     {
       "label": "layout.tsx",
@@ -505,7 +673,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
       "source_location": "L1",
       "id": "layout",
-      "community": 4
+      "community": 3
     },
     {
       "label": "RootLayout()",
@@ -513,7 +681,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\layout.tsx",
       "source_location": "L20",
       "id": "layout_rootlayout",
-      "community": 4
+      "community": 3
     },
     {
       "label": "page.tsx",
@@ -522,6 +690,30 @@
       "source_location": "L1",
       "id": "page",
       "community": 1
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L1",
+      "id": "route",
+      "community": 3
+    },
+    {
+      "label": "toSummaryInput()",
+      "file_type": "code",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L13",
+      "id": "route_tosummaryinput",
+      "community": 3
+    },
+    {
+      "label": "GET()",
+      "file_type": "code",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L27",
+      "id": "route_get",
+      "community": 3
     },
     {
       "label": "handleRegister()",
@@ -542,32 +734,32 @@
     {
       "label": "handleCurrencyChange()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L56",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L97",
       "id": "page_handlecurrencychange",
       "community": 1
     },
     {
       "label": "handleDonate()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L73",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L114",
       "id": "page_handledonate",
       "community": 1
     },
     {
       "label": "handleUpiQr()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L85",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L131",
       "id": "page_handleupiqr",
       "community": 1
     },
     {
       "label": "fmt()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L111",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L157",
       "id": "page_fmt",
       "community": 1
     },
@@ -609,7 +801,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
       "source_location": "L1",
       "id": "oauth_callback_handler",
-      "community": 4
+      "community": 3
     },
     {
       "label": "OAuthCallbackHandler()",
@@ -617,7 +809,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
       "source_location": "L14",
       "id": "oauth_callback_handler_oauthcallbackhandler",
-      "community": 4
+      "community": 3
     },
     {
       "label": "contributor-table.tsx",
@@ -636,44 +828,52 @@
       "community": 1
     },
     {
+      "label": "pool-types-guide.tsx",
+      "file_type": "code",
+      "source_file": "src\\components\\enterprise\\pool-types-guide.tsx",
+      "source_location": "L1",
+      "id": "pool_types_guide",
+      "community": 1
+    },
+    {
       "label": "header.tsx",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L1",
       "id": "header",
-      "community": 4
+      "community": 3
     },
     {
       "label": "refreshUser()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L19",
       "id": "header_refreshuser",
-      "community": 4
+      "community": 3
     },
     {
       "label": "consumeAuthError()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L30",
       "id": "header_consumeautherror",
-      "community": 4
+      "community": 3
     },
     {
       "label": "handleSignIn()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L44",
       "id": "header_handlesignin",
-      "community": 4
+      "community": 3
     },
     {
       "label": "handleSignOut()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L54",
       "id": "header_handlesignout",
-      "community": 4
+      "community": 3
     },
     {
       "label": "pool-card.tsx",
@@ -684,17 +884,9 @@
       "community": 1
     },
     {
-      "label": "PoolCard()",
-      "file_type": "code",
-      "source_file": "src\\components\\pool\\pool-card.tsx",
-      "source_location": "L11",
-      "id": "pool_card_poolcard",
-      "community": 1
-    },
-    {
       "label": "repo-table.tsx",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\repos\\repo-table.tsx",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
       "source_location": "L1",
       "id": "repo_table",
       "community": 1
@@ -702,9 +894,41 @@
     {
       "label": "formatNumber()",
       "file_type": "code",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\repos\\repo-table.tsx",
-      "source_location": "L11",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L13",
       "id": "repo_table_formatnumber",
+      "community": 1
+    },
+    {
+      "label": "formatCrit()",
+      "file_type": "code",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L18",
+      "id": "repo_table_formatcrit",
+      "community": 1
+    },
+    {
+      "label": "formatBf()",
+      "file_type": "code",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L24",
+      "id": "repo_table_formatbf",
+      "community": 1
+    },
+    {
+      "label": "sortRepos()",
+      "file_type": "code",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L38",
+      "id": "repo_table_sortrepos",
+      "community": 1
+    },
+    {
+      "label": "poolLabel()",
+      "file_type": "code",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L68",
+      "id": "repo_table_poollabel",
       "community": 1
     },
     {
@@ -721,7 +945,7 @@
       "source_file": "src\\components\\ui\\button.tsx",
       "source_location": "L1",
       "id": "button",
-      "community": 4
+      "community": 3
     },
     {
       "label": "card.tsx",
@@ -737,7 +961,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo",
-      "community": 8
+      "community": 10
     },
     {
       "label": "LogoIcon()",
@@ -745,7 +969,7 @@
       "source_file": "src\\components\\ui\\logo.tsx",
       "source_location": "L1",
       "id": "logo_logoicon",
-      "community": 8
+      "community": 10
     },
     {
       "label": "progress.tsx",
@@ -775,7 +999,7 @@
       "label": "getGithubAccessTokenFromSession()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L21",
+      "source_location": "L22",
       "id": "api_getgithubaccesstokenfromsession",
       "community": 2
     },
@@ -783,7 +1007,7 @@
       "label": "executeFunction()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L33",
+      "source_location": "L34",
       "id": "api_executefunction",
       "community": 2
     },
@@ -791,7 +1015,7 @@
       "label": "docAttrs()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L54",
+      "source_location": "L55",
       "id": "api_docattrs",
       "community": 2
     },
@@ -799,7 +1023,7 @@
       "label": "mapRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L58",
+      "source_location": "L60",
       "id": "api_maprepo",
       "community": 2
     },
@@ -807,7 +1031,7 @@
       "label": "mapContributor()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L78",
+      "source_location": "L106",
       "id": "api_mapcontributor",
       "community": 2
     },
@@ -815,7 +1039,7 @@
       "label": "mapContributorFromFunctionPayload()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L95",
+      "source_location": "L123",
       "id": "api_mapcontributorfromfunctionpayload",
       "community": 2
     },
@@ -823,7 +1047,7 @@
       "label": "mapPool()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L112",
+      "source_location": "L140",
       "id": "api_mappool",
       "community": 2
     },
@@ -831,7 +1055,7 @@
       "label": "mapRepoContributionDoc()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L134",
+      "source_location": "L163",
       "id": "api_maprepocontributiondoc",
       "community": 2
     },
@@ -839,7 +1063,7 @@
       "label": "listRepos()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L152",
+      "source_location": "L181",
       "id": "api_listrepos",
       "community": 2
     },
@@ -847,7 +1071,7 @@
       "label": "getRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L165",
+      "source_location": "L194",
       "id": "api_getrepo",
       "community": 2
     },
@@ -855,7 +1079,7 @@
       "label": "getRepoContributors()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L170",
+      "source_location": "L199",
       "id": "api_getrepocontributors",
       "community": 2
     },
@@ -863,7 +1087,7 @@
       "label": "getMyGithubRepos()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L178",
+      "source_location": "L207",
       "id": "api_getmygithubrepos",
       "community": 2
     },
@@ -871,7 +1095,7 @@
       "label": "listRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L186",
+      "source_location": "L215",
       "id": "api_listrepo",
       "community": 2
     },
@@ -879,7 +1103,7 @@
       "label": "delistRepo()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L192",
+      "source_location": "L221",
       "id": "api_delistrepo",
       "community": 2
     },
@@ -887,7 +1111,7 @@
       "label": "listContributors()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L198",
+      "source_location": "L227",
       "id": "api_listcontributors",
       "community": 2
     },
@@ -895,7 +1119,7 @@
       "label": "getContributor()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L211",
+      "source_location": "L240",
       "id": "api_getcontributor",
       "community": 2
     },
@@ -903,7 +1127,7 @@
       "label": "registerContributor()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L222",
+      "source_location": "L251",
       "id": "api_registercontributor",
       "community": 2
     },
@@ -911,7 +1135,7 @@
       "label": "getActivePool()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L233",
+      "source_location": "L262",
       "id": "api_getactivepool",
       "community": 2
     },
@@ -919,15 +1143,39 @@
       "label": "getCollectingPool()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L247",
+      "source_location": "L276",
       "id": "api_getcollectingpool",
+      "community": 2
+    },
+    {
+      "label": "mapCollectingDocToSummary()",
+      "file_type": "code",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L290",
+      "id": "api_mapcollectingdoctosummary",
+      "community": 2
+    },
+    {
+      "label": "listCollectingPools()",
+      "file_type": "code",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L308",
+      "id": "api_listcollectingpools",
+      "community": 2
+    },
+    {
+      "label": "getPoolImpact()",
+      "file_type": "code",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L332",
+      "id": "api_getpoolimpact",
       "community": 2
     },
     {
       "label": "createCheckoutSession()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L261",
+      "source_location": "L394",
       "id": "api_createcheckoutsession",
       "community": 2
     },
@@ -935,7 +1183,7 @@
       "label": "createUpiQr()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L275",
+      "source_location": "L410",
       "id": "api_createupiqr",
       "community": 2
     },
@@ -943,7 +1191,7 @@
       "label": "checkUpiQrStatus()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L282",
+      "source_location": "L417",
       "id": "api_checkupiqrstatus",
       "community": 2
     },
@@ -951,7 +1199,7 @@
       "label": "donate()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L288",
+      "source_location": "L423",
       "id": "api_donate",
       "community": 2
     },
@@ -959,7 +1207,7 @@
       "label": "getEarnings()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L302",
+      "source_location": "L437",
       "id": "api_getearnings",
       "community": 2
     },
@@ -967,7 +1215,7 @@
       "label": "onboardStripeConnect()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L311",
+      "source_location": "L446",
       "id": "api_onboardstripeconnect",
       "community": 2
     },
@@ -975,9 +1223,25 @@
       "label": "getStats()",
       "file_type": "code",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L320",
+      "source_location": "L455",
       "id": "api_getstats",
       "community": 2
+    },
+    {
+      "label": "appwrite-server.ts",
+      "file_type": "code",
+      "source_file": "src\\lib\\appwrite-server.ts",
+      "source_location": "L1",
+      "id": "appwrite_server",
+      "community": 3
+    },
+    {
+      "label": "patchRepoAiSummary()",
+      "file_type": "code",
+      "source_file": "src\\lib\\appwrite-server.ts",
+      "source_location": "L7",
+      "id": "appwrite_server_patchrepoaisummary",
+      "community": 3
     },
     {
       "label": "appwrite.ts",
@@ -985,7 +1249,7 @@
       "source_file": "src\\lib\\appwrite.ts",
       "source_location": "L1",
       "id": "appwrite",
-      "community": 4
+      "community": 3
     },
     {
       "label": "oauth.ts",
@@ -993,7 +1257,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
       "source_location": "L1",
       "id": "oauth",
-      "community": 4
+      "community": 3
     },
     {
       "label": "oauthRedirectUrl()",
@@ -1001,7 +1265,7 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
       "source_location": "L10",
       "id": "oauth_oauthredirecturl",
-      "community": 4
+      "community": 3
     },
     {
       "label": "startGithubOAuthSession()",
@@ -1009,7 +1273,31 @@
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\lib\\oauth.ts",
       "source_location": "L21",
       "id": "oauth_startgithuboauthsession",
-      "community": 4
+      "community": 3
+    },
+    {
+      "label": "repo-ai-summary.ts",
+      "file_type": "code",
+      "source_file": "src\\lib\\repo-ai-summary.ts",
+      "source_location": "L1",
+      "id": "repo_ai_summary",
+      "community": 3
+    },
+    {
+      "label": "buildFallbackSummary()",
+      "file_type": "code",
+      "source_file": "src\\lib\\repo-ai-summary.ts",
+      "source_location": "L13",
+      "id": "repo_ai_summary_buildfallbacksummary",
+      "community": 3
+    },
+    {
+      "label": "fetchOpenAiSummary()",
+      "file_type": "code",
+      "source_file": "src\\lib\\repo-ai-summary.ts",
+      "source_location": "L36",
+      "id": "repo_ai_summary_fetchopenaisummary",
+      "community": 3
     },
     {
       "label": "seed-data.ts",
@@ -1073,7 +1361,7 @@
       "source_file": "src\\types\\index.ts",
       "source_location": "L1",
       "id": "index",
-      "community": 13
+      "community": 15
     }
   ],
   "links": [
@@ -1117,7 +1405,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L27",
+      "source_location": "L33",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_daysinmonth",
@@ -1129,7 +1417,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L31",
+      "source_location": "L37",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_getactivemonthinfo",
@@ -1141,19 +1429,19 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L42",
+      "source_location": "L48",
       "weight": 1.0,
       "_src": "main",
-      "_tgt": "main_ensurecollectingpool",
+      "_tgt": "main_ensurecollectingpools",
       "source": "main",
-      "target": "main_ensurecollectingpool",
+      "target": "main_ensurecollectingpools",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L75",
+      "source_location": "L101",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_activatepool",
@@ -1165,19 +1453,43 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L93",
+      "source_location": "L126",
       "weight": 1.0,
       "_src": "main",
-      "_tgt": "main_getoractivatepool",
+      "_tgt": "main_listactivepools",
       "source": "main",
-      "target": "main_getoractivatepool",
+      "target": "main_listactivepools",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L182",
+      "source_location": "L134",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_activateallcollectingforcurrentmonth",
+      "source": "main",
+      "target": "main_activateallcollectingforcurrentmonth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\distribute-pool\\src\\main.js",
+      "source_location": "L152",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_ensureactivepools",
+      "source": "main",
+      "target": "main_ensureactivepools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\distribute-pool\\src\\main.js",
+      "source_location": "L297",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_distributeweekly",
@@ -1189,7 +1501,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L35",
+      "source_location": "L36",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_ghheaders",
@@ -1201,7 +1513,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_sleep",
@@ -1213,7 +1525,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L49",
+      "source_location": "L50",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_githubsearchcount",
@@ -1225,7 +1537,19 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L65",
+      "source_location": "L66",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_fetchhassecuritymd",
+      "source": "main",
+      "target": "main_fetchhassecuritymd",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L73",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_fetchstatscontributors",
@@ -1237,7 +1561,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L82",
+      "source_location": "L90",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_currentmonthkey",
@@ -1249,7 +1573,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L89",
+      "source_location": "L97",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_monthdaterange",
@@ -1261,7 +1585,43 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L96",
+      "source_location": "L104",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_totalcommitsfromstatsrow",
+      "source": "main",
+      "target": "main_totalcommitsfromstatsrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L113",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_estimatebusfactor",
+      "source": "main",
+      "target": "main_estimatebusfactor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L134",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_computecriticalityv1",
+      "source": "main",
+      "target": "main_computecriticalityv1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L156",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_fetchmonthlyprstats",
@@ -1273,7 +1633,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L111",
+      "source_location": "L171",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_computecontributorscore",
@@ -1321,7 +1681,19 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L29",
+      "source_location": "L35",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_resolvecollectingpoolfortype",
+      "source": "main",
+      "target": "main_resolvecollectingpoolfortype",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L52",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_getgithubidentitytoken",
@@ -1333,7 +1705,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L48",
+      "source_location": "L71",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_resolvegithubaccesstokenforrepos",
@@ -1345,7 +1717,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L66",
+      "source_location": "L89",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_fetchgithubuser",
@@ -1357,7 +1729,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L79",
+      "source_location": "L102",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_resolvegithubusernameforregistration",
@@ -1369,12 +1741,36 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L113",
+      "source_location": "L136",
       "weight": 1.0,
       "_src": "main",
       "_tgt": "main_initclient",
       "source": "main",
       "target": "main_initclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L653",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_listactivepoolsinner",
+      "source": "main",
+      "target": "main_listactivepoolsinner",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\main.js",
+      "source_location": "L660",
+      "weight": 1.0,
+      "_src": "main",
+      "_tgt": "main_activateallcollectingforcurrentmonthinner",
+      "source": "main",
+      "target": "main_activateallcollectingforcurrentmonthinner",
       "confidence_score": 1.0
     },
     {
@@ -1405,7 +1801,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L35",
+      "source_location": "L41",
       "weight": 1.0,
       "_src": "main_getactivemonthinfo",
       "_tgt": "main_daysinmonth",
@@ -1417,19 +1813,19 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L46",
+      "source_location": "L52",
       "weight": 1.0,
-      "_src": "main_ensurecollectingpool",
+      "_src": "main_ensurecollectingpools",
       "_tgt": "main_daysinmonth",
       "source": "main_daysinmonth",
-      "target": "main_ensurecollectingpool",
+      "target": "main_ensurecollectingpools",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L79",
+      "source_location": "L105",
       "weight": 1.0,
       "_src": "main_activatepool",
       "_tgt": "main_daysinmonth",
@@ -1441,19 +1837,223 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\distribute-pool\\src\\main.js",
-      "source_location": "L109",
+      "source_location": "L146",
       "weight": 1.0,
-      "_src": "main_getoractivatepool",
+      "_src": "main_activateallcollectingforcurrentmonth",
       "_tgt": "main_activatepool",
       "source": "main_activatepool",
-      "target": "main_getoractivatepool",
+      "target": "main_activateallcollectingforcurrentmonth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\distribute-pool\\src\\main.js",
+      "source_location": "L153",
+      "weight": 1.0,
+      "_src": "main_ensureactivepools",
+      "_tgt": "main_listactivepools",
+      "source": "main_listactivepools",
+      "target": "main_ensureactivepools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\distribute-pool\\src\\main.js",
+      "source_location": "L155",
+      "weight": 1.0,
+      "_src": "main_ensureactivepools",
+      "_tgt": "main_activateallcollectingforcurrentmonth",
+      "source": "main_activateallcollectingforcurrentmonth",
+      "target": "main_ensureactivepools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_src": "pool_eligibility",
+      "_tgt": "pool_eligibility_envint",
+      "source": "pool_eligibility",
+      "target": "pool_eligibility_envint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_src": "pool_eligibility",
+      "_tgt": "pool_eligibility_envfloat",
+      "source": "pool_eligibility",
+      "target": "pool_eligibility_envfloat",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L21",
+      "weight": 1.0,
+      "_src": "pool_eligibility",
+      "_tgt": "pool_eligibility_computeeligiblepooltypes",
+      "source": "pool_eligibility",
+      "target": "pool_eligibility_computeeligiblepooltypes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_src": "pool_eligibility",
+      "_tgt": "pool_eligibility_parseeligiblepooltypesjson",
+      "source": "pool_eligibility",
+      "target": "pool_eligibility_parseeligiblepooltypesjson",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L78",
+      "weight": 1.0,
+      "_src": "pool_eligibility",
+      "_tgt": "pool_eligibility_repoeligibleforpool",
+      "source": "pool_eligibility",
+      "target": "pool_eligibility_repoeligibleforpool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L85",
+      "weight": 1.0,
+      "_src": "pool_eligibility",
+      "_tgt": "pool_eligibility_filterreposforpooltype",
+      "source": "pool_eligibility",
+      "target": "pool_eligibility_filterreposforpooltype",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L31",
+      "weight": 1.0,
+      "_src": "pool_eligibility_computeeligiblepooltypes",
+      "_tgt": "pool_eligibility_envint",
+      "source": "pool_eligibility_envint",
+      "target": "pool_eligibility_computeeligiblepooltypes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_src": "pool_eligibility_computeeligiblepooltypes",
+      "_tgt": "pool_eligibility_envfloat",
+      "source": "pool_eligibility_envfloat",
+      "target": "pool_eligibility_computeeligiblepooltypes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\pool-eligibility.js",
+      "source_location": "L79",
+      "weight": 1.0,
+      "_src": "pool_eligibility_repoeligibleforpool",
+      "_tgt": "pool_eligibility_parseeligiblepooltypesjson",
+      "source": "pool_eligibility_parseeligiblepooltypesjson",
+      "target": "pool_eligibility_repoeligibleforpool",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_src": "page",
+      "_tgt": "pool_types",
+      "source": "pool_types",
+      "target": "page",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\enterprise\\pool-types-guide.tsx",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_src": "pool_types_guide",
+      "_tgt": "pool_types",
+      "source": "pool_types",
+      "target": "pool_types_guide",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\pool\\pool-card.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_src": "pool_card",
+      "_tgt": "pool_types",
+      "source": "pool_types",
+      "target": "pool_card",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_src": "repo_table",
+      "_tgt": "pool_types",
+      "source": "pool_types",
+      "target": "repo_table",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\repo-distribution.js",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_src": "repo_distribution",
+      "_tgt": "repo_distribution_computerepodistributionweight",
+      "source": "repo_distribution",
+      "target": "repo_distribution_computerepodistributionweight",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\openget-api\\src\\repo-distribution.js",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_src": "repo_distribution",
+      "_tgt": "repo_distribution_filterreposfordistribution",
+      "source": "repo_distribution",
+      "target": "repo_distribution_filterreposfordistribution",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L52",
+      "source_location": "L53",
       "weight": 1.0,
       "_src": "main_githubsearchcount",
       "_tgt": "main_ghheaders",
@@ -1465,7 +2065,19 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L68",
+      "source_location": "L69",
+      "weight": 1.0,
+      "_src": "main_fetchhassecuritymd",
+      "_tgt": "main_ghheaders",
+      "source": "main_ghheaders",
+      "target": "main_fetchhassecuritymd",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L76",
       "weight": 1.0,
       "_src": "main_fetchstatscontributors",
       "_tgt": "main_ghheaders",
@@ -1477,7 +2089,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L54",
+      "source_location": "L55",
       "weight": 1.0,
       "_src": "main_githubsearchcount",
       "_tgt": "main_sleep",
@@ -1489,7 +2101,19 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L70",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_src": "main_fetchhassecuritymd",
+      "_tgt": "main_sleep",
+      "source": "main_sleep",
+      "target": "main_fetchhassecuritymd",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "functions\\fetch-contributors\\src\\main.js",
+      "source_location": "L78",
       "weight": 1.0,
       "_src": "main_fetchstatscontributors",
       "_tgt": "main_sleep",
@@ -1501,7 +2125,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L98",
+      "source_location": "L158",
       "weight": 1.0,
       "_src": "main_fetchmonthlyprstats",
       "_tgt": "main_sleep",
@@ -1513,7 +2137,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L99",
+      "source_location": "L159",
       "weight": 1.0,
       "_src": "main_fetchmonthlyprstats",
       "_tgt": "main_githubsearchcount",
@@ -1525,7 +2149,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\fetch-contributors\\src\\main.js",
-      "source_location": "L97",
+      "source_location": "L157",
       "weight": 1.0,
       "_src": "main_fetchmonthlyprstats",
       "_tgt": "main_monthdaterange",
@@ -1537,7 +2161,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L60",
+      "source_location": "L83",
       "weight": 1.0,
       "_src": "main_resolvegithubaccesstokenforrepos",
       "_tgt": "main_getgithubidentitytoken",
@@ -1549,7 +2173,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L105",
+      "source_location": "L128",
       "weight": 1.0,
       "_src": "main_resolvegithubusernameforregistration",
       "_tgt": "main_getgithubidentitytoken",
@@ -1561,7 +2185,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "functions\\openget-api\\src\\main.js",
-      "source_location": "L89",
+      "source_location": "L112",
       "weight": 1.0,
       "_src": "main_resolvegithubusernameforregistration",
       "_tgt": "main_fetchgithubuser",
@@ -1572,7 +2196,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L20",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1584,7 +2208,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L55",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1596,7 +2220,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L66",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1608,7 +2232,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L136",
       "weight": 1.0,
       "_src": "deploy_functions",
@@ -1620,7 +2244,7 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L126",
       "weight": 1.0,
       "_src": "deploy_functions_deployfunction",
@@ -1632,7 +2256,7 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L113",
       "weight": 1.0,
       "_src": "deploy_functions_deployfunction",
@@ -1644,7 +2268,7 @@
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\scripts\\deploy-functions.js",
+      "source_file": "scripts\\deploy-functions.js",
       "source_location": "L172",
       "weight": 1.0,
       "_src": "deploy_functions_main",
@@ -1789,7 +2413,19 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L178",
+      "source_location": "L184",
+      "weight": 1.0,
+      "_src": "setup_database",
+      "_tgt": "setup_database_addbooleanattribute",
+      "source": "setup_database",
+      "target": "setup_database_addbooleanattribute",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L204",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setuprepos",
@@ -1801,7 +2437,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L195",
+      "source_location": "L226",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setupcontributors",
@@ -1813,7 +2449,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L207",
+      "source_location": "L238",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setuprepocontributions",
@@ -1825,7 +2461,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L223",
+      "source_location": "L254",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setuppools",
@@ -1837,7 +2473,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L239",
+      "source_location": "L271",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setupdonations",
@@ -1849,7 +2485,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L250",
+      "source_location": "L282",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setuppayouts",
@@ -1861,7 +2497,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L262",
+      "source_location": "L294",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setupplatformfees",
@@ -1873,7 +2509,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L270",
+      "source_location": "L302",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setupmonthlycontributorstats",
@@ -1885,7 +2521,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L280",
+      "source_location": "L312",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setupweeklydistributions",
@@ -1897,7 +2533,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L291",
+      "source_location": "L323",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_setupusers",
@@ -1909,7 +2545,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L303",
+      "source_location": "L335",
       "weight": 1.0,
       "_src": "setup_database",
       "_tgt": "setup_database_main",
@@ -1981,6 +2617,18 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
+      "source_location": "L196",
+      "weight": 1.0,
+      "_src": "setup_database_addbooleanattribute",
+      "_tgt": "setup_database_isconflict",
+      "source": "setup_database_isconflict",
+      "target": "setup_database_addbooleanattribute",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
       "source_location": "L39",
       "weight": 1.0,
       "_src": "setup_database_waitforattribute",
@@ -2029,7 +2677,19 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L313",
+      "source_location": "L193",
+      "weight": 1.0,
+      "_src": "setup_database_addbooleanattribute",
+      "_tgt": "setup_database_waitforattribute",
+      "source": "setup_database_waitforattribute",
+      "target": "setup_database_addbooleanattribute",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L345",
       "weight": 1.0,
       "_src": "setup_database_main",
       "_tgt": "setup_database_ensuredatabase",
@@ -2041,276 +2701,12 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L180",
+      "source_location": "L206",
       "weight": 1.0,
       "_src": "setup_database_setuprepos",
       "_tgt": "setup_database_ensurecollection",
       "source": "setup_database_ensurecollection",
       "target": "setup_database_setuprepos",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L197",
-      "weight": 1.0,
-      "_src": "setup_database_setupcontributors",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setupcontributors",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L209",
-      "weight": 1.0,
-      "_src": "setup_database_setuprepocontributions",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setuprepocontributions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L225",
-      "weight": 1.0,
-      "_src": "setup_database_setuppools",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setuppools",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L241",
-      "weight": 1.0,
-      "_src": "setup_database_setupdonations",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setupdonations",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L252",
-      "weight": 1.0,
-      "_src": "setup_database_setuppayouts",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setuppayouts",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L264",
-      "weight": 1.0,
-      "_src": "setup_database_setupplatformfees",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setupplatformfees",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L272",
-      "weight": 1.0,
-      "_src": "setup_database_setupmonthlycontributorstats",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setupmonthlycontributorstats",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L282",
-      "weight": 1.0,
-      "_src": "setup_database_setupweeklydistributions",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setupweeklydistributions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L293",
-      "weight": 1.0,
-      "_src": "setup_database_setupusers",
-      "_tgt": "setup_database_ensurecollection",
-      "source": "setup_database_ensurecollection",
-      "target": "setup_database_setupusers",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L181",
-      "weight": 1.0,
-      "_src": "setup_database_setuprepos",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setuprepos",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L198",
-      "weight": 1.0,
-      "_src": "setup_database_setupcontributors",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setupcontributors",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L210",
-      "weight": 1.0,
-      "_src": "setup_database_setuprepocontributions",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setuprepocontributions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L226",
-      "weight": 1.0,
-      "_src": "setup_database_setuppools",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setuppools",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L242",
-      "weight": 1.0,
-      "_src": "setup_database_setupdonations",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setupdonations",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L253",
-      "weight": 1.0,
-      "_src": "setup_database_setuppayouts",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setuppayouts",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L265",
-      "weight": 1.0,
-      "_src": "setup_database_setupplatformfees",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setupplatformfees",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L273",
-      "weight": 1.0,
-      "_src": "setup_database_setupmonthlycontributorstats",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setupmonthlycontributorstats",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L283",
-      "weight": 1.0,
-      "_src": "setup_database_setupweeklydistributions",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setupweeklydistributions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L294",
-      "weight": 1.0,
-      "_src": "setup_database_setupusers",
-      "_tgt": "setup_database_addstringattribute",
-      "source": "setup_database_addstringattribute",
-      "target": "setup_database_setupusers",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L187",
-      "weight": 1.0,
-      "_src": "setup_database_setuprepos",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setuprepos",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L203",
-      "weight": 1.0,
-      "_src": "setup_database_setupcontributors",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setupcontributors",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L213",
-      "weight": 1.0,
-      "_src": "setup_database_setuprepocontributions",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setuprepocontributions",
       "confidence_score": 1.0
     },
     {
@@ -2319,81 +2715,9 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L228",
       "weight": 1.0,
-      "_src": "setup_database_setuppools",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setuppools",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L244",
-      "weight": 1.0,
-      "_src": "setup_database_setupdonations",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setupdonations",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L255",
-      "weight": 1.0,
-      "_src": "setup_database_setuppayouts",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setuppayouts",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L266",
-      "weight": 1.0,
-      "_src": "setup_database_setupplatformfees",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setupplatformfees",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L276",
-      "weight": 1.0,
-      "_src": "setup_database_setupmonthlycontributorstats",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setupmonthlycontributorstats",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L286",
-      "weight": 1.0,
-      "_src": "setup_database_setupweeklydistributions",
-      "_tgt": "setup_database_addintegerattribute",
-      "source": "setup_database_addintegerattribute",
-      "target": "setup_database_setupweeklydistributions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "source_file": "scripts\\setup-database.js",
-      "source_location": "L202",
-      "weight": 1.0,
       "_src": "setup_database_setupcontributors",
-      "_tgt": "setup_database_addfloatattribute",
-      "source": "setup_database_addfloatattribute",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
       "target": "setup_database_setupcontributors",
       "confidence_score": 1.0
     },
@@ -2401,11 +2725,11 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts\\setup-database.js",
-      "source_location": "L219",
+      "source_location": "L240",
       "weight": 1.0,
       "_src": "setup_database_setuprepocontributions",
-      "_tgt": "setup_database_addfloatattribute",
-      "source": "setup_database_addfloatattribute",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
       "target": "setup_database_setuprepocontributions",
       "confidence_score": 1.0
     },
@@ -2415,10 +2739,370 @@
       "source_file": "scripts\\setup-database.js",
       "source_location": "L256",
       "weight": 1.0,
+      "_src": "setup_database_setuppools",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setuppools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L273",
+      "weight": 1.0,
+      "_src": "setup_database_setupdonations",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setupdonations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L284",
+      "weight": 1.0,
+      "_src": "setup_database_setuppayouts",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setuppayouts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L296",
+      "weight": 1.0,
+      "_src": "setup_database_setupplatformfees",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setupplatformfees",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L304",
+      "weight": 1.0,
+      "_src": "setup_database_setupmonthlycontributorstats",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setupmonthlycontributorstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L314",
+      "weight": 1.0,
+      "_src": "setup_database_setupweeklydistributions",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setupweeklydistributions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L325",
+      "weight": 1.0,
+      "_src": "setup_database_setupusers",
+      "_tgt": "setup_database_ensurecollection",
+      "source": "setup_database_ensurecollection",
+      "target": "setup_database_setupusers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L207",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepos",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setuprepos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L229",
+      "weight": 1.0,
+      "_src": "setup_database_setupcontributors",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setupcontributors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L241",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepocontributions",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setuprepocontributions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L257",
+      "weight": 1.0,
+      "_src": "setup_database_setuppools",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setuppools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L274",
+      "weight": 1.0,
+      "_src": "setup_database_setupdonations",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setupdonations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L285",
+      "weight": 1.0,
+      "_src": "setup_database_setuppayouts",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setuppayouts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L297",
+      "weight": 1.0,
+      "_src": "setup_database_setupplatformfees",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setupplatformfees",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L305",
+      "weight": 1.0,
+      "_src": "setup_database_setupmonthlycontributorstats",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setupmonthlycontributorstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L315",
+      "weight": 1.0,
+      "_src": "setup_database_setupweeklydistributions",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setupweeklydistributions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L326",
+      "weight": 1.0,
+      "_src": "setup_database_setupusers",
+      "_tgt": "setup_database_addstringattribute",
+      "source": "setup_database_addstringattribute",
+      "target": "setup_database_setupusers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L213",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepos",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setuprepos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L234",
+      "weight": 1.0,
+      "_src": "setup_database_setupcontributors",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setupcontributors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L244",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepocontributions",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setuprepocontributions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L259",
+      "weight": 1.0,
+      "_src": "setup_database_setuppools",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setuppools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L276",
+      "weight": 1.0,
+      "_src": "setup_database_setupdonations",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setupdonations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L287",
+      "weight": 1.0,
+      "_src": "setup_database_setuppayouts",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setuppayouts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L298",
+      "weight": 1.0,
+      "_src": "setup_database_setupplatformfees",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setupplatformfees",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L308",
+      "weight": 1.0,
+      "_src": "setup_database_setupmonthlycontributorstats",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setupmonthlycontributorstats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L318",
+      "weight": 1.0,
+      "_src": "setup_database_setupweeklydistributions",
+      "_tgt": "setup_database_addintegerattribute",
+      "source": "setup_database_addintegerattribute",
+      "target": "setup_database_setupweeklydistributions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L216",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepos",
+      "_tgt": "setup_database_addfloatattribute",
+      "source": "setup_database_addfloatattribute",
+      "target": "setup_database_setuprepos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L233",
+      "weight": 1.0,
+      "_src": "setup_database_setupcontributors",
+      "_tgt": "setup_database_addfloatattribute",
+      "source": "setup_database_addfloatattribute",
+      "target": "setup_database_setupcontributors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L250",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepocontributions",
+      "_tgt": "setup_database_addfloatattribute",
+      "source": "setup_database_addfloatattribute",
+      "target": "setup_database_setuprepocontributions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L288",
+      "weight": 1.0,
       "_src": "setup_database_setuppayouts",
       "_tgt": "setup_database_addfloatattribute",
       "source": "setup_database_addfloatattribute",
       "target": "setup_database_setuppayouts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts\\setup-database.js",
+      "source_location": "L222",
+      "weight": 1.0,
+      "_src": "setup_database_setuprepos",
+      "_tgt": "setup_database_addbooleanattribute",
+      "source": "setup_database_addbooleanattribute",
+      "target": "setup_database_setuprepos",
       "confidence_score": 1.0
     },
     {
@@ -2604,8 +3288,8 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L7",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L13",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "pool_card",
@@ -2616,8 +3300,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L56",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L97",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handlecurrencychange",
@@ -2628,8 +3312,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L73",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L114",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handledonate",
@@ -2640,8 +3324,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L85",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L131",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_handleupiqr",
@@ -2652,8 +3336,8 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\app\\donate\\page.tsx",
-      "source_location": "L111",
+      "source_file": "src\\app\\donate\\page.tsx",
+      "source_location": "L157",
       "weight": 1.0,
       "_src": "page",
       "_tgt": "page_fmt",
@@ -2671,6 +3355,18 @@
       "_tgt": "page_donatesuccesspage",
       "source": "page",
       "target": "page_donatesuccesspage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\enterprise\\page.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_src": "page",
+      "_tgt": "pool_types_guide",
+      "source": "page",
+      "target": "pool_types_guide",
       "confidence_score": 1.0
     },
     {
@@ -2724,6 +3420,90 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "appwrite",
+      "source": "route",
+      "target": "appwrite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "api",
+      "source": "route",
+      "target": "api",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "appwrite_server",
+      "source": "route",
+      "target": "appwrite_server",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "repo_ai_summary",
+      "source": "route",
+      "target": "repo_ai_summary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "route_tosummaryinput",
+      "source": "route",
+      "target": "route_tosummaryinput",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L27",
+      "weight": 1.0,
+      "_src": "route",
+      "_tgt": "route_get",
+      "source": "route",
+      "target": "route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\app\\api\\repos\\[id]\\summary\\route.ts",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_src": "route_get",
+      "_tgt": "route_tosummaryinput",
+      "source": "route_tosummaryinput",
+      "target": "route_get",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
       "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\auth\\oauth-callback-handler.tsx",
       "source_location": "L4",
       "weight": 1.0,
@@ -2772,7 +3552,7 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L9",
       "weight": 1.0,
       "_src": "header",
@@ -2784,7 +3564,7 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L7",
       "weight": 1.0,
       "_src": "header",
@@ -2796,7 +3576,7 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L8",
       "weight": 1.0,
       "_src": "header",
@@ -2808,7 +3588,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L19",
       "weight": 1.0,
       "_src": "header",
@@ -2820,7 +3600,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L30",
       "weight": 1.0,
       "_src": "header",
@@ -2832,7 +3612,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L44",
       "weight": 1.0,
       "_src": "header",
@@ -2844,7 +3624,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\layout\\header.tsx",
+      "source_file": "src\\components\\layout\\header.tsx",
       "source_location": "L54",
       "weight": 1.0,
       "_src": "header",
@@ -2872,28 +3652,28 @@
       "source_location": "L5",
       "weight": 1.0,
       "_src": "pool_card",
+      "_tgt": "badge",
+      "source": "pool_card",
+      "target": "badge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\pool\\pool-card.tsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_src": "pool_card",
       "_tgt": "seed_data",
       "source": "pool_card",
       "target": "seed_data",
       "confidence_score": 1.0
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src\\components\\pool\\pool-card.tsx",
-      "source_location": "L11",
-      "weight": 1.0,
-      "_src": "pool_card",
-      "_tgt": "pool_card_poolcard",
-      "source": "pool_card",
-      "target": "pool_card_poolcard",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\repos\\repo-table.tsx",
-      "source_location": "L5",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L6",
       "weight": 1.0,
       "_src": "repo_table",
       "_tgt": "badge",
@@ -2904,13 +3684,61 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "c:\\Users\\Dell\\openget-appwrite\\src\\components\\repos\\repo-table.tsx",
-      "source_location": "L11",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L13",
       "weight": 1.0,
       "_src": "repo_table",
       "_tgt": "repo_table_formatnumber",
       "source": "repo_table",
       "target": "repo_table_formatnumber",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "_src": "repo_table",
+      "_tgt": "repo_table_formatcrit",
+      "source": "repo_table",
+      "target": "repo_table_formatcrit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "_src": "repo_table",
+      "_tgt": "repo_table_formatbf",
+      "source": "repo_table",
+      "target": "repo_table_formatbf",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "_src": "repo_table",
+      "_tgt": "repo_table_sortrepos",
+      "source": "repo_table",
+      "target": "repo_table_sortrepos",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\components\\repos\\repo-table.tsx",
+      "source_location": "L68",
+      "weight": 1.0,
+      "_src": "repo_table",
+      "_tgt": "repo_table_poollabel",
+      "source": "repo_table",
+      "target": "repo_table_poollabel",
       "confidence_score": 1.0
     },
     {
@@ -3001,7 +3829,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L21",
+      "source_location": "L22",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getgithubaccesstokenfromsession",
@@ -3013,7 +3841,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_executefunction",
@@ -3025,7 +3853,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L54",
+      "source_location": "L55",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_docattrs",
@@ -3037,7 +3865,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L58",
+      "source_location": "L60",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_maprepo",
@@ -3049,7 +3877,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L78",
+      "source_location": "L106",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_mapcontributor",
@@ -3061,7 +3889,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L95",
+      "source_location": "L123",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_mapcontributorfromfunctionpayload",
@@ -3073,7 +3901,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L112",
+      "source_location": "L140",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_mappool",
@@ -3085,7 +3913,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L134",
+      "source_location": "L163",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_maprepocontributiondoc",
@@ -3097,7 +3925,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L152",
+      "source_location": "L181",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_listrepos",
@@ -3109,7 +3937,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L165",
+      "source_location": "L194",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getrepo",
@@ -3121,7 +3949,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L170",
+      "source_location": "L199",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getrepocontributors",
@@ -3133,7 +3961,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L178",
+      "source_location": "L207",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getmygithubrepos",
@@ -3145,7 +3973,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L186",
+      "source_location": "L215",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_listrepo",
@@ -3157,7 +3985,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L192",
+      "source_location": "L221",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_delistrepo",
@@ -3169,7 +3997,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L198",
+      "source_location": "L227",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_listcontributors",
@@ -3181,7 +4009,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L211",
+      "source_location": "L240",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getcontributor",
@@ -3193,7 +4021,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L222",
+      "source_location": "L251",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_registercontributor",
@@ -3205,7 +4033,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L233",
+      "source_location": "L262",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getactivepool",
@@ -3217,7 +4045,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L247",
+      "source_location": "L276",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getcollectingpool",
@@ -3229,7 +4057,43 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L261",
+      "source_location": "L290",
+      "weight": 1.0,
+      "_src": "api",
+      "_tgt": "api_mapcollectingdoctosummary",
+      "source": "api",
+      "target": "api_mapcollectingdoctosummary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L308",
+      "weight": 1.0,
+      "_src": "api",
+      "_tgt": "api_listcollectingpools",
+      "source": "api",
+      "target": "api_listcollectingpools",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L332",
+      "weight": 1.0,
+      "_src": "api",
+      "_tgt": "api_getpoolimpact",
+      "source": "api",
+      "target": "api_getpoolimpact",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\api.ts",
+      "source_location": "L394",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_createcheckoutsession",
@@ -3241,7 +4105,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L275",
+      "source_location": "L410",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_createupiqr",
@@ -3253,7 +4117,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L282",
+      "source_location": "L417",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_checkupiqrstatus",
@@ -3265,7 +4129,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L288",
+      "source_location": "L423",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_donate",
@@ -3277,7 +4141,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L302",
+      "source_location": "L437",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getearnings",
@@ -3289,7 +4153,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L311",
+      "source_location": "L446",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_onboardstripeconnect",
@@ -3301,7 +4165,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L320",
+      "source_location": "L455",
       "weight": 1.0,
       "_src": "api",
       "_tgt": "api_getstats",
@@ -3313,7 +4177,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L179",
+      "source_location": "L208",
       "weight": 1.0,
       "_src": "api_getmygithubrepos",
       "_tgt": "api_getgithubaccesstokenfromsession",
@@ -3325,7 +4189,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L223",
+      "source_location": "L252",
       "weight": 1.0,
       "_src": "api_registercontributor",
       "_tgt": "api_getgithubaccesstokenfromsession",
@@ -3337,7 +4201,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L180",
+      "source_location": "L209",
       "weight": 1.0,
       "_src": "api_getmygithubrepos",
       "_tgt": "api_executefunction",
@@ -3349,7 +4213,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L266",
+      "source_location": "L400",
       "weight": 1.0,
       "_src": "api_createcheckoutsession",
       "_tgt": "api_executefunction",
@@ -3361,7 +4225,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L279",
+      "source_location": "L414",
       "weight": 1.0,
       "_src": "api_createupiqr",
       "_tgt": "api_executefunction",
@@ -3373,7 +4237,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L285",
+      "source_location": "L420",
       "weight": 1.0,
       "_src": "api_checkupiqrstatus",
       "_tgt": "api_executefunction",
@@ -3385,7 +4249,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L292",
+      "source_location": "L427",
       "weight": 1.0,
       "_src": "api_donate",
       "_tgt": "api_executefunction",
@@ -3397,7 +4261,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L303",
+      "source_location": "L438",
       "weight": 1.0,
       "_src": "api_getearnings",
       "_tgt": "api_executefunction",
@@ -3409,7 +4273,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L312",
+      "source_location": "L447",
       "weight": 1.0,
       "_src": "api_onboardstripeconnect",
       "_tgt": "api_executefunction",
@@ -3421,7 +4285,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L59",
+      "source_location": "L61",
       "weight": 1.0,
       "_src": "api_maprepo",
       "_tgt": "api_docattrs",
@@ -3433,7 +4297,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L79",
+      "source_location": "L107",
       "weight": 1.0,
       "_src": "api_mapcontributor",
       "_tgt": "api_docattrs",
@@ -3445,7 +4309,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L113",
+      "source_location": "L141",
       "weight": 1.0,
       "_src": "api_mappool",
       "_tgt": "api_docattrs",
@@ -3457,7 +4321,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L135",
+      "source_location": "L164",
       "weight": 1.0,
       "_src": "api_maprepocontributiondoc",
       "_tgt": "api_docattrs",
@@ -3469,7 +4333,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L167",
+      "source_location": "L196",
       "weight": 1.0,
       "_src": "api_getrepo",
       "_tgt": "api_maprepo",
@@ -3481,7 +4345,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L189",
+      "source_location": "L218",
       "weight": 1.0,
       "_src": "api_listrepo",
       "_tgt": "api_maprepo",
@@ -3493,7 +4357,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L213",
+      "source_location": "L242",
       "weight": 1.0,
       "_src": "api_getcontributor",
       "_tgt": "api_mapcontributor",
@@ -3505,7 +4369,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L228",
+      "source_location": "L257",
       "weight": 1.0,
       "_src": "api_registercontributor",
       "_tgt": "api_mapcontributorfromfunctionpayload",
@@ -3517,7 +4381,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L240",
+      "source_location": "L269",
       "weight": 1.0,
       "_src": "api_getactivepool",
       "_tgt": "api_mappool",
@@ -3529,7 +4393,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "src\\lib\\api.ts",
-      "source_location": "L254",
+      "source_location": "L283",
       "weight": 1.0,
       "_src": "api_getcollectingpool",
       "_tgt": "api_mappool",
@@ -3538,15 +4402,27 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
+      "relation": "imports_from",
       "confidence": "EXTRACTED",
-      "source_file": "src\\lib\\api.ts",
-      "source_location": "L332",
+      "source_file": "src\\lib\\appwrite-server.ts",
+      "source_location": "L1",
       "weight": 1.0,
-      "_src": "api_getstats",
-      "_tgt": "api_mappool",
-      "source": "api_mappool",
-      "target": "api_getstats",
+      "_src": "appwrite_server",
+      "_tgt": "appwrite",
+      "source": "appwrite_server",
+      "target": "appwrite",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\appwrite-server.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_src": "appwrite_server",
+      "_tgt": "appwrite_server_patchrepoaisummary",
+      "source": "appwrite_server",
+      "target": "appwrite_server_patchrepoaisummary",
       "confidence_score": 1.0
     },
     {
@@ -3607,6 +4483,30 @@
       "_tgt": "oauth_oauthredirecturl",
       "source": "oauth_oauthredirecturl",
       "target": "oauth_startgithuboauthsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\repo-ai-summary.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_src": "repo_ai_summary",
+      "_tgt": "repo_ai_summary_buildfallbacksummary",
+      "source": "repo_ai_summary",
+      "target": "repo_ai_summary_buildfallbacksummary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\lib\\repo-ai-summary.ts",
+      "source_location": "L36",
+      "weight": 1.0,
+      "_src": "repo_ai_summary",
+      "_tgt": "repo_ai_summary_fetchopenaisummary",
+      "source": "repo_ai_summary",
+      "target": "repo_ai_summary_fetchopenaisummary",
       "confidence_score": 1.0
     },
     {

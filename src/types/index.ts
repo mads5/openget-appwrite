@@ -9,6 +9,18 @@ export interface Repo {
   stars: number;
   forks: number;
   repo_score: number;
+  /** Heuristic 0–1 (OpenSSF-style criticality v1). */
+  criticality_score?: number;
+  /** Estimated bus factor (≥1). */
+  bus_factor?: number;
+  /** True if SECURITY.md exists on default branch (from nightly fetch). */
+  has_security_md?: boolean;
+  /** Pool lanes this repo receives distributions from (nightly-computed). */
+  eligible_pool_types?: string[];
+  /** Short AI-generated blurb (cached on first view when OPENAI_API_KEY is configured server-side). */
+  ai_summary?: string | null;
+  /** SPDX license identifier from GitHub (e.g. "MIT", "Apache-2.0"). */
+  license?: string | null;
   listed_by: string;
   contributor_count: number;
   contributors_fetched_at: string | null;
@@ -53,6 +65,8 @@ export interface RepoContribution {
   lines_removed: number;
   reviews: number;
   issues_closed: number;
+  review_comments: number;
+  releases_count: number;
   score: number;
   last_contribution_at: string | null;
 }
@@ -70,7 +84,20 @@ export interface Pool {
   status: "collecting" | "active" | "distributing" | "completed";
   round_start: string;
   round_end: string;
+  /** Strategic pool lane — see docs/POOL_TYPES.md */
+  pool_type?: string | null;
   created_at: string;
+}
+
+export interface CollectingPoolSummary {
+  id: string;
+  pool_type: string | null;
+  name: string;
+  description: string | null;
+  round_start: string;
+  round_end: string;
+  total_amount_cents: number;
+  donor_count: number;
 }
 
 export interface WeeklyDistribution {

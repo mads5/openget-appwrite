@@ -1,8 +1,9 @@
 import { Client, Databases, ID, Query } from "node-appwrite";
 
 const DATABASE_ID = "openget-db";
-const PLATFORM_FEE_RATE = 0.01;
 const COLLECTION_REPOS = "repos";
+const COLLECTION_CONTRIBUTORS = "contributors";
+const COLLECTION_REPO_CONTRIBUTIONS = "repo_contributions";
 
 function getHeader(req, name) {
   const n = name.toLowerCase();
@@ -103,6 +104,8 @@ export default async ({ req, res, log, error }) => {
     }
 
     const now = new Date().toISOString();
+    const stars = meta.stargazers_count ?? 0;
+    const forks = meta.forks_count ?? 0;
     const doc = {
       github_url: meta.html_url || `https://github.com/${full_name}`,
       owner: meta.owner?.login || owner,
@@ -110,8 +113,12 @@ export default async ({ req, res, log, error }) => {
       full_name: meta.full_name || full_name,
       description: meta.description ?? null,
       language: meta.language ?? null,
-      stars: meta.stargazers_count ?? 0,
-      forks: meta.forks_count ?? 0,
+      stars,
+      forks,
+      repo_score: stars + forks,
+      criticality_score: 0.5,
+      bus_factor: 3,
+      has_security_md: false,
       listed_by: userId,
       contributor_count: 0,
       contributors_fetched_at: null,
@@ -125,8 +132,88 @@ export default async ({ req, res, log, error }) => {
       doc
     );
 
+    // Initial contributor snapshot at listing time. Nightly fetch will enrich/add later.
+    let contributorCount = 0;
+    try {
+      const contributorsRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contributors?per_page=100`,
+        { headers: ghHeaders },
+      );
+      if (contributorsRes.ok) {
+        const contributors = await contributorsRes.json();
+        if (Array.isArray(contributors)) {
+          for (const c of contributors) {
+            const username = c?.login;
+            if (!username) continue;
+            const existing = await databases.listDocuments(DATABASE_ID, COLLECTION_CONTRIBUTORS, [
+              Query.equal("github_username", String(username)),
+              Query.limit(1),
+            ]);
+            let contribDoc;
+            if (existing.total > 0) {
+              contribDoc = existing.documents[0];
+            } else {
+              contribDoc = await databases.createDocument(DATABASE_ID, COLLECTION_CONTRIBUTORS, ID.unique(), {
+                github_username: String(username),
+                github_id: c.id != null ? String(c.id) : null,
+                avatar_url: c.avatar_url || null,
+                user_id: null,
+                total_score: 0,
+                repo_count: 0,
+                total_contributions: 0,
+              });
+            }
+
+            const existingRc = await databases.listDocuments(DATABASE_ID, COLLECTION_REPO_CONTRIBUTIONS, [
+              Query.equal("contributor_id", contribDoc.$id),
+              Query.equal("repo_id", created.$id),
+              Query.limit(1),
+            ]);
+            const commits = Number(c.contributions || 0);
+            const rcData = {
+              contributor_id: contribDoc.$id,
+              repo_id: created.$id,
+              repo_full_name: created.full_name,
+              commits,
+              prs_merged: 0,
+              lines_added: 0,
+              lines_removed: 0,
+              reviews: 0,
+              issues_closed: 0,
+              review_comments: 0,
+              releases_count: 0,
+              score: commits * 10,
+              last_contribution_at: new Date().toISOString(),
+            };
+            if (existingRc.total > 0) {
+              await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTION_REPO_CONTRIBUTIONS,
+                existingRc.documents[0].$id,
+                rcData,
+              );
+            } else {
+              await databases.createDocument(
+                DATABASE_ID,
+                COLLECTION_REPO_CONTRIBUTIONS,
+                ID.unique(),
+                rcData,
+              );
+            }
+            contributorCount++;
+          }
+        }
+      }
+      await databases.updateDocument(DATABASE_ID, COLLECTION_REPOS, created.$id, {
+        contributor_count: contributorCount,
+        contributors_fetched_at: new Date().toISOString(),
+      });
+    } catch (syncErr) {
+      log(`Initial contributor snapshot failed: ${syncErr.message}`);
+    }
+
     log(`Listed repo ${full_name} by ${userId}`);
-    return res.json(created);
+    return res.json({ ...created, contributor_count: contributorCount });
   } catch (e) {
     error(e.message || String(e));
     return res.json({ error: e.message || "Internal error" }, 500);

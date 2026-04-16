@@ -5,6 +5,7 @@ import type {
   Contributor,
   ContributorDetail,
   Pool,
+  CollectingPoolSummary,
   Payout,
   GitHubRepoInfo,
   RepoContribution,
@@ -51,11 +52,54 @@ async function executeFunction<T>(action: string, body?: Record<string, unknown>
   }
 }
 
+function isTransientFunctionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /Function error: (502|503|504)\b/.test(err.message);
+}
+
+async function executeFunctionWithRetry<T>(
+  action: string,
+  body: Record<string, unknown> | undefined,
+  options?: { retries?: number; initialDelayMs?: number },
+): Promise<T> {
+  const retries = Math.max(0, options?.retries ?? 4);
+  const initialDelayMs = Math.max(100, options?.initialDelayMs ?? 800);
+
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await executeFunction<T>(action, body);
+    } catch (err) {
+      if (!isTransientFunctionError(err) || attempt >= retries) throw err;
+      const delayMs = initialDelayMs * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      attempt += 1;
+    }
+  }
+}
+
+async function executeFunctionById<T>(functionId: string, body?: Record<string, unknown>): Promise<T> {
+  const execution = await functions.createExecution(
+    functionId,
+    JSON.stringify(body ?? {}),
+    false,
+    undefined,
+    ExecutionMethod.POST,
+    { "content-type": "application/json" },
+  );
+  if (execution.responseStatusCode >= 400) {
+    const err = JSON.parse(execution.responseBody || "{}") as { error?: string };
+    throw new Error(err.error || `Function error: ${execution.responseStatusCode}`);
+  }
+  return JSON.parse(execution.responseBody) as T;
+}
+
 function docAttrs(doc: Models.Document): Record<string, unknown> {
   return doc as unknown as Record<string, unknown>;
 }
 
-function mapRepo(doc: Models.Document): Repo {
+/** Used by API routes that read Appwrite documents server-side. */
+export function mapRepo(doc: Models.Document): Repo {
   const d = docAttrs(doc);
   return {
     id: doc.$id,
@@ -68,6 +112,33 @@ function mapRepo(doc: Models.Document): Repo {
     stars: Number(d.stars ?? 0),
     forks: Number(d.forks ?? 0),
     repo_score: Number(d.repo_score ?? 0),
+    criticality_score:
+      d.criticality_score != null ? Number(d.criticality_score) : undefined,
+    bus_factor: d.bus_factor != null ? Number(d.bus_factor) : undefined,
+    has_security_md:
+      d.has_security_md === true || d.has_security_md === false
+        ? Boolean(d.has_security_md)
+        : undefined,
+    eligible_pool_types: (() => {
+      const raw = d.eligible_pool_types;
+      if (raw == null || raw === "") return undefined;
+      if (typeof raw === "string") {
+        try {
+          const arr = JSON.parse(raw) as unknown;
+          return Array.isArray(arr)
+            ? arr.filter((x): x is string => typeof x === "string")
+            : undefined;
+        } catch {
+          return undefined;
+        }
+      }
+      return undefined;
+    })(),
+    ai_summary:
+      d.ai_summary != null && String(d.ai_summary).trim() !== ""
+        ? String(d.ai_summary)
+        : null,
+    license: (d.license as string | null) ?? null,
     listed_by: String(d.listed_by ?? ""),
     contributor_count: Number(d.contributor_count ?? 0),
     contributors_fetched_at: (d.contributors_fetched_at as string | null) ?? null,
@@ -127,6 +198,7 @@ function mapPool(doc: Models.Document): Pool {
     status: (d.status as Pool["status"]) || "active",
     round_start: String(d.round_start ?? ""),
     round_end: String(d.round_end ?? ""),
+    pool_type: (d.pool_type as string | null | undefined) ?? null,
     created_at: (d.created_at as string) || doc.$createdAt,
   };
 }
@@ -142,6 +214,8 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
     lines_removed: Number(d.lines_removed ?? 0),
     reviews: Number(d.reviews ?? 0),
     issues_closed: Number(d.issues_closed ?? 0),
+    review_comments: Number(d.review_comments ?? 0),
+    releases_count: Number(d.releases_count ?? 0),
     score: Number(d.score ?? 0),
     last_contribution_at: (d.last_contribution_at as string | null) ?? null,
   };
@@ -149,14 +223,35 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
 
 // ---- Repos ----
 
-export async function listRepos(page = 1, perPage = 20): Promise<{ repos: Repo[]; total: number }> {
+export async function listRepos(page = 1, perPage = 500): Promise<{ repos: Repo[]; total: number }> {
   try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [
-      Query.orderDesc("stars"),
-      Query.limit(perPage),
-      Query.offset((page - 1) * perPage),
+    const [result, repoContribs] = await Promise.all([
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [
+        Query.orderDesc("stars"),
+        Query.limit(Math.min(perPage, 500)),
+        Query.offset((page - 1) * perPage),
+      ]),
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPO_CONTRIBUTIONS, [
+        Query.limit(5000),
+        Query.select(["repo_id"]),
+      ]),
     ]);
-    return { repos: result.documents.map(mapRepo), total: result.total };
+    const liveCountByRepo = new Map<string, number>();
+    for (const rc of repoContribs.documents as Array<Models.Document>) {
+      const repoId = String((rc as unknown as Record<string, unknown>).repo_id ?? "");
+      if (!repoId) continue;
+      liveCountByRepo.set(repoId, (liveCountByRepo.get(repoId) ?? 0) + 1);
+    }
+    return {
+      repos: result.documents.map((doc) => {
+        const mapped = mapRepo(doc);
+        const liveCount = liveCountByRepo.get(mapped.id);
+        return liveCount != null
+          ? { ...mapped, contributor_count: Math.max(mapped.contributor_count, liveCount) }
+          : mapped;
+      }),
+      total: result.total,
+    };
   } catch {
     return { repos: [], total: 0 };
   }
@@ -177,16 +272,64 @@ export async function getRepoContributors(repoId: string) {
 
 export async function getMyGithubRepos(): Promise<GitHubRepoInfo[]> {
   const token = await getGithubAccessTokenFromSession();
-  return executeFunction<GitHubRepoInfo[]>(
-    "get-my-repos",
-    token ? { github_access_token: token } : undefined,
-  );
+  try {
+    return await executeFunction<GitHubRepoInfo[]>(
+      "get-my-repos",
+      token ? { github_access_token: token } : undefined,
+    );
+  } catch (err) {
+    // Fallback for transient openget-api failures (e.g. 503) so /list-repo stays usable.
+    if (!token) throw err;
+    let currentUserId: string | null = null;
+    try {
+      const me = await account.get();
+      currentUserId = me.$id;
+    } catch {
+      currentUserId = null;
+    }
+    const ghRes = await fetch(
+      "https://api.github.com/user/repos?sort=stars&per_page=100&affiliation=owner,collaborator,organization_member",
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "User-Agent": "OpenGet-Web",
+        },
+      },
+    );
+    if (!ghRes.ok) throw err;
+    const repos = (await ghRes.json()) as Array<Record<string, unknown>>;
+    const listedDocs = await databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(500)]);
+    const listedByName = new Map(listedDocs.documents.map((d) => [String((d as Record<string, unknown>).full_name ?? ""), d]));
+    return repos.map((r) => {
+      const fullName = String(r.full_name ?? "");
+      const listed = listedByName.get(fullName);
+      return {
+        full_name: fullName,
+        html_url: String(r.html_url ?? ""),
+        description: (r.description as string | null) ?? null,
+        language: (r.language as string | null) ?? null,
+        stargazers_count: Number(r.stargazers_count ?? 0),
+        forks_count: Number(r.forks_count ?? 0),
+        already_listed: Boolean(listed),
+        listed_by_me: currentUserId != null && listed != null && String((listed as Record<string, unknown>).listed_by ?? "") === currentUserId,
+        repo_id: listed?.$id ?? null,
+      };
+    });
+  }
 }
 
 export async function listRepo(githubUrl: string): Promise<Repo> {
-  const raw = await executeFunction<Record<string, unknown>>("list-repo", { github_url: githubUrl });
-  const $id = String(raw.$id ?? raw.id ?? "");
-  return mapRepo({ ...raw, $id } as unknown as Models.Document);
+  try {
+    const raw = await executeFunctionWithRetry<Record<string, unknown>>("list-repo", { github_url: githubUrl });
+    const $id = String(raw.$id ?? raw.id ?? "");
+    return mapRepo({ ...raw, $id } as unknown as Models.Document);
+  } catch (err) {
+    if (isTransientFunctionError(err)) {
+      throw new Error("OpenGet is temporarily unavailable while listing this repo. Please try again in a few seconds.");
+    }
+    throw err;
+  }
 }
 
 export async function delistRepo(repoId: string): Promise<void> {
@@ -217,6 +360,20 @@ export async function getContributor(id: string): Promise<ContributorDetail> {
   ]);
   const repos = rcResult.documents.map(mapRepoContributionDoc);
   return { ...base, repos };
+}
+
+export async function getMyContributor(): Promise<Contributor | null> {
+  try {
+    const me = await account.get();
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [
+      Query.equal("user_id", me.$id),
+      Query.limit(1),
+    ]);
+    if (result.total > 0) return mapContributor(result.documents[0]);
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function registerContributor(): Promise<Contributor> {
@@ -258,15 +415,121 @@ export async function getCollectingPool(): Promise<Pool | null> {
   return null;
 }
 
+function mapCollectingDocToSummary(doc: Models.Document): CollectingPoolSummary {
+  const d = doc as unknown as Record<string, unknown>;
+  return {
+    id: doc.$id,
+    pool_type: (d.pool_type as string | null | undefined) ?? null,
+    name: String(d.name ?? ""),
+    description: (d.description as string | null) ?? null,
+    round_start: String(d.round_start ?? ""),
+    round_end: String(d.round_end ?? ""),
+    total_amount_cents: Number(d.total_amount_cents ?? 0),
+    donor_count: Number(d.donor_count ?? 0),
+  };
+}
+
+/**
+ * Lists collecting pools. Prefers the openget-api action; falls back to direct DB reads so
+ * anonymous sessions (e.g. /enterprise) work when Functions execution is restricted.
+ */
+export async function listCollectingPools(): Promise<CollectingPoolSummary[]> {
+  try {
+    const { pools } = await executeFunction<{ pools: CollectingPoolSummary[] }>(
+      "list-collecting-pools",
+    );
+    if (pools && pools.length > 0) return pools;
+  } catch {
+    /* fall through */
+  }
+  try {
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
+      Query.equal("status", "collecting"),
+      Query.limit(100),
+    ]);
+    return result.documents.map(mapCollectingDocToSummary);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Public impact snapshot for dashboards / enterprise page. Uses the Database API so guests
+ * do not need Functions execute permission (unlike `get-pool-impact` via Functions alone).
+ */
+export async function getPoolImpact(): Promise<{
+  collecting: Array<{
+    id: string;
+    pool_type: string | null;
+    round_start: string;
+    total_amount_cents: number;
+    donor_count: number;
+  }>;
+  active: Array<{
+    id: string;
+    pool_type: string | null;
+    round_start: string;
+    remaining_cents: number;
+    distributable_amount_cents: number;
+  }>;
+  listed_repos: number;
+}> {
+  try {
+    const [collecting, active, repoList] = await Promise.all([
+      databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
+        Query.equal("status", "collecting"),
+        Query.limit(100),
+      ]),
+      databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
+        Query.equal("status", "active"),
+        Query.limit(100),
+      ]),
+      databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(1)]),
+    ]);
+
+    return {
+      collecting: collecting.documents.map((doc) => {
+        const d = doc as unknown as Record<string, unknown>;
+        return {
+          id: doc.$id,
+          pool_type: (d.pool_type as string | null | undefined) ?? null,
+          round_start: String(d.round_start ?? ""),
+          total_amount_cents: Number(d.total_amount_cents ?? 0),
+          donor_count: Number(d.donor_count ?? 0),
+        };
+      }),
+      active: active.documents.map((doc) => {
+        const d = doc as unknown as Record<string, unknown>;
+        return {
+          id: doc.$id,
+          pool_type: (d.pool_type as string | null | undefined) ?? null,
+          round_start: String(d.round_start ?? ""),
+          remaining_cents: Number(d.remaining_cents ?? 0),
+          distributable_amount_cents: Number(d.distributable_amount_cents ?? 0),
+        };
+      }),
+      listed_repos: repoList.total,
+    };
+  } catch {
+    return {
+      collecting: [],
+      active: [],
+      listed_repos: 0,
+    };
+  }
+}
+
 export async function createCheckoutSession(
   amountCents: number,
   message?: string,
   currency?: string,
+  poolType?: string,
 ): Promise<{ checkout_url: string; session_id: string }> {
   return executeFunction<{ checkout_url: string; session_id: string }>("create-checkout", {
     amount_cents: amountCents,
     currency: currency || "usd",
     message: message ?? "",
+    pool_type: poolType,
     success_url: `${window.location.origin}/donate/success`,
     cancel_url: `${window.location.origin}/donate`,
   });
@@ -319,23 +582,29 @@ export async function onboardStripeConnect(userId: string, email: string) {
 
 export async function getStats(): Promise<{ repos: number; contributors: number; poolCents: number; donors: number }> {
   try {
-    const [reposResult, contribResult, poolResult] = await Promise.all([
+    const [reposResult, contribResult, activePoolsResult] = await Promise.all([
       databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(1)]),
       databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [Query.limit(1)]),
       databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
         Query.equal("status", "active"),
-        Query.orderDesc("$createdAt"),
-        Query.limit(1),
+        Query.limit(100),
       ]),
     ]);
 
-    const pool = poolResult.documents.length > 0 ? mapPool(poolResult.documents[0]) : null;
+    const poolCents = activePoolsResult.documents.reduce(
+      (s, d) => s + Number((d as { total_amount_cents?: number }).total_amount_cents ?? 0),
+      0,
+    );
+    const donors = activePoolsResult.documents.reduce(
+      (s, d) => s + Number((d as { donor_count?: number }).donor_count ?? 0),
+      0,
+    );
 
     return {
       repos: reposResult.total,
       contributors: contribResult.total,
-      poolCents: pool?.total_amount_cents ?? 0,
-      donors: pool?.donor_count ?? 0,
+      poolCents,
+      donors,
     };
   } catch {
     return { repos: 0, contributors: 0, poolCents: 0, donors: 0 };

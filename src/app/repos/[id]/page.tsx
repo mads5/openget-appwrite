@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getRepo, getRepoContributors } from "@/lib/api";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Repo } from "@/types";
 
@@ -19,6 +19,9 @@ export default function RepoDetailPage() {
   const [contributors, setContributors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(false);
 
   useEffect(() => {
     if (!params.id) return;
@@ -35,6 +38,25 @@ export default function RepoDetailPage() {
       )
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  useEffect(() => {
+    if (!repo) return;
+    const cached = repo.ai_summary?.trim();
+    if (cached) {
+      setAiSummary(cached);
+      return;
+    }
+    setAiLoading(true);
+    setAiError(false);
+    fetch(`/api/repos/${repo.id}/summary`)
+      .then((r) => {
+        if (!r.ok) throw new Error("summary");
+        return r.json() as Promise<{ summary?: string }>;
+      })
+      .then((data) => setAiSummary(data.summary ?? null))
+      .catch(() => setAiError(true))
+      .finally(() => setAiLoading(false));
+  }, [repo]);
 
   if (loading) {
     return (
@@ -56,15 +78,12 @@ export default function RepoDetailPage() {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-3xl font-bold">{repo.full_name}</h1>
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          <h1 className="text-2xl font-bold break-all sm:text-3xl">{repo.full_name}</h1>
           {repo.language && (
             <Badge variant="secondary">{repo.language}</Badge>
           )}
         </div>
-        {repo.description && (
-          <p className="text-muted-foreground text-lg">{repo.description}</p>
-        )}
         <a
           href={repo.github_url}
           target="_blank"
@@ -75,13 +94,65 @@ export default function RepoDetailPage() {
         </a>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <Card className="mb-8">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">About this repository</CardTitle>
+          <CardDescription>
+            Short summary generated for OpenGet (cached after first load when AI is configured).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {aiLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
+              Generating summary…
+            </div>
+          )}
+          {!aiLoading && aiError && (
+            <p className="text-sm text-muted-foreground">
+              Could not load the generated summary. Try refreshing the page.
+            </p>
+          )}
+          {!aiLoading && !aiError && aiSummary && (
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+          )}
+          {!aiLoading && !aiError && !aiSummary && (
+            <p className="text-sm text-muted-foreground">No summary available yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {repo.description && (
+        <p className="text-sm text-muted-foreground mb-8 border-l-2 pl-3 border-muted">
+          <span className="font-medium text-foreground">GitHub description: </span>
+          {repo.description}
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Stars", value: formatNumber(repo.stars) },
           { label: "Forks", value: formatNumber(repo.forks) },
-          { label: "Contributors", value: String(repo.contributor_count) },
+          { label: "Popularity score", value: formatNumber(repo.repo_score) },
           {
-            label: "Last Fetched",
+            label: "Criticality",
+            value:
+              repo.criticality_score != null
+                ? `${Math.round(repo.criticality_score * 100)}%`
+                : "—",
+          },
+          {
+            label: "Bus factor",
+            value:
+              repo.bus_factor != null
+                ? repo.bus_factor < 10
+                  ? repo.bus_factor.toFixed(1)
+                  : String(Math.round(repo.bus_factor))
+                : "—",
+          },
+          { label: "Contributors", value: String(Math.max(contributors.length, repo.contributor_count)) },
+          {
+            label: "Last fetched",
             value: repo.contributors_fetched_at
               ? new Date(repo.contributors_fetched_at).toLocaleDateString()
               : "Pending",
@@ -100,8 +171,8 @@ export default function RepoDetailPage() {
         Contributors ({contributors.length})
       </h2>
       {contributors.length > 0 ? (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-muted/50">
               <tr>
                 <th className="text-left px-4 py-3 text-sm font-medium">
@@ -131,19 +202,19 @@ export default function RepoDetailPage() {
                   className="hover:bg-muted/30 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       {c.avatar_url ? (
                         <img
                           src={c.avatar_url}
                           alt={c.github_username}
-                          className="h-7 w-7 rounded-full"
+                          className="h-7 w-7 shrink-0 rounded-full"
                         />
                       ) : (
-                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                        <div className="h-7 w-7 shrink-0 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
                           {(c.github_username || "?")[0].toUpperCase()}
                         </div>
                       )}
-                      <span className="font-medium text-sm">
+                      <span className="min-w-0 truncate font-medium text-sm">
                         {c.github_username}
                       </span>
                     </div>
