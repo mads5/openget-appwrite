@@ -125,10 +125,11 @@ export interface Payout {
   contributor_id: string;
   amount_cents: number;
   score_snapshot: number;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "blocked";
   stripe_transfer_id: string | null;
   created_at: string;
   completed_at: string | null;
+  failure_reason?: string | null;
 }
 
 export interface User {

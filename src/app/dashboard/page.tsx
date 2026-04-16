@@ -172,13 +172,35 @@ export default function DashboardPage() {
               {earnings?.payouts && earnings.payouts.length > 0 ? (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium mb-2">Recent Payouts</h3>
+                  {(() => {
+                    const needsOnboarding = earnings.payouts.some(
+                      (p) =>
+                        p.status === "blocked" &&
+                        (p.failure_reason === "no_connected_account" ||
+                          p.failure_reason === "payouts_not_enabled"),
+                    );
+                    if (!needsOnboarding) return null;
+                    return (
+                      <div className="mb-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
+                        Some payouts are waiting on Stripe onboarding. Complete
+                        Connect setup to unblock them &mdash; use the
+                        &ldquo;Connect Stripe Account&rdquo; button on the
+                        right.
+                      </div>
+                    );
+                  })()}
                   {earnings.payouts.map((p) => (
                     <div
                       key={p.id}
                       className="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-border/50 last:border-0"
                     >
                       <div className="text-sm">
-                        {new Date(p.created_at).toLocaleDateString()}
+                        <div>{new Date(p.created_at).toLocaleDateString()}</div>
+                        {(p.status === "blocked" || p.status === "failed") && p.failure_reason && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {p.failure_reason.replace(/_/g, " ")}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{formatCents(p.amount_cents)}</span>
@@ -189,6 +211,10 @@ export default function DashboardPage() {
                               ? "bg-green-500/10 text-green-400"
                               : p.status === "failed"
                               ? "bg-red-500/10 text-red-400"
+                              : p.status === "blocked"
+                              ? "bg-yellow-500/10 text-yellow-400"
+                              : p.status === "processing"
+                              ? "bg-blue-500/10 text-blue-400"
                               : ""
                           }
                         >

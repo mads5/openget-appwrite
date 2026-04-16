@@ -463,6 +463,69 @@ The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). A
 
 ---
 
+## Stripe Setup
+
+OpenGet uses Stripe for two distinct flows that share one set of credentials:
+
+- **Donations in** &mdash; Checkout Sessions (`create-checkout`) land in the platform balance and are booked onto the monthly pool by the `stripe-webhook` action on `checkout.session.completed`.
+- **Payouts out** &mdash; The weekly `distribute-pool` cron creates `payouts` rows (`status: pending`), then chains into `process-payouts` which issues Stripe Connect transfers to each contributor's Express account. Webhook events (`account.updated`, `transfer.paid/failed/reversed`) keep user/payout rows in sync.
+
+Follow the checklist end-to-end once in **test mode**, verify, then repeat in **live mode**.
+
+### 1. Stripe dashboard
+
+1. Create / activate a Stripe account.
+2. **Settings &rarr; Connect &rarr; Get started**. Pick **Express** and enable the **Transfers** capability.
+3. **Connect &rarr; Settings &rarr; Branding**: set display name (e.g. "OpenGet"), icon, support email, and business URL so the Express onboarding pages are branded.
+4. **Connect &rarr; Settings &rarr; Redirects**: set the default refresh and return URLs to your deployed app (e.g. `https://<your-domain>/dashboard`). These values should match `STRIPE_CONNECT_REFRESH_URL` / `STRIPE_CONNECT_RETURN_URL` below.
+5. **Developers &rarr; Webhooks &rarr; Add endpoint**:
+   - **URL:** the Appwrite execution URL for the `openget-api` function with `?action=stripe-webhook` as a query param. The router resolves the action from `req.query.action`, see [`functions/openget-api/src/main.js`](functions/openget-api/src/main.js).
+   - **Events to send:** `checkout.session.completed`, `account.updated`, `transfer.paid`, `transfer.failed`, `transfer.reversed`. Optionally also `payout.paid` and `payout.failed` (these are logged only).
+   - Enable **"Listen to events on connected accounts"** so `account.updated` and transfer events fire for Express sub-accounts.
+   - Copy the **Signing secret** &rarr; this becomes `STRIPE_WEBHOOK_SECRET`.
+6. **Developers &rarr; API keys**: copy the **Secret key** &rarr; this becomes `STRIPE_SECRET_KEY`.
+
+### 2. Environment variables
+
+Configure these as **Appwrite function variables** on the `openget-api` function (not only in `.env.local`, since the router executes inside Appwrite Functions):
+
+| Variable                      | Purpose                                                         |
+| ----------------------------- | --------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`           | Platform secret key (`sk_test_...` / `sk_live_...`).            |
+| `STRIPE_WEBHOOK_SECRET`       | Signing secret from the webhook endpoint step above.            |
+| `STRIPE_CONNECT_REFRESH_URL`  | Where contributors are sent if their onboarding link expires.   |
+| `STRIPE_CONNECT_RETURN_URL`   | Where Express sends contributors after completing onboarding.   |
+
+Placeholders for local dev live in [`.env.example`](.env.example).
+
+### 3. Database schema
+
+Run `npm run db:sync` after pulling so `stripe_charges_enabled` / `stripe_payouts_enabled` booleans are added to `users` and `failure_reason` to `payouts`. See [`scripts/setup-database.js`](scripts/setup-database.js).
+
+### 4. Test plan (test mode)
+
+1. **Donation:** open `/donate`, pick a pool, pay with test card `4242 4242 4242 4242`. The matching `donations` row should flip `pending` &rarr; `confirmed`, the pool totals update, and a `platform_fees` row is written.
+2. **Contributor onboarding:** sign in to `/dashboard`, click **Connect Stripe Account**, complete Express onboarding with Stripe test data. Wait for `account.updated` &rarr; the user doc gets `stripe_payouts_enabled: true`.
+3. **Payout transfer:** run the weekly distribute (or insert a test `payouts` row manually) and invoke `process-payouts`:
+
+   ```bash
+   APPWRITE_API_KEY=... \
+   OPENGET_ACTION=process-payouts \
+   node scripts/run-openget-action.js
+   ```
+
+   The row should go `pending` &rarr; `processing` with a `stripe_transfer_id`.
+4. **Completion webhook:** use the Stripe CLI (`stripe trigger transfer.paid`) or wait for the real event &rarr; row flips to `completed`.
+5. Repeat once in live mode with a real bank account and a real $1 donation before announcing.
+
+Common failure states you'll see on `payouts`:
+
+- `blocked` + `failure_reason: no_connected_account` &mdash; contributor hasn't started Stripe onboarding.
+- `blocked` + `failure_reason: payouts_not_enabled` &mdash; onboarding started but Stripe hasn't verified the account yet.
+- `failed` &mdash; `stripe.transfers.create` threw (e.g. insufficient platform balance). See `failure_reason` for the Stripe error message.
+
+---
+
 ## Contributing
 
 1. Fork the repo

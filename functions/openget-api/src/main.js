@@ -660,6 +660,107 @@ async function distributeWeekly(db, pool, budget) {
   };
 }
 
+/**
+ * Process pending payouts by issuing Stripe Connect transfers to contributors.
+ * Shared between the `process-payouts` action and the weekly `distribute-pool`
+ * chain so a single weekly cron does compute + pay.
+ *
+ * Payouts flow: pending -> (transfers.create) -> processing -> (transfer.paid
+ * webhook) -> completed. If a contributor has no Connect account or payouts
+ * aren't enabled yet, the row is marked `blocked` so they can retry after
+ * onboarding. Stripe API errors mark the row `failed` with a short reason.
+ */
+async function processPendingPayouts(db, { limit = 50, log, error } = {}) {
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) {
+    return { processed: 0, failed: 0, blocked: 0, total: 0, skipped: true, reason: 'STRIPE_SECRET_KEY not configured' };
+  }
+  const { default: Stripe } = await import('stripe');
+  const stripe = new Stripe(stripeKey);
+
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 50), 100);
+  const pending = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
+    Query.equal('status', 'pending'),
+    Query.limit(safeLimit),
+  ]);
+
+  let processed = 0;
+  let failed = 0;
+  let blocked = 0;
+
+  for (const p of pending.documents) {
+    let contributor;
+    try {
+      contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, p.contributor_id);
+    } catch (e) {
+      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
+        status: 'blocked',
+        failure_reason: 'contributor_not_found',
+      });
+      blocked++;
+      continue;
+    }
+
+    let userDoc = null;
+    try {
+      const byGithub = await db.listDocuments(DATABASE_ID, COL.USERS, [
+        Query.equal('github_id', contributor.user_id || ''),
+        Query.limit(1),
+      ]);
+      userDoc = byGithub.documents[0] || null;
+      if (!userDoc) {
+        try {
+          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, contributor.user_id);
+        } catch {
+          userDoc = null;
+        }
+      }
+    } catch {
+      userDoc = null;
+    }
+
+    const acct = userDoc?.stripe_connect_account_id || null;
+    const ready = userDoc?.stripe_payouts_enabled === true;
+    if (!acct || !ready) {
+      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
+        status: 'blocked',
+        failure_reason: !acct ? 'no_connected_account' : 'payouts_not_enabled',
+      });
+      blocked++;
+      continue;
+    }
+
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: p.amount_cents,
+        currency: 'usd',
+        destination: acct,
+        metadata: {
+          payout_id: p.$id,
+          contributor_id: p.contributor_id,
+          pool_id: p.pool_id,
+        },
+      });
+      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
+        status: 'processing',
+        stripe_transfer_id: transfer.id,
+      });
+      processed++;
+      if (log) log(`transfer ${transfer.id} for payout ${p.$id} -> ${acct}`);
+    } catch (e) {
+      const reason = String(e?.message || e || 'stripe_error').slice(0, 200);
+      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
+        status: 'failed',
+        failure_reason: reason,
+      });
+      failed++;
+      if (error) error(`payout ${p.$id} failed: ${reason}`);
+    }
+  }
+
+  return { processed, failed, blocked, total: pending.documents.length };
+}
+
 function daysSince(dateLike) {
   try {
     if (!dateLike) return 120;
@@ -1296,6 +1397,92 @@ export default async ({ req, res, log, error }) => {
               source_donation_id: donationId,
             });
           }
+        } else if (event.type === 'account.updated') {
+          // Connect Express onboarding progress. Mirror charges_enabled /
+          // payouts_enabled onto the matching user doc so process-payouts
+          // knows when it's safe to call transfers.create.
+          const account = event.data.object || {};
+          const accountId = account.id;
+          if (accountId) {
+            try {
+              const matches = await db.listDocuments(DATABASE_ID, COL.USERS, [
+                Query.equal('stripe_connect_account_id', accountId),
+                Query.limit(1),
+              ]);
+              const userDoc = matches.documents[0];
+              if (userDoc) {
+                await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
+                  stripe_charges_enabled: Boolean(account.charges_enabled),
+                  stripe_payouts_enabled: Boolean(account.payouts_enabled),
+                });
+                log(`account.updated ${accountId} charges=${!!account.charges_enabled} payouts=${!!account.payouts_enabled}`);
+              } else {
+                log(`account.updated ${accountId}: no matching user doc`);
+              }
+            } catch (e) {
+              error(`account.updated failed: ${e.message}`);
+            }
+          }
+        } else if (
+          event.type === 'transfer.paid' ||
+          event.type === 'transfer.failed' ||
+          event.type === 'transfer.reversed'
+        ) {
+          // Update the payouts row by stripe_transfer_id (fallback to
+          // metadata.payout_id) and flip to completed / failed.
+          const transfer = event.data.object || {};
+          const transferId = transfer.id;
+          const payoutIdMeta = transfer.metadata?.payout_id || null;
+
+          let payoutDoc = null;
+          if (transferId) {
+            try {
+              const matches = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
+                Query.equal('stripe_transfer_id', transferId),
+                Query.limit(1),
+              ]);
+              payoutDoc = matches.documents[0] || null;
+            } catch {
+              payoutDoc = null;
+            }
+          }
+          if (!payoutDoc && payoutIdMeta) {
+            try {
+              payoutDoc = await db.getDocument(DATABASE_ID, COL.PAYOUTS, payoutIdMeta);
+            } catch {
+              payoutDoc = null;
+            }
+          }
+
+          if (payoutDoc) {
+            const patch = { stripe_transfer_id: transferId || payoutDoc.stripe_transfer_id || null };
+            if (event.type === 'transfer.paid') {
+              patch.status = 'completed';
+              patch.completed_at = new Date().toISOString();
+            } else if (event.type === 'transfer.failed') {
+              patch.status = 'failed';
+              patch.failure_reason = String(
+                transfer.failure_message || transfer.failure_code || 'transfer_failed',
+              ).slice(0, 200);
+            } else if (event.type === 'transfer.reversed') {
+              patch.status = 'failed';
+              patch.failure_reason = 'transfer_reversed';
+            }
+            try {
+              await db.updateDocument(DATABASE_ID, COL.PAYOUTS, payoutDoc.$id, patch);
+              log(`${event.type} -> payout ${payoutDoc.$id} status=${patch.status}`);
+            } catch (e) {
+              error(`${event.type} update failed for payout ${payoutDoc.$id}: ${e.message}`);
+            }
+          } else {
+            log(`${event.type} for transfer ${transferId || '(unknown)'}: no matching payout doc`);
+          }
+        } else if (event.type === 'payout.paid' || event.type === 'payout.failed') {
+          // Connected-account bank payout (Stripe -> contributor bank). Log only
+          // for now; the platform-side transfer is what we track in the payouts
+          // collection.
+          const payout = event.data.object || {};
+          log(`${event.type} on connected account payout ${payout.id || '(unknown)'} amount=${payout.amount}`);
         }
         return res.json({ received: true });
       }
@@ -1331,6 +1518,18 @@ export default async ({ req, res, log, error }) => {
         return res.json({ account_id: accountId, onboarding_url: link.url });
       }
 
+      // ---- PROCESS PAYOUTS (Stripe Connect transfers) ----
+      case 'process-payouts': {
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
+        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
+        const result = await processPendingPayouts(db, {
+          limit: Number(body.limit ?? req.query?.limit ?? 50),
+          log,
+          error,
+        });
+        return res.json(result);
+      }
+
       // ---- UPI PAYMENT (stub) ----
       case 'upi-payment': {
         // POST with qr_id only: status poll (Appwrite executions use POST + JSON body)
@@ -1363,6 +1562,7 @@ export default async ({ req, res, log, error }) => {
           amount_cents: p.amount_cents, score_snapshot: p.score_snapshot || 0,
           status: p.status, stripe_transfer_id: p.stripe_transfer_id || null,
           created_at: p.$createdAt, completed_at: p.completed_at || null,
+          failure_reason: p.failure_reason || null,
         }));
         const totalEarned = payouts.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount_cents, 0);
         const pending = payouts.filter(p => p.status === 'pending' || p.status === 'processing').reduce((s, p) => s + p.amount_cents, 0);
@@ -1483,10 +1683,24 @@ export default async ({ req, res, log, error }) => {
           return res.json({ error: 'No budget remaining for this week across active pools' }, 400);
         }
 
+        // Chain payout processing so a single weekly cron does compute + pay.
+        // Opt-out via `skip_payouts: true` (e.g. when running a dry-run or when
+        // Stripe isn't configured in a test environment).
+        let payoutSummary = null;
+        if (!body.skip_payouts) {
+          try {
+            payoutSummary = await processPendingPayouts(db, { log, error });
+          } catch (e) {
+            error(`process-payouts chain failed: ${e.message}`);
+            payoutSummary = { error: e.message };
+          }
+        }
+
         return res.json({
           distributed_cents: totalDistributed,
           payouts_created: totalPayouts,
           pools: batchResults,
+          payouts: payoutSummary,
         });
       }
 
@@ -1900,7 +2114,7 @@ export default async ({ req, res, log, error }) => {
       default:
         return res.json({ error: `Unknown action: ${action}`, available: [
           'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
-          'create-checkout', 'stripe-webhook', 'stripe-connect', 'upi-payment',
+          'create-checkout', 'stripe-webhook', 'stripe-connect', 'process-payouts', 'upi-payment',
           'get-earnings', 'distribute-pool', 'get-collecting-pool', 'list-collecting-pools', 'get-pool-impact',
           'fetch-contributors',
         ]}, 400);

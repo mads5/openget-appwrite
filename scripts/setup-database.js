@@ -292,6 +292,7 @@ async function setupPayouts() {
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'stripe_transfer_id', 200, false);
   await addStringAttribute(id, 'completed_at', 50, false);
+  await addStringAttribute(id, 'failure_reason', 200, false);
 }
 
 async function setupPlatformFees() {
@@ -332,6 +333,8 @@ async function setupUsers() {
   await addStringAttribute(id, 'display_name', 200, false);
   await addStringAttribute(id, 'email', 200, false);
   await addStringAttribute(id, 'stripe_connect_account_id', 100, false);
+  await addBooleanAttribute(id, 'stripe_charges_enabled', false, false);
+  await addBooleanAttribute(id, 'stripe_payouts_enabled', false, false);
   await addStringAttribute(id, 'github_access_token', 2000, false);
 }
 
