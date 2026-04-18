@@ -1002,18 +1002,59 @@ async function triggerSelfAsync(client, payload, log) {
   }
 }
 
+/**
+ * Resolve router action. Prefer JSON body — Appwrite executions often omit or flatten `req.query`
+ * even when the client sends `/?action=...` on the execution path.
+ */
+function resolveRouterAction(req, body) {
+  const b = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const fromBody = b.action;
+  if (fromBody != null && String(fromBody).trim() !== '') return String(fromBody).trim();
+
+  const q = req?.query;
+  if (q && typeof q === 'object') {
+    const fromQuery = q.action;
+    if (fromQuery != null && String(fromQuery).trim() !== '') return String(fromQuery).trim();
+  }
+
+  const url = typeof req?.url === 'string' ? req.url : '';
+  if (url.includes('action=')) {
+    try {
+      const idx = url.indexOf('?');
+      const sp = idx >= 0 ? new URLSearchParams(url.slice(idx + 1)) : null;
+      const a = sp?.get('action');
+      if (a && a.trim() !== '') return a.trim();
+    } catch { /* ignore */ }
+  }
+
+  const pathOnly = typeof req?.path === 'string' ? req.path.replace(/^\//, '').trim() : '';
+  if (pathOnly && pathOnly !== '') return pathOnly;
+
+  return '';
+}
+
+function parseRequestBody(raw) {
+  if (raw == null) return {};
+  try {
+    if (typeof raw === 'string') return JSON.parse(raw || '{}');
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+      return JSON.parse(raw.toString('utf8') || '{}');
+    }
+    if (typeof raw === 'object' && !Array.isArray(raw)) return { ...raw };
+  } catch {
+    return {};
+  }
+  return {};
+}
+
 export default async ({ req, res, log, error }) => {
   const client = initClient();
   const db = new Databases(client);
   const users = new Users(client);
 
-  let body = {};
-  if (req.body) {
-    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {}
-  }
+  const body = parseRequestBody(req.body);
 
-  const rawAction = req.query?.action || body.action || req.path?.replace(/^\//, '') || '';
-  const action = String(rawAction).trim();
+  const action = resolveRouterAction(req, body);
   const userId = req.headers?.['x-appwrite-user-id'] || null;
   const method = req.method || 'GET';
 
