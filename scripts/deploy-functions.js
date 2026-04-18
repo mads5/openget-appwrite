@@ -1,4 +1,9 @@
+import './load-env.mjs';
 import { Client, Functions } from 'node-appwrite';
+
+if (process.argv.includes('--openget-api-only') && !process.env.DEPLOY_FUNCTION_IDS) {
+  process.env.DEPLOY_FUNCTION_IDS = 'openget-api';
+}
 import { readdirSync, statSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';

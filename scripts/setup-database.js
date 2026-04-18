@@ -1,3 +1,4 @@
+import './load-env.mjs';
 import {
   AppwriteException,
   Client,
