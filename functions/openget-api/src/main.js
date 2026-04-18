@@ -1011,7 +1011,8 @@ export default async ({ req, res, log, error }) => {
     try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {}
   }
 
-  const action = req.query?.action || body.action || req.path?.replace(/^\//, '') || '';
+  const rawAction = req.query?.action || body.action || req.path?.replace(/^\//, '') || '';
+  const action = String(rawAction).trim();
   const userId = req.headers?.['x-appwrite-user-id'] || null;
   const method = req.method || 'GET';
 
@@ -1505,12 +1506,11 @@ export default async ({ req, res, log, error }) => {
         return res.json({ received: true });
       }
 
-      // ---- PAYOUT ONBOARDING (RazorpayX fund account id; alias: stripe-connect) ----
+      // ---- PAYOUT ONBOARDING (bank beneficiary ref for RazorpayX; aliases for older clients) ----
       case 'payout-onboarding':
+      case 'bank-payout-setup':
       case 'stripe-connect': {
         if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const rzp = await getRazorpayClient();
-        if (!rzp) return res.json({ error: 'Payment gateway not configured' }, 500);
 
         const { fund_account_id: fundAccountId } = body;
 
@@ -1533,7 +1533,7 @@ export default async ({ req, res, log, error }) => {
             account_id: fa,
             onboarding_url: null,
             message:
-              'Fund account saved. Weekly runs will send payouts to this RazorpayX fund account when amounts are due.',
+              'Bank payout details saved. Settlements go to the linked bank account through our authorised payment partner when weekly payouts run.',
           });
         }
 
@@ -1542,7 +1542,7 @@ export default async ({ req, res, log, error }) => {
           account_id: userDoc.stripe_connect_account_id || null,
           onboarding_url: null,
           message:
-            'Create a RazorpayX fund account in your Razorpay dashboard, then paste its id (starts with fa_) on the dashboard to receive bank payouts.',
+            'Complete your bank account as a payout beneficiary with our payment partner (Razorpay), then paste the beneficiary reference (fa_…) here. Card data is tokenised per RBI rules on the partner side; OpenGet does not store full card numbers.',
         });
       }
 
@@ -2139,7 +2139,7 @@ export default async ({ req, res, log, error }) => {
       default:
         return res.json({ error: `Unknown action: ${action}`, available: [
           'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
-          'create-checkout', 'razorpay-webhook', 'stripe-webhook', 'payout-onboarding', 'stripe-connect', 'process-payouts', 'upi-payment',
+          'create-checkout', 'razorpay-webhook', 'stripe-webhook', 'payout-onboarding', 'bank-payout-setup', 'stripe-connect', 'process-payouts', 'upi-payment',
           'get-earnings', 'distribute-pool', 'get-collecting-pool', 'list-collecting-pools', 'get-pool-impact',
           'fetch-contributors',
         ]}, 400);

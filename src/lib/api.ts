@@ -33,11 +33,13 @@ async function getGithubAccessTokenFromSession(): Promise<string | null> {
 
 async function executeFunction<T>(action: string, body?: Record<string, unknown>): Promise<T> {
   try {
+    // Appwrite sometimes omits JSON body fields on the function `req`; always pass action in the path query.
+    const path = `/?action=${encodeURIComponent(action)}`;
     const execution = await functions.createExecution(
       FUNCTION_ID,
       JSON.stringify(body != null ? { action, ...body } : { action }),
       false,
-      undefined,
+      path,
       ExecutionMethod.POST,
       { "content-type": "application/json" },
     );
@@ -578,7 +580,7 @@ export async function getEarnings() {
   }>("get-earnings");
 }
 
-/** Save RazorpayX fund account id (`fa_...`) for bank payouts; uses signed-in user. */
+/** Save bank payout beneficiary reference (`fa_...` from RazorpayX) for settlements; uses signed-in user. */
 export async function onboardPayoutAccount(fundAccountId?: string) {
   return executeFunction<{
     provider: string;

@@ -25,6 +25,7 @@ import {
   type PoolTypeId,
 } from "@/lib/pool-types";
 import type { Models } from "appwrite";
+import { formatOpenGetFunctionError } from "@/lib/payment-errors";
 
 function loadRazorpayScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
@@ -184,7 +185,7 @@ export default function DonatePage() {
       rzp.open();
       setDonating(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start payment. Try again.");
+      setError(formatOpenGetFunctionError(err));
       setDonating(false);
     }
   };
@@ -210,7 +211,7 @@ export default function DonatePage() {
         }
       }, 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate UPI QR. Try again.");
+      setError(formatOpenGetFunctionError(err));
       setDonating(false);
     }
   };

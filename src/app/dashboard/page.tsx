@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/lib/seed-data";
+import { formatOpenGetFunctionError } from "@/lib/payment-errors";
 import type { Payout } from "@/types";
 import type { Models } from "appwrite";
 
@@ -72,7 +73,7 @@ export default function DashboardPage() {
       if (result.message) setMessage(result.message);
       if (result.account_id) setPayoutFundId(result.account_id);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Could not save payout account. Check your fund account id.");
+      setMessage(formatOpenGetFunctionError(err));
     } finally {
       setConnectingPayout(false);
     }
@@ -236,16 +237,30 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Payout setup</CardTitle>
+              <CardTitle className="text-lg">Bank payout setup</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Add your RazorpayX fund account id (starts with <span className="font-mono">fa_</span>) from the
-                Razorpay dashboard so we can route bank payouts. International card
-                checkouts use Razorpay where enabled on your merchant account; payout
-                rails depend on RazorpayX and region settings.
+              <p className="text-sm text-muted-foreground mb-3">
+                Weekly rewards are settled as <strong className="font-medium text-foreground">direct bank transfers</strong>{" "}
+                through our <abbr title="Reserve Bank of India">RBI</abbr>-authorised payment partner. Card payments on
+                Sponsor use tokenised card flows on the partner side (we never store full card numbers). For payouts, add
+                your bank account as a beneficiary with the partner, then save the reference id they issue below.
               </p>
-              <label className="text-xs text-muted-foreground block mb-1">Fund account id</label>
+              <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                Complete beneficiary KYC / bank verification in your{" "}
+                <a
+                  href="https://dashboard.razorpay.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline underline-offset-2"
+                >
+                  Razorpay dashboard
+                </a>{" "}
+                (RazorpayX) if prompted—this aligns with standard Indian payment and settlement norms.
+              </p>
+              <label className="text-xs text-muted-foreground block mb-1">
+                Beneficiary reference (bank payout id, starts with <span className="font-mono">fa_</span>)
+              </label>
               <input
                 type="text"
                 value={payoutFundId}
@@ -253,6 +268,7 @@ export default function DashboardPage() {
                 placeholder="fa_xxxxxxxxxxxx"
                 className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mb-3"
                 autoComplete="off"
+                inputMode="text"
               />
               <Button
                 variant="outline"
@@ -261,7 +277,7 @@ export default function DashboardPage() {
                 onClick={handleSavePayoutAccount}
                 disabled={connectingPayout}
               >
-                {connectingPayout ? "Saving..." : "Save payout account"}
+                {connectingPayout ? "Saving..." : "Save bank payout details"}
               </Button>
             </CardContent>
           </Card>
