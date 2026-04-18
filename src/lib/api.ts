@@ -546,19 +546,6 @@ export async function createCheckoutSession(
   });
 }
 
-export async function createUpiQr(
-  amountPaisa: number,
-  message?: string,
-): Promise<{ qr_id: string; image_url: string; amount_paisa: number; status: string }> {
-  return executeFunction("upi-payment", { amount_paisa: amountPaisa, message: message ?? "" });
-}
-
-export async function checkUpiQrStatus(
-  qrId: string,
-): Promise<{ qr_id: string; status: string; paid: boolean; payments_count: number }> {
-  return executeFunction("upi-payment", { qr_id: qrId });
-}
-
 export async function donate(
   amountCents: number,
   message?: string,

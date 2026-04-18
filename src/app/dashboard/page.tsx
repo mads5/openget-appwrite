@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [connectingPayout, setConnectingPayout] = useState(false);
   const [payoutFundId, setPayoutFundId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
 
   useEffect(() => {
     account.get().then(async (u) => {
@@ -42,6 +43,12 @@ export default function DashboardPage() {
         }
       } catch {
         // Earnings unavailable
+      }
+      try {
+        const payoutPrefill = await onboardPayoutAccount();
+        if (payoutPrefill.account_id) setPayoutFundId(payoutPrefill.account_id);
+      } catch {
+        /* optional */
       }
       setLoading(false);
     }).catch(() => {
@@ -66,14 +73,18 @@ export default function DashboardPage() {
   const handleSavePayoutAccount = async () => {
     if (!user) return;
     setConnectingPayout(true);
-    setMessage(null);
+    setPayoutError(null);
     try {
       const trimmed = payoutFundId.trim();
+      if (trimmed.length > 0 && !trimmed.startsWith("fa_")) {
+        setPayoutError("Beneficiary reference must start with fa_ (your RazorpayX fund account id).");
+        return;
+      }
       const result = await onboardPayoutAccount(trimmed || undefined);
       if (result.message) setMessage(result.message);
       if (result.account_id) setPayoutFundId(result.account_id);
     } catch (err) {
-      setMessage(formatOpenGetFunctionError(err));
+      setPayoutError(formatOpenGetFunctionError(err));
     } finally {
       setConnectingPayout(false);
     }
@@ -264,12 +275,20 @@ export default function DashboardPage() {
               <input
                 type="text"
                 value={payoutFundId}
-                onChange={(e) => setPayoutFundId(e.target.value)}
+                onChange={(e) => {
+                  setPayoutFundId(e.target.value);
+                  if (payoutError) setPayoutError(null);
+                }}
                 placeholder="fa_xxxxxxxxxxxx"
                 className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mb-3"
                 autoComplete="off"
                 inputMode="text"
               />
+              {payoutError && (
+                <p className="text-sm text-red-400 mb-3" role="alert">
+                  {payoutError}
+                </p>
+              )}
               <Button
                 variant="outline"
                 size="lg"

@@ -1522,6 +1522,15 @@ export default async ({ req, res, log, error }) => {
         }
 
         const fa = fundAccountId != null ? String(fundAccountId).trim() : '';
+        if (fa.length > 0 && !fa.startsWith('fa_')) {
+          return res.json(
+            {
+              error:
+                'Beneficiary reference must be your RazorpayX fund account id and start with fa_.',
+            },
+            400,
+          );
+        }
         if (fa && fa.startsWith('fa_')) {
           await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
             stripe_connect_account_id: fa,
@@ -1556,20 +1565,15 @@ export default async ({ req, res, log, error }) => {
         return res.json(result);
       }
 
-      // ---- UPI PAYMENT (stub) ----
+      // ---- UPI PAYMENT (removed; use create-checkout + Razorpay Checkout for INR UPI) ----
       case 'upi-payment': {
-        // POST with qr_id only: status poll (Appwrite executions use POST + JSON body)
-        if (method === 'POST' && body.qr_id != null && body.amount_paisa == null) {
-          const qrId = body.qr_id;
-          return res.json({ qr_id: qrId || 'unknown', status: 'pending', paid: false, payments_count: 0 });
-        }
-        if (method === 'POST') {
-          const { amount_paisa, message: msg } = body;
-          const qrId = `upi_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-          return res.json({ qr_id: qrId, image_url: `https://placeholder.co/256x256?text=UPI+QR`, amount_paisa, status: 'pending' });
-        }
-        const qrId = req.query?.qr_id || body.qr_id;
-        return res.json({ qr_id: qrId || 'unknown', status: 'pending', paid: false, payments_count: 0 });
+        return res.json(
+          {
+            error:
+              'Static UPI QR is disabled. Use Sponsor checkout (create-checkout); Razorpay Checkout supports UPI and cards for India.',
+          },
+          410,
+        );
       }
 
       // ---- GET EARNINGS ----

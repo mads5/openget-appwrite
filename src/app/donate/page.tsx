@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
 import {
@@ -9,8 +9,6 @@ import {
   listCollectingPools,
   listRepos,
   createCheckoutSession,
-  createUpiQr,
-  checkUpiQrStatus,
   type RazorpayCheckoutPayload,
 } from "@/lib/api";
 import { PoolCard } from "@/components/pool/pool-card";
@@ -45,7 +43,7 @@ const CURRENCIES = [
   { code: "usd", symbol: "$", label: "USD ($)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "Amex"] },
   { code: "eur", symbol: "€", label: "EUR (€)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "SEPA", "iDEAL", "Bancontact"] },
   { code: "gbp", symbol: "£", label: "GBP (£)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "Amex"] },
-  { code: "inr", symbol: "₹", label: "INR (₹)", presets: [10000, 50000, 100000, 250000, 500000], methods: ["UPI QR", "Visa", "Mastercard", "RuPay"] },
+  { code: "inr", symbol: "₹", label: "INR (₹)", presets: [10000, 50000, 100000, 250000, 500000], methods: ["UPI", "Visa", "Mastercard", "RuPay"] },
   { code: "cad", symbol: "CA$", label: "CAD (CA$)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "Amex"] },
   { code: "aud", symbol: "A$", label: "AUD (A$)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "Amex"] },
   { code: "jpy", symbol: "¥", label: "JPY (¥)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "JCB"] },
@@ -67,11 +65,6 @@ export default function DonatePage() {
   const [message, setMessage] = useState("");
   const [donating, setDonating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
-  const [qrId, setQrId] = useState<string | null>(null);
-  const [qrPaid, setQrPaid] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -117,28 +110,11 @@ export default function DonatePage() {
     .sort((a, b) => b.stars - a.stars)
     .slice(0, 5);
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
   const handleCurrencyChange = (code: string) => {
     const next = CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
     setCurrency(next);
     setAmount(next.presets[0]);
-    closeQr();
   };
-
-  const closeQr = useCallback(() => {
-    setQrImageUrl(null);
-    setQrId(null);
-    setQrPaid(false);
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
 
   const handleDonate = async () => {
     setDonating(true);
@@ -190,38 +166,10 @@ export default function DonatePage() {
     }
   };
 
-  const handleUpiQr = async () => {
-    setDonating(true);
-    setError(null);
-    try {
-      const { qr_id, image_url } = await createUpiQr(amount, message || undefined);
-      setQrId(qr_id);
-      setQrImageUrl(image_url);
-      setDonating(false);
-
-      pollRef.current = setInterval(async () => {
-        try {
-          const status = await checkUpiQrStatus(qr_id);
-          if (status.paid) {
-            setQrPaid(true);
-            if (pollRef.current) clearInterval(pollRef.current);
-          }
-        } catch {
-          // keep polling
-        }
-      }, 4000);
-    } catch (err) {
-      setError(formatOpenGetFunctionError(err));
-      setDonating(false);
-    }
-  };
-
   const fmt = (cents: number) => {
     const value = currency.code === "jpy" ? cents : cents / 100;
     return `${currency.symbol}${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
-
-  const isInr = currency.code === "inr";
 
   if (loading) {
     return (
@@ -319,47 +267,6 @@ export default function DonatePage() {
         </div>
       )}
 
-      {/* ---- UPI QR Modal ---- */}
-      {qrImageUrl && (
-        <Card className="mb-6 border-primary/40">
-          <CardContent className="pt-6 text-center">
-            {qrPaid ? (
-              <div>
-                <div className="text-4xl mb-4 text-green-500 sm:text-5xl">&#10003;</div>
-                <h2 className="text-xl font-bold mb-2">Payment Received!</h2>
-                <p className="text-muted-foreground mb-4">
-                  Your payment of {fmt(amount)} has been received.
-                  Thank you for supporting open source!
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={closeQr}>Sponsor again</Button>
-                  <Button className="w-full sm:w-auto" asChild><a href="/contributors">View Contributors</a></Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h2 className="text-lg font-semibold mb-1">Scan to pay {fmt(amount)}</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Open any UPI app (Google Pay, PhonePe, Paytm, etc.) and scan this QR code.
-                </p>
-                <img
-                  src={qrImageUrl}
-                  alt="UPI QR Code"
-                  className="mx-auto w-full max-w-56 aspect-square rounded-lg border border-border bg-white p-2"
-                />
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
-                  <span className="text-sm text-muted-foreground">Waiting for payment...</span>
-                </div>
-                <Button variant="ghost" className="mt-3" onClick={closeQr}>
-                  Cancel
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Choose currency &amp; amount</CardTitle>
@@ -444,27 +351,22 @@ export default function DonatePage() {
           </p>
 
           {user ? (
-            <div className="space-y-3">
-              {isInr && (
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  size="lg"
-                  onClick={handleUpiQr}
-                  disabled={donating || amount < 100}
-                >
-                  {donating ? "Generating QR..." : `Pay ${fmt(amount)} via UPI QR`}
-                </Button>
-              )}
-              <Button
-                className="w-full"
-                size="lg"
-                variant={isInr ? "outline" : "default"}
-                onClick={handleDonate}
-                disabled={donating || amount < (currency.code === "jpy" ? 50 : 100)}
-              >
-                {donating ? "Opening checkout..." : `${isInr ? "Pay" : "Sponsor"} ${fmt(amount)} via Card`}
-              </Button>
-            </div>
+            <Button
+              className={
+                currency.code === "inr"
+                  ? "w-full bg-green-600 hover:bg-green-700"
+                  : "w-full"
+              }
+              size="lg"
+              onClick={handleDonate}
+              disabled={donating || amount < (currency.code === "jpy" ? 50 : 100)}
+            >
+              {donating
+                ? "Opening checkout..."
+                : currency.code === "inr"
+                  ? `Pay ${fmt(amount)} with Razorpay (UPI, cards, RuPay)`
+                  : `Sponsor ${fmt(amount)} with Razorpay`}
+            </Button>
           ) : (
             <Button
               type="button"
@@ -480,8 +382,8 @@ export default function DonatePage() {
           )}
 
           <p className="text-xs text-muted-foreground text-center mt-4">
-            {isInr
-              ? "Scan the UPI QR with any UPI app, or pay via card. Payments are processed by our authorized payment partners (for example Razorpay when enabled for India)."
+            {currency.code === "inr"
+              ? "Razorpay Checkout includes UPI apps, cards, and RuPay where your bank and our account settings allow. Payments are processed by our authorized payment partners (for example Razorpay when enabled for India)."
               : `Pay securely via ${currency.methods.join(", ")}. Currency conversion may be handled by our payment partner.`}
           </p>
         </CardContent>
