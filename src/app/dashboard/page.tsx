@@ -38,7 +38,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registered, setRegistered] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
   const [pinSet, setPinSet] = useState<boolean | null>(null);
   const [newPin, setNewPin] = useState("");
@@ -92,13 +93,14 @@ export default function DashboardPage() {
 
   const handleRegister = async () => {
     setRegistering(true);
-    setMessage(null);
+    setErrorNotice(null);
+    setSuccessNotice(null);
     try {
       await registerContributor();
       setRegistered(true);
-      setMessage("You're registered! You'll receive payouts from listed repos you contribute to.");
+      setSuccessNotice("You're registered! You'll receive payouts from listed repos you contribute to.");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Registration failed");
+      setErrorNotice(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setRegistering(false);
     }
@@ -106,14 +108,17 @@ export default function DashboardPage() {
 
   const handleSavePin = async () => {
     setSettingPin(true);
-    setMessage(null);
+    setErrorNotice(null);
+    setSuccessNotice(null);
     try {
       await setPayoutPin({
         pin: newPin,
         pin_confirm: newPin2,
         ...(pinSet ? { current_pin: currentPinForChange } : {}),
       });
-      setMessage(pinSet ? "PIN updated." : "PIN saved. Use it to unlock the debit card section when entering card details.");
+      setSuccessNotice(
+        pinSet ? "PIN updated." : "PIN saved. Use it to unlock the debit card section when entering card details.",
+      );
       setNewPin("");
       setNewPin2("");
       setCurrentPinForChange("");
@@ -121,7 +126,7 @@ export default function DashboardPage() {
       setUnlockPin("");
       await loadSecurity();
     } catch (err) {
-      setMessage(formatOpenGetFunctionError(err));
+      setErrorNotice(formatOpenGetFunctionError(err));
     } finally {
       setSettingPin(false);
     }
@@ -191,7 +196,8 @@ export default function DashboardPage() {
 
       await verifyPayoutPin(confirmPin);
 
-      setMessage(
+      setErrorNotice(null);
+      setSuccessNotice(
         `${brandLabel(numCheck.brand)} card format verified. We never store your card number or CVV — re-enter them the next time you use this screen.`,
       );
       lockCardSection();
@@ -240,9 +246,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {message && (
-        <div className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 text-sm">
-          {message}
+      {errorNotice && (
+        <div
+          className="mb-6 p-4 rounded-lg border border-red-500/40 bg-red-500/10 text-sm text-red-100"
+          role="alert"
+        >
+          {errorNotice}
+        </div>
+      )}
+      {successNotice && (
+        <div className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 text-sm text-foreground">
+          {successNotice}
         </div>
       )}
 

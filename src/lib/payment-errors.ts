@@ -8,7 +8,7 @@ export function formatOpenGetFunctionError(err: unknown): string {
     return "Card payment uses Razorpay. If this persists, payments may not be configured on the server yet.";
   }
   if (m.includes("unknown action")) {
-    return "Could not reach the payment service. Refresh the page and try again.";
+    return "The openget-api function on Appwrite is out of date: it does not recognize this request. Deploy the latest openget-api from the repository (see README / scripts/deploy-functions), then try again. Refreshing alone will not fix this.";
   }
   if (m.includes("payment gateway not configured")) {
     return "Payments are not configured on the server yet. An operator must set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET on the openget-api function (see README).";
