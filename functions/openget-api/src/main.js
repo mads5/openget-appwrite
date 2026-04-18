@@ -15,6 +15,7 @@ import {
   amountToRazorpaySmallestUnit,
   createRazorpayXPayout,
 } from './payment-gateway-razorpay.js';
+import { hashPayoutPin, verifyPayoutPin, isValidPinFormat } from './payout-pin.js';
 
 const DATABASE_ID = 'openget-db';
 const PLATFORM_FEE_RATE = 0.01;
@@ -1506,6 +1507,72 @@ export default async ({ req, res, log, error }) => {
         return res.json({ received: true });
       }
 
+      // ---- PAYOUT ACCESS PIN (6-digit; hash only — protects contributor payout card entry UI) ----
+      case 'get-payout-security-status': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        let userDoc;
+        try {
+          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+        } catch {
+          return res.json({ error: 'User profile not found' }, 404);
+        }
+        const h = userDoc.payout_pin_hash;
+        return res.json({ pin_set: typeof h === 'string' && h.length > 0 });
+      }
+
+      case 'set-payout-pin': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const { pin, pin_confirm: pinConfirm, current_pin: currentPin } = body;
+        let userDoc;
+        try {
+          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+        } catch {
+          return res.json({ error: 'User profile not found' }, 404);
+        }
+        const existing = userDoc.payout_pin_hash;
+        const hasPin = typeof existing === 'string' && existing.length > 0;
+
+        if (hasPin) {
+          if (!isValidPinFormat(String(currentPin || ''))) {
+            return res.json({ error: 'Current 6-digit PIN is required to change your PIN' }, 400);
+          }
+          if (!verifyPayoutPin(String(currentPin), existing)) {
+            return res.json({ error: 'Current PIN is incorrect' }, 401);
+          }
+        }
+
+        if (!isValidPinFormat(String(pin || '')) || !isValidPinFormat(String(pinConfirm || ''))) {
+          return res.json({ error: 'PIN must be exactly 6 digits' }, 400);
+        }
+        if (String(pin) !== String(pinConfirm)) {
+          return res.json({ error: 'PIN confirmation does not match' }, 400);
+        }
+
+        const nextHash = hashPayoutPin(String(pin));
+        await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
+          payout_pin_hash: nextHash,
+        });
+        return res.json({ ok: true, message: hasPin ? 'PIN updated.' : 'PIN saved. Use it to unlock the debit card form when adding payout details.' });
+      }
+
+      case 'verify-payout-pin': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        if (!isValidPinFormat(String(body.pin || ''))) {
+          return res.json({ error: 'PIN must be exactly 6 digits' }, 400);
+        }
+        let userDoc;
+        try {
+          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+        } catch {
+          return res.json({ error: 'User profile not found' }, 404);
+        }
+        const existing = userDoc.payout_pin_hash;
+        if (!existing || !verifyPayoutPin(String(body.pin), existing)) {
+          return res.json({ error: 'Incorrect PIN' }, 401);
+        }
+        return res.json({ ok: true });
+      }
+
       // ---- PAYOUT ONBOARDING (bank beneficiary ref for RazorpayX; aliases for older clients) ----
       case 'payout-onboarding':
       case 'bank-payout-setup':
@@ -1525,8 +1592,7 @@ export default async ({ req, res, log, error }) => {
         if (fa.length > 0 && !fa.startsWith('fa_')) {
           return res.json(
             {
-              error:
-                'Beneficiary reference must be your RazorpayX fund account id and start with fa_.',
+              error: 'Beneficiary reference must start with fa_.',
             },
             400,
           );
@@ -1551,7 +1617,7 @@ export default async ({ req, res, log, error }) => {
           account_id: userDoc.stripe_connect_account_id || null,
           onboarding_url: null,
           message:
-            'Complete your bank account as a payout beneficiary with our payment partner (Razorpay), then paste the beneficiary reference (fa_…) here. Card data is tokenised per RBI rules on the partner side; OpenGet does not store full card numbers.',
+            'Legacy beneficiary id lookup. Prefer the dashboard debit card flow; fund account ids are optional for some settlement backends.',
         });
       }
 
@@ -2143,7 +2209,9 @@ export default async ({ req, res, log, error }) => {
       default:
         return res.json({ error: `Unknown action: ${action}`, available: [
           'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
-          'create-checkout', 'razorpay-webhook', 'stripe-webhook', 'payout-onboarding', 'bank-payout-setup', 'stripe-connect', 'process-payouts', 'upi-payment',
+          'create-checkout', 'razorpay-webhook', 'stripe-webhook',
+          'get-payout-security-status', 'set-payout-pin', 'verify-payout-pin',
+          'payout-onboarding', 'bank-payout-setup', 'stripe-connect', 'process-payouts', 'upi-payment',
           'get-earnings', 'distribute-pool', 'get-collecting-pool', 'list-collecting-pools', 'get-pool-impact',
           'fetch-contributors',
         ]}, 400);

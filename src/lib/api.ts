@@ -567,7 +567,7 @@ export async function getEarnings() {
   }>("get-earnings");
 }
 
-/** Save bank payout beneficiary reference (`fa_...` from RazorpayX) for settlements; uses signed-in user. */
+/** Save bank payout beneficiary reference (`fa_...`) for legacy settlement backends; uses signed-in user. */
 export async function onboardPayoutAccount(fundAccountId?: string) {
   return executeFunction<{
     provider: string;
@@ -577,6 +577,22 @@ export async function onboardPayoutAccount(fundAccountId?: string) {
   }>("payout-onboarding", {
     fund_account_id: fundAccountId,
   });
+}
+
+export async function getPayoutSecurityStatus() {
+  return executeFunction<{ pin_set: boolean }>("get-payout-security-status", {});
+}
+
+export async function setPayoutPin(body: {
+  pin: string;
+  pin_confirm: string;
+  current_pin?: string;
+}) {
+  return executeFunction<{ ok: boolean; message?: string }>("set-payout-pin", body);
+}
+
+export async function verifyPayoutPin(pin: string) {
+  return executeFunction<{ ok: boolean }>("verify-payout-pin", { pin });
 }
 
 // ---- Stats (for homepage) ----

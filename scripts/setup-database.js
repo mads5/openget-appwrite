@@ -335,6 +335,7 @@ async function setupUsers() {
   await addStringAttribute(id, 'stripe_connect_account_id', 100, false);
   await addBooleanAttribute(id, 'stripe_charges_enabled', false, false);
   await addBooleanAttribute(id, 'stripe_payouts_enabled', false, false);
+  await addStringAttribute(id, 'payout_pin_hash', 256, false);
   await addStringAttribute(id, 'github_access_token', 2000, false);
 }
 
