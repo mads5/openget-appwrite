@@ -2,7 +2,7 @@
 
 > **Site copy:** The [/enterprise](/enterprise) page embeds this material in `src/components/enterprise/pool-types-guide.tsx`. Edit both when definitions change.
 
-OpenGet has **four pool types**. Each pool collects donations separately and pays out every week. When someone donates, they choose which kind of work they want to support.
+OpenGet has **four pool types**. Each pool collects sponsor payments separately and pays out every week. When someone sponsors a pool, they choose which kind of work they want to support.
 
 **Not every repo is in every pool:** OpenGet refreshes repo matching during the regular scoring run. Weekly payouts for a pool only go to repos that match that pool.
 
@@ -10,7 +10,7 @@ OpenGet has **four pool types**. Each pool collects donations separately and pay
 
 ## Summary
 
-| `pool_type` | Primary donors (intent) | What it optimizes for | Eligibility (automatic v1) |
+| `pool_type` | Primary sponsors (intent) | What it optimizes for | Eligibility (automatic v1) |
 |-------------|-------------------------|------------------------|----------------------------|
 | `community_match` | Individuals, broad community backers | Broad participation | **All** listed repos |
 | `innovation` | Grants, incubators | Early-stage / upside | Low `stars+forks`, or moderate criticality + recent `pushed_at` |
@@ -36,7 +36,7 @@ Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + 
 
 **Important:** Repo owners are not blocked from earning. They still get credit for real work like merged PRs, reviews, releases, and issue work. The only thing excluded is using their own repo to increase the “number of repos helped” score.
 
-## Why donors might like this
+## Why sponsors might like this
 
 - **Individuals** can support open source without picking winners one by one.
 - **Companies** can support the open-source work they depend on in a more organized way.
@@ -62,8 +62,8 @@ Implementation: [`functions/openget-api/src/pool-eligibility.js`](../functions/o
 ## Eligibility (product rules)
 
 - **Listing**: A GitHub repo is listed once; **pool eligibility** is derived automatically (no manual picker).
-- **Payouts**: Contributors still need registered OpenGet + Stripe Express and a positive **contributor score** (6-factor model). Pool type does not change contributor scoring.
-- **Governance**: Payouts are **never** tied to a donor picking specific PRs. Donors only choose **which pool** to fund; distribution is algorithmic. See [README](../README.md#governance).
+- **Payouts**: Contributors still need registered OpenGet, completed payout onboarding with our payment partner, and a positive **contributor score** (6-factor model). Pool type does not change contributor scoring.
+- **Governance**: Payouts are **never** tied to a sponsor picking specific PRs. Sponsors only choose **which pool** to fund; distribution is algorithmic. See [README](../README.md#governance).
 
 ## Who each pool is for
 
@@ -71,9 +71,9 @@ Implementation: [`functions/openget-api/src/pool-eligibility.js`](../functions/o
 - **Enterprises** → usually `security_compliance` or `deep_deps`.
 - **Innovation / research** → `innovation`.
 
-## Donor transparency
+## Sponsor transparency
 
-The donate page shows a simple preview of repos in the selected pool type. This helps donors understand where their money is likely to go, without needing to review hundreds of repos manually.
+The sponsor page (`/donate`) shows a simple preview of repos in the selected pool type. This helps sponsors understand where their money is likely to go, without needing to review hundreds of repos manually.
 
 ## Technical notes
 
@@ -81,7 +81,7 @@ The donate page shows a simple preview of repos in the selected pool type. This 
 - `repos.eligible_pool_types` stores `JSON.stringify(["community_match","innovation",...])`.
 - `repos.has_security_md` caches whether `SECURITY.md` exists on the default branch.
 - `repos.license` stores the SPDX license identifier from GitHub (e.g. `"MIT"`, `"Apache-2.0"`).
-- Checkout sends `pool_id` (resolved from `pool_type` + current collecting round) in Stripe metadata.
+- Checkout creates a Razorpay order with `pool_id` / donation id in order `notes` (resolved from `pool_type` + current collecting round).
 - Weekly GitHub Actions runs distribution **once per active pool** with a non-zero remaining balance, **filtering repos** by `eligible_pool_types`.
 
 ## Deployment notes

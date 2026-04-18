@@ -23,7 +23,7 @@ export default function EnterprisePage() {
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">For enterprises</h1>
         <p className="text-muted-foreground mt-3 leading-relaxed">
           OpenGet helps fund the open-source projects you depend on. Instead of trying to sponsor
-          people one by one, you donate into a pool and OpenGet shares that money using clear rules.
+          people one by one, you sponsor a pool and OpenGet shares that money using clear rules.
         </p>
       </div>
 
@@ -43,15 +43,15 @@ export default function EnterprisePage() {
             one step instead of managing lots of separate sponsorships.
           </li>
           <li>
-            <span className="text-foreground">Clear records</span>: OpenGet keeps simple records of donations,
+            <span className="text-foreground">Clear records</span>: OpenGet keeps simple records of sponsor payments,
             pools, and payouts so teams can track what happened.
           </li>
           <li>
-            <span className="text-foreground">Fair sharing</span>: Donors do not pick one PR or one person to pay.
+            <span className="text-foreground">Fair sharing</span>: Sponsors do not pick one PR or one person to pay.
             The platform uses public rules so the money is shared more fairly.
           </li>
           <li>
-            <span className="text-foreground">Useful reports</span>: OpenGet can show where donations went and which
+            <span className="text-foreground">Useful reports</span>: OpenGet can show where sponsor funds went and which
             repos were included in each pool.
           </li>
         </ul>
@@ -116,7 +116,7 @@ export default function EnterprisePage() {
 
       <div className="flex flex-wrap gap-3">
         <Button asChild>
-          <Link href="/donate">Donate to a pool</Link>
+          <Link href="/donate">Sponsor a pool</Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/">Back home</Link>

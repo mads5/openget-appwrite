@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getEarnings, registerContributor, onboardStripeConnect, getMyContributor } from "@/lib/api";
+import { getEarnings, registerContributor, onboardPayoutAccount, getMyContributor } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registered, setRegistered] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
+  const [connectingPayout, setConnectingPayout] = useState(false);
+  const [payoutFundId, setPayoutFundId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,21 +62,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleStripeConnect = async () => {
+  const handleSavePayoutAccount = async () => {
     if (!user) return;
-    setConnectingStripe(true);
+    setConnectingPayout(true);
     setMessage(null);
     try {
-      const result = await onboardStripeConnect(user.$id, user.email || "");
-      if (result.onboarding_url) {
-        window.location.href = result.onboarding_url;
-      } else {
-        setMessage("Stripe account created. Reload to check status.");
-      }
+      const trimmed = payoutFundId.trim();
+      const result = await onboardPayoutAccount(trimmed || undefined);
+      if (result.message) setMessage(result.message);
+      if (result.account_id) setPayoutFundId(result.account_id);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Stripe connection failed. Make sure Stripe is configured.");
+      setMessage(err instanceof Error ? err.message : "Could not save payout account. Check your fund account id.");
     } finally {
-      setConnectingStripe(false);
+      setConnectingPayout(false);
     }
   };
 
@@ -164,9 +163,9 @@ export default function DashboardPage() {
               </div>
 
               <p className="text-xs text-muted-foreground mb-4">
-                Payouts are distributed weekly from the monthly donation pool.
-                Amounts shown in USD; Stripe converts to your local bank
-                currency automatically.
+                Payouts are distributed weekly from the monthly sponsor pool.
+                Amounts may be shown in USD; settlement to your bank can be in
+                local currency via our payment partner.
               </p>
 
               {earnings?.payouts && earnings.payouts.length > 0 ? (
@@ -182,9 +181,9 @@ export default function DashboardPage() {
                     if (!needsOnboarding) return null;
                     return (
                       <div className="mb-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
-                        Some payouts are waiting on Stripe onboarding. Complete
-                        Connect setup to unblock them &mdash; use the
-                        &ldquo;Connect Stripe Account&rdquo; button on the
+                        Some payouts are waiting on payout onboarding. Complete
+                        the flow to unblock them &mdash; use the
+                        &ldquo;Connect for payouts&rdquo; button on the
                         right.
                       </div>
                     );
@@ -237,21 +236,32 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Stripe Connect</CardTitle>
+              <CardTitle className="text-lg">Payout setup</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Connect your Stripe account to receive payouts directly to
-                your bank in your local currency.
+                Add your RazorpayX fund account id (starts with <span className="font-mono">fa_</span>) from the
+                Razorpay dashboard so we can route bank payouts. International card
+                checkouts use Razorpay where enabled on your merchant account; payout
+                rails depend on RazorpayX and region settings.
               </p>
+              <label className="text-xs text-muted-foreground block mb-1">Fund account id</label>
+              <input
+                type="text"
+                value={payoutFundId}
+                onChange={(e) => setPayoutFundId(e.target.value)}
+                placeholder="fa_xxxxxxxxxxxx"
+                className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mb-3"
+                autoComplete="off"
+              />
               <Button
                 variant="outline"
                 size="lg"
                 className="w-full"
-                onClick={handleStripeConnect}
-                disabled={connectingStripe}
+                onClick={handleSavePayoutAccount}
+                disabled={connectingPayout}
               >
-                {connectingStripe ? "Connecting..." : "Connect Stripe Account"}
+                {connectingPayout ? "Saving..." : "Save payout account"}
               </Button>
             </CardContent>
           </Card>

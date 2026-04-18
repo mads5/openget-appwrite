@@ -9,6 +9,12 @@ import {
   POOL_TYPES,
   POOL_TYPE_DESCRIPTIONS,
 } from './pool-types.js';
+import {
+  getRazorpayClient,
+  verifyRazorpayWebhookSignature,
+  amountToRazorpaySmallestUnit,
+  createRazorpayXPayout,
+} from './payment-gateway-razorpay.js';
 
 const DATABASE_ID = 'openget-db';
 const PLATFORM_FEE_RATE = 0.01;
@@ -661,22 +667,78 @@ async function distributeWeekly(db, pool, budget) {
 }
 
 /**
- * Process pending payouts by issuing Stripe Connect transfers to contributors.
- * Shared between the `process-payouts` action and the weekly `distribute-pool`
- * chain so a single weekly cron does compute + pay.
+ * Credit pool after Razorpay marks an order paid (payment.captured / order.paid webhook).
+ * `donations.stripe_session_id` stores the Razorpay order id (legacy column name).
+ */
+async function confirmDonationAfterRazorpayOrder(db, orderId, log, error) {
+  try {
+    const matches = await db.listDocuments(DATABASE_ID, COL.DONATIONS, [
+      Query.equal('stripe_session_id', orderId),
+      Query.limit(1),
+    ]);
+    const donation = matches.documents[0];
+    if (!donation) {
+      if (log) log(`razorpay confirm: no donation for order ${orderId}`);
+      return;
+    }
+    if (donation.status === 'confirmed') {
+      if (log) log(`razorpay confirm: donation ${donation.$id} already confirmed`);
+      return;
+    }
+    const donationId = donation.$id;
+    const poolId = donation.pool_id;
+    if (!poolId) {
+      if (error) error(`razorpay confirm: donation ${donationId} missing pool_id`);
+      return;
+    }
+    const amountCents = donation.amount_cents;
+    const pool = await db.getDocument(DATABASE_ID, COL.POOLS, poolId);
+    const feeCents = calculatePlatformFeeCents(amountCents, pool.total_amount_cents || 0);
+    const distributable = amountCents - feeCents;
+
+    await db.updateDocument(DATABASE_ID, COL.DONATIONS, donationId, { status: 'confirmed' });
+    await db.updateDocument(DATABASE_ID, COL.POOLS, poolId, {
+      total_amount_cents: (pool.total_amount_cents || 0) + amountCents,
+      platform_fee_cents: (pool.platform_fee_cents || 0) + feeCents,
+      distributable_amount_cents: (pool.distributable_amount_cents || 0) + distributable,
+      donor_count: (pool.donor_count || 0) + 1,
+    });
+
+    await db.createDocument(DATABASE_ID, COL.PLATFORM_FEES, ID.unique(), {
+      pool_id: poolId,
+      amount_cents: feeCents,
+      source_donation_id: donationId,
+    });
+    if (log) log(`razorpay confirm: donation ${donationId} pool ${poolId}`);
+  } catch (e) {
+    if (error) error(`razorpay confirm failed: ${e.message}`);
+  }
+}
+
+/**
+ * Process pending payouts via RazorpayX (fund account payouts).
+ * Shared between `process-payouts` and weekly `distribute-pool`.
  *
- * Payouts flow: pending -> (transfers.create) -> processing -> (transfer.paid
- * webhook) -> completed. If a contributor has no Connect account or payouts
- * aren't enabled yet, the row is marked `blocked` so they can retry after
- * onboarding. Stripe API errors mark the row `failed` with a short reason.
+ * Requires RAZORPAY_KEY_* plus RAZORPAYX_ACCOUNT_NUMBER. Contributor `users.stripe_connect_account_id`
+ * must hold a RazorpayX fund account id (`fa_...`). Amounts use the same smallest-unit convention
+ * as pool accounting; `RAZORPAYX_PAYOUT_CURRENCY` must match how `amount_cents` is interpreted.
  */
 async function processPendingPayouts(db, { limit = 50, log, error } = {}) {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
-    return { processed: 0, failed: 0, blocked: 0, total: 0, skipped: true, reason: 'STRIPE_SECRET_KEY not configured' };
+  const rzp = await getRazorpayClient();
+  const fromAccount = process.env.RAZORPAYX_ACCOUNT_NUMBER;
+  if (!rzp || !fromAccount) {
+    return {
+      processed: 0,
+      failed: 0,
+      blocked: 0,
+      total: 0,
+      skipped: true,
+      reason: 'RAZORPAY_KEY_ID/SECRET or RAZORPAYX_ACCOUNT_NUMBER not configured',
+    };
   }
-  const { default: Stripe } = await import('stripe');
-  const stripe = new Stripe(stripeKey);
+
+  const payoutCurrency = (process.env.RAZORPAYX_PAYOUT_CURRENCY || 'INR').toUpperCase();
+  const payoutMode = process.env.RAZORPAYX_PAYOUT_MODE || 'IMPS';
 
   const safeLimit = Math.min(Math.max(1, Number(limit) || 50), 100);
   const pending = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
@@ -724,31 +786,43 @@ async function processPendingPayouts(db, { limit = 50, log, error } = {}) {
     if (!acct || !ready) {
       await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
         status: 'blocked',
-        failure_reason: !acct ? 'no_connected_account' : 'payouts_not_enabled',
+        failure_reason: !acct ? 'no_payout_account' : 'payouts_not_enabled',
+      });
+      blocked++;
+      continue;
+    }
+
+    if (!String(acct).startsWith('fa_')) {
+      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
+        status: 'blocked',
+        failure_reason: 'invalid_fund_account',
       });
       blocked++;
       continue;
     }
 
     try {
-      const transfer = await stripe.transfers.create({
+      const refId = `og_${String(p.$id).replace(/-/g, '').slice(0, 28)}`;
+      const rpayout = await createRazorpayXPayout({
+        account_number: fromAccount,
+        fund_account_id: acct,
         amount: p.amount_cents,
-        currency: 'usd',
-        destination: acct,
-        metadata: {
-          payout_id: p.$id,
-          contributor_id: p.contributor_id,
-          pool_id: p.pool_id,
-        },
+        currency: payoutCurrency,
+        mode: payoutMode,
+        purpose: 'payout',
+        queue_if_inactive: true,
+        reference_id: refId,
+        narration: 'OpenGet contributor payout',
+        notes: { payout_id: String(p.$id), pool_id: String(p.pool_id || '') },
       });
       await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
         status: 'processing',
-        stripe_transfer_id: transfer.id,
+        stripe_transfer_id: rpayout.id,
       });
       processed++;
-      if (log) log(`transfer ${transfer.id} for payout ${p.$id} -> ${acct}`);
+      if (log) log(`razorpay payout ${rpayout.id} for payout ${p.$id} -> ${acct}`);
     } catch (e) {
-      const reason = String(e?.message || e || 'stripe_error').slice(0, 200);
+      const reason = String(e?.message || e || 'payout_error').slice(0, 200);
       await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
         status: 'failed',
         failure_reason: reason,
@@ -1279,24 +1353,19 @@ export default async ({ req, res, log, error }) => {
         return res.json({ ...contribDoc, is_registered: true });
       }
 
-      // ---- CREATE CHECKOUT ----
+      // ---- CREATE CHECKOUT (Razorpay order for hosted Checkout) ----
       case 'create-checkout': {
         if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
-
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(stripeKey);
+        const rzp = await getRazorpayClient();
+        if (!rzp) return res.json({ error: 'Payment gateway not configured' }, 500);
 
         const {
           amount_cents,
           currency = 'usd',
           message = '',
-          success_url,
-          cancel_url,
           pool_type: requestedPoolType = DEFAULT_CHECKOUT_POOL_TYPE,
         } = body;
-        if (!amount_cents || !success_url || !cancel_url) return res.json({ error: 'Missing required fields' }, 400);
+        if (!amount_cents) return res.json({ error: 'Missing required fields' }, 400);
 
         const collectingAll = await db.listDocuments(DATABASE_ID, COL.POOLS, [
           Query.equal('status', 'collecting'),
@@ -1317,6 +1386,10 @@ export default async ({ req, res, log, error }) => {
           : DEFAULT_CHECKOUT_POOL_TYPE;
         const productName = `OpenGet (${poolLabel})`;
 
+        const razorpayAmount = amountToRazorpaySmallestUnit(amount_cents, String(currency || 'usd'));
+        if (razorpayAmount < 1) return res.json({ error: 'Invalid amount' }, 400);
+        const currencyUpper = String(currency || 'usd').toUpperCase();
+
         const donation = await db.createDocument(DATABASE_ID, COL.DONATIONS, ID.unique(), {
           pool_id: poolId,
           donor_id: userId,
@@ -1325,203 +1398,156 @@ export default async ({ req, res, log, error }) => {
           status: 'pending',
         });
 
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency,
-                product_data: {
-                  name: productName.slice(0, 120),
-                  description: (POOL_TYPE_DESCRIPTIONS[poolLabel] || 'Open source contributor pool').slice(0, 120),
-                },
-                unit_amount: amount_cents,
-              },
-              quantity: 1,
+        let order;
+        try {
+          order = await rzp.orders.create({
+            amount: razorpayAmount,
+            currency: currencyUpper,
+            receipt: String(donation.$id).slice(0, 40),
+            notes: {
+              donation_id: String(donation.$id),
+              pool_id: String(poolId),
+              pool_type: String(poolLabel),
             },
-          ],
-          mode: 'payment',
-          success_url,
-          cancel_url,
-          metadata: {
-            donation_id: donation.$id,
-            pool_id: poolId,
-            pool_type: poolLabel,
-          },
-        });
+          });
+        } catch (e) {
+          try {
+            await db.deleteDocument(DATABASE_ID, COL.DONATIONS, donation.$id);
+          } catch { /* ignore */ }
+          return res.json({ error: String(e?.message || e || 'order_failed').slice(0, 200) }, 502);
+        }
 
-        await db.updateDocument(DATABASE_ID, COL.DONATIONS, donation.$id, { stripe_session_id: session.id });
-        return res.json({ checkout_url: session.url, session_id: session.id });
+        await db.updateDocument(DATABASE_ID, COL.DONATIONS, donation.$id, { stripe_session_id: order.id });
+        return res.json({
+          provider: 'razorpay',
+          key_id: process.env.RAZORPAY_KEY_ID,
+          order_id: order.id,
+          amount: razorpayAmount,
+          currency: currencyUpper,
+          donation_id: donation.$id,
+          description: `${productName} — ${(POOL_TYPE_DESCRIPTIONS[poolLabel] || 'Open source contributor pool').slice(0, 200)}`,
+        });
       }
 
-      // ---- STRIPE WEBHOOK ----
+      // ---- RAZORPAY WEBHOOK (alias: stripe-webhook for existing URLs) ----
+      case 'razorpay-webhook':
       case 'stripe-webhook': {
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
+        const rzp = await getRazorpayClient();
+        if (!rzp) return res.json({ error: 'Payment gateway not configured' }, 500);
 
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(stripeKey);
+        const whSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+        const sig =
+          req.headers?.['x-razorpay-signature'] ||
+          req.headers?.['X-Razorpay-Signature'] ||
+          '';
+        const raw =
+          typeof req.bodyRaw === 'string'
+            ? req.bodyRaw
+            : typeof req.body === 'string'
+              ? req.body
+              : JSON.stringify(req.body ?? {});
 
-        let event;
-        const sig = req.headers?.['stripe-signature'];
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-        if (sig && webhookSecret) {
-          try { event = stripe.webhooks.constructEvent(req.bodyRaw || req.body, sig, webhookSecret); }
-          catch (e) { return res.json({ error: 'Invalid signature' }, 400); }
+        if (whSecret) {
+          if (!sig || !verifyRazorpayWebhookSignature(raw, sig, whSecret)) {
+            return res.json({ error: 'Invalid signature' }, 400);
+          }
         } else {
-          event = body;
+          log('razorpay webhook: RAZORPAY_WEBHOOK_SECRET not set — skipping signature check');
         }
 
-        if (event.type === 'checkout.session.completed') {
-          const session = event.data.object;
-          const donationId = session.metadata?.donation_id;
-          const poolId = session.metadata?.pool_id;
-          if (donationId && poolId) {
-            const donation = await db.getDocument(DATABASE_ID, COL.DONATIONS, donationId);
-            const amountCents = donation.amount_cents;
-            const pool = await db.getDocument(DATABASE_ID, COL.POOLS, poolId);
-            const feeCents = calculatePlatformFeeCents(amountCents, pool.total_amount_cents || 0);
-            const distributable = amountCents - feeCents;
+        const evt = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+        const eventName = evt.event || '';
 
-            await db.updateDocument(DATABASE_ID, COL.DONATIONS, donationId, { status: 'confirmed' });
-            await db.updateDocument(DATABASE_ID, COL.POOLS, poolId, {
-              total_amount_cents: (pool.total_amount_cents || 0) + amountCents,
-              platform_fee_cents: (pool.platform_fee_cents || 0) + feeCents,
-              distributable_amount_cents: (pool.distributable_amount_cents || 0) + distributable,
-              donor_count: (pool.donor_count || 0) + 1,
-            });
-
-            await db.createDocument(DATABASE_ID, COL.PLATFORM_FEES, ID.unique(), {
-              pool_id: poolId,
-              amount_cents: feeCents,
-              source_donation_id: donationId,
-            });
-          }
-        } else if (event.type === 'account.updated') {
-          // Connect Express onboarding progress. Mirror charges_enabled /
-          // payouts_enabled onto the matching user doc so process-payouts
-          // knows when it's safe to call transfers.create.
-          const account = event.data.object || {};
-          const accountId = account.id;
-          if (accountId) {
-            try {
-              const matches = await db.listDocuments(DATABASE_ID, COL.USERS, [
-                Query.equal('stripe_connect_account_id', accountId),
-                Query.limit(1),
-              ]);
-              const userDoc = matches.documents[0];
-              if (userDoc) {
-                await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
-                  stripe_charges_enabled: Boolean(account.charges_enabled),
-                  stripe_payouts_enabled: Boolean(account.payouts_enabled),
-                });
-                log(`account.updated ${accountId} charges=${!!account.charges_enabled} payouts=${!!account.payouts_enabled}`);
-              } else {
-                log(`account.updated ${accountId}: no matching user doc`);
-              }
-            } catch (e) {
-              error(`account.updated failed: ${e.message}`);
-            }
-          }
+        if (eventName === 'payment.captured') {
+          const pay = evt.payload?.payment?.entity;
+          const orderId = pay?.order_id;
+          if (orderId) await confirmDonationAfterRazorpayOrder(db, orderId, log, error);
+        } else if (eventName === 'order.paid') {
+          const ord = evt.payload?.order?.entity;
+          const orderId = ord?.id;
+          if (orderId) await confirmDonationAfterRazorpayOrder(db, orderId, log, error);
         } else if (
-          event.type === 'transfer.paid' ||
-          event.type === 'transfer.failed' ||
-          event.type === 'transfer.reversed'
+          eventName === 'payout.processed' ||
+          eventName === 'payout.failed' ||
+          eventName === 'payout.reversed'
         ) {
-          // Update the payouts row by stripe_transfer_id (fallback to
-          // metadata.payout_id) and flip to completed / failed.
-          const transfer = event.data.object || {};
-          const transferId = transfer.id;
-          const payoutIdMeta = transfer.metadata?.payout_id || null;
-
-          let payoutDoc = null;
-          if (transferId) {
+          const pout = evt.payload?.payout?.entity || {};
+          const payoutRzId = pout.id;
+          if (payoutRzId) {
             try {
               const matches = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
-                Query.equal('stripe_transfer_id', transferId),
+                Query.equal('stripe_transfer_id', payoutRzId),
                 Query.limit(1),
               ]);
-              payoutDoc = matches.documents[0] || null;
-            } catch {
-              payoutDoc = null;
-            }
-          }
-          if (!payoutDoc && payoutIdMeta) {
-            try {
-              payoutDoc = await db.getDocument(DATABASE_ID, COL.PAYOUTS, payoutIdMeta);
-            } catch {
-              payoutDoc = null;
-            }
-          }
-
-          if (payoutDoc) {
-            const patch = { stripe_transfer_id: transferId || payoutDoc.stripe_transfer_id || null };
-            if (event.type === 'transfer.paid') {
-              patch.status = 'completed';
-              patch.completed_at = new Date().toISOString();
-            } else if (event.type === 'transfer.failed') {
-              patch.status = 'failed';
-              patch.failure_reason = String(
-                transfer.failure_message || transfer.failure_code || 'transfer_failed',
-              ).slice(0, 200);
-            } else if (event.type === 'transfer.reversed') {
-              patch.status = 'failed';
-              patch.failure_reason = 'transfer_reversed';
-            }
-            try {
-              await db.updateDocument(DATABASE_ID, COL.PAYOUTS, payoutDoc.$id, patch);
-              log(`${event.type} -> payout ${payoutDoc.$id} status=${patch.status}`);
+              const payoutDoc = matches.documents[0];
+              if (payoutDoc) {
+                const patch = { stripe_transfer_id: payoutRzId };
+                if (eventName === 'payout.processed') {
+                  patch.status = 'completed';
+                  patch.completed_at = new Date().toISOString();
+                } else {
+                  patch.status = 'failed';
+                  patch.failure_reason = String(
+                    pout.status_description || pout.status || eventName,
+                  ).slice(0, 200);
+                }
+                await db.updateDocument(DATABASE_ID, COL.PAYOUTS, payoutDoc.$id, patch);
+                log(`razorpay ${eventName} -> payout ${payoutDoc.$id}`);
+              } else {
+                log(`razorpay ${eventName}: no payout row for ${payoutRzId}`);
+              }
             } catch (e) {
-              error(`${event.type} update failed for payout ${payoutDoc.$id}: ${e.message}`);
+              error(`razorpay payout webhook: ${e.message}`);
             }
-          } else {
-            log(`${event.type} for transfer ${transferId || '(unknown)'}: no matching payout doc`);
           }
-        } else if (event.type === 'payout.paid' || event.type === 'payout.failed') {
-          // Connected-account bank payout (Stripe -> contributor bank). Log only
-          // for now; the platform-side transfer is what we track in the payouts
-          // collection.
-          const payout = event.data.object || {};
-          log(`${event.type} on connected account payout ${payout.id || '(unknown)'} amount=${payout.amount}`);
         }
+
         return res.json({ received: true });
       }
 
-      // ---- STRIPE CONNECT ----
+      // ---- PAYOUT ONBOARDING (RazorpayX fund account id; alias: stripe-connect) ----
+      case 'payout-onboarding':
       case 'stripe-connect': {
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const rzp = await getRazorpayClient();
+        if (!rzp) return res.json({ error: 'Payment gateway not configured' }, 500);
 
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(stripeKey);
-        const { user_id, email } = body;
+        const { fund_account_id: fundAccountId } = body;
 
-        let accountId;
+        let userDoc;
         try {
-          const usersDocs = await db.listDocuments(DATABASE_ID, COL.USERS, [Query.equal('github_id', user_id || ''), Query.limit(1)]);
-          if (usersDocs.documents.length > 0 && usersDocs.documents[0].stripe_connect_account_id) {
-            accountId = usersDocs.documents[0].stripe_connect_account_id;
-          }
-        } catch {}
-
-        if (!accountId) {
-          const account = await stripe.accounts.create({ type: 'express', email: email || undefined });
-          accountId = account.id;
+          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
+        } catch {
+          return res.json({ error: 'User profile not found' }, 404);
         }
 
-        const link = await stripe.accountLinks.create({
-          account: accountId,
-          refresh_url: process.env.STRIPE_CONNECT_REFRESH_URL || 'https://openget.app/dashboard',
-          return_url: process.env.STRIPE_CONNECT_RETURN_URL || 'https://openget.app/dashboard',
-          type: 'account_onboarding',
+        const fa = fundAccountId != null ? String(fundAccountId).trim() : '';
+        if (fa && fa.startsWith('fa_')) {
+          await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
+            stripe_connect_account_id: fa,
+            stripe_charges_enabled: true,
+            stripe_payouts_enabled: true,
+          });
+          return res.json({
+            provider: 'razorpay',
+            account_id: fa,
+            onboarding_url: null,
+            message:
+              'Fund account saved. Weekly runs will send payouts to this RazorpayX fund account when amounts are due.',
+          });
+        }
+
+        return res.json({
+          provider: 'razorpay',
+          account_id: userDoc.stripe_connect_account_id || null,
+          onboarding_url: null,
+          message:
+            'Create a RazorpayX fund account in your Razorpay dashboard, then paste its id (starts with fa_) on the dashboard to receive bank payouts.',
         });
-        return res.json({ account_id: accountId, onboarding_url: link.url });
       }
 
-      // ---- PROCESS PAYOUTS (Stripe Connect transfers) ----
+      // ---- PROCESS PAYOUTS (RazorpayX) ----
       case 'process-payouts': {
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
         const result = await processPendingPayouts(db, {
           limit: Number(body.limit ?? req.query?.limit ?? 50),
           log,
@@ -1684,8 +1710,7 @@ export default async ({ req, res, log, error }) => {
         }
 
         // Chain payout processing so a single weekly cron does compute + pay.
-        // Opt-out via `skip_payouts: true` (e.g. when running a dry-run or when
-        // Stripe isn't configured in a test environment).
+        // Opt-out via `skip_payouts: true` (e.g. dry-run or when RazorpayX is not configured).
         let payoutSummary = null;
         if (!body.skip_payouts) {
           try {
@@ -2114,7 +2139,7 @@ export default async ({ req, res, log, error }) => {
       default:
         return res.json({ error: `Unknown action: ${action}`, available: [
           'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
-          'create-checkout', 'stripe-webhook', 'stripe-connect', 'process-payouts', 'upi-payment',
+          'create-checkout', 'razorpay-webhook', 'stripe-webhook', 'payout-onboarding', 'stripe-connect', 'process-payouts', 'upi-payment',
           'get-earnings', 'distribute-pool', 'get-collecting-pool', 'list-collecting-pools', 'get-pool-impact',
           'fetch-contributors',
         ]}, 400);

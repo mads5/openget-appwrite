@@ -56,7 +56,7 @@ export function PoolCard({ pool, hideFinancialTotals = false }: PoolCardProps) {
           <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <div className="text-xl font-bold sm:text-2xl">{pool.donor_count}</div>
-              <div className="text-xs text-muted-foreground mt-1">Donors</div>
+              <div className="text-xs text-muted-foreground mt-1">Sponsors</div>
             </div>
             <div>
               <div className="text-xl font-bold sm:text-2xl">{daysLeft}</div>
@@ -74,7 +74,7 @@ export function PoolCard({ pool, hideFinancialTotals = false }: PoolCardProps) {
               </div>
               <div>
                 <div className="text-xl font-bold sm:text-2xl">{pool.donor_count}</div>
-                <div className="text-xs text-muted-foreground mt-1">Donors</div>
+                <div className="text-xs text-muted-foreground mt-1">Sponsors</div>
               </div>
               <div>
                 <div className="text-xl font-bold sm:text-2xl">{daysLeft}</div>

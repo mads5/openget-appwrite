@@ -519,19 +519,28 @@ export async function getPoolImpact(): Promise<{
   }
 }
 
+/** Razorpay order payload for hosted Checkout (see `create-checkout` in openget-api). */
+export type RazorpayCheckoutPayload = {
+  provider: "razorpay";
+  key_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  donation_id: string;
+  description: string;
+};
+
 export async function createCheckoutSession(
   amountCents: number,
   message?: string,
   currency?: string,
   poolType?: string,
-): Promise<{ checkout_url: string; session_id: string }> {
-  return executeFunction<{ checkout_url: string; session_id: string }>("create-checkout", {
+): Promise<RazorpayCheckoutPayload> {
+  return executeFunction<RazorpayCheckoutPayload>("create-checkout", {
     amount_cents: amountCents,
     currency: currency || "usd",
     message: message ?? "",
     pool_type: poolType,
-    success_url: `${window.location.origin}/donate/success`,
-    cancel_url: `${window.location.origin}/donate`,
   });
 }
 
@@ -551,12 +560,10 @@ export async function checkUpiQrStatus(
 export async function donate(
   amountCents: number,
   message?: string,
-): Promise<{ checkout_url: string; session_id: string }> {
-  return executeFunction("create-checkout", {
+): Promise<RazorpayCheckoutPayload> {
+  return executeFunction<RazorpayCheckoutPayload>("create-checkout", {
     amount_cents: amountCents,
     message: message ?? "",
-    success_url: `${window.location.origin}/donate/success`,
-    cancel_url: `${window.location.origin}/donate`,
   });
 }
 
@@ -571,10 +578,15 @@ export async function getEarnings() {
   }>("get-earnings");
 }
 
-export async function onboardStripeConnect(userId: string, email: string) {
-  return executeFunction<{ account_id: string; onboarding_url: string }>("stripe-connect", {
-    user_id: userId,
-    email,
+/** Save RazorpayX fund account id (`fa_...`) for bank payouts; uses signed-in user. */
+export async function onboardPayoutAccount(fundAccountId?: string) {
+  return executeFunction<{
+    provider: string;
+    account_id: string | null;
+    onboarding_url: string | null;
+    message?: string;
+  }>("payout-onboarding", {
+    fund_account_id: fundAccountId,
   });
 }
 
