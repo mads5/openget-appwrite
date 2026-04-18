@@ -5,7 +5,7 @@ alwaysApply: true
 
 # OpenGet — project constitution
 
-- **Stack**: Next.js 14 (App Router), TypeScript, Tailwind, Appwrite (client + Databases + Functions), Stripe for payments; server logic in `functions/*/`.
+- **Stack**: Next.js 14 (App Router), TypeScript, Tailwind, Appwrite (client + Databases + Functions), Razorpay (Checkout + webhooks + RazorpayX payouts); server logic in `functions/*/`.
 - **Changes**: Prefer incremental edits; extend existing code instead of rewriting working paths.
 - **Tests**: Preserve existing tests; do not delete or weaken coverage unless asked.
 - **Scope**: Ask before editing files outside the task’s scope.

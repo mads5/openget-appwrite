@@ -125,10 +125,12 @@ export interface Payout {
   contributor_id: string;
   amount_cents: number;
   score_snapshot: number;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "blocked";
+  /** Appwrite attribute name; holds Razorpay payout id when set. */
   stripe_transfer_id: string | null;
   created_at: string;
   completed_at: string | null;
+  failure_reason?: string | null;
 }
 
 export interface User {
@@ -138,6 +140,7 @@ export interface User {
   avatar_url: string | null;
   display_name: string | null;
   email: string | null;
+  /** Appwrite attribute name; RazorpayX fund account id (`fa_...`) when set. */
   stripe_connect_account_id: string | null;
   created_at: string;
 }

@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getEarnings, registerContributor, onboardStripeConnect, getMyContributor } from "@/lib/api";
+import { getEarnings, registerContributor, onboardPayoutAccount, getMyContributor } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/lib/seed-data";
+import { formatOpenGetFunctionError } from "@/lib/payment-errors";
 import type { Payout } from "@/types";
 import type { Models } from "appwrite";
 
@@ -24,7 +25,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registered, setRegistered] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
+  const [connectingPayout, setConnectingPayout] = useState(false);
+  const [payoutFundId, setPayoutFundId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,21 +63,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleStripeConnect = async () => {
+  const handleSavePayoutAccount = async () => {
     if (!user) return;
-    setConnectingStripe(true);
+    setConnectingPayout(true);
     setMessage(null);
     try {
-      const result = await onboardStripeConnect(user.$id, user.email || "");
-      if (result.onboarding_url) {
-        window.location.href = result.onboarding_url;
-      } else {
-        setMessage("Stripe account created. Reload to check status.");
-      }
+      const trimmed = payoutFundId.trim();
+      const result = await onboardPayoutAccount(trimmed || undefined);
+      if (result.message) setMessage(result.message);
+      if (result.account_id) setPayoutFundId(result.account_id);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Stripe connection failed. Make sure Stripe is configured.");
+      setMessage(formatOpenGetFunctionError(err));
     } finally {
-      setConnectingStripe(false);
+      setConnectingPayout(false);
     }
   };
 
@@ -164,21 +164,43 @@ export default function DashboardPage() {
               </div>
 
               <p className="text-xs text-muted-foreground mb-4">
-                Payouts are distributed weekly from the monthly donation pool.
-                Amounts shown in USD; Stripe converts to your local bank
-                currency automatically.
+                Payouts are distributed weekly from the monthly sponsor pool.
+                Amounts may be shown in USD; settlement to your bank can be in
+                local currency via our payment partner.
               </p>
 
               {earnings?.payouts && earnings.payouts.length > 0 ? (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium mb-2">Recent Payouts</h3>
+                  {(() => {
+                    const needsOnboarding = earnings.payouts.some(
+                      (p) =>
+                        p.status === "blocked" &&
+                        (p.failure_reason === "no_connected_account" ||
+                          p.failure_reason === "payouts_not_enabled"),
+                    );
+                    if (!needsOnboarding) return null;
+                    return (
+                      <div className="mb-3 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs text-yellow-200">
+                        Some payouts are waiting on payout onboarding. Complete
+                        the flow to unblock them &mdash; use the
+                        &ldquo;Connect for payouts&rdquo; button on the
+                        right.
+                      </div>
+                    );
+                  })()}
                   {earnings.payouts.map((p) => (
                     <div
                       key={p.id}
                       className="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-border/50 last:border-0"
                     >
                       <div className="text-sm">
-                        {new Date(p.created_at).toLocaleDateString()}
+                        <div>{new Date(p.created_at).toLocaleDateString()}</div>
+                        {(p.status === "blocked" || p.status === "failed") && p.failure_reason && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {p.failure_reason.replace(/_/g, " ")}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{formatCents(p.amount_cents)}</span>
@@ -189,6 +211,10 @@ export default function DashboardPage() {
                               ? "bg-green-500/10 text-green-400"
                               : p.status === "failed"
                               ? "bg-red-500/10 text-red-400"
+                              : p.status === "blocked"
+                              ? "bg-yellow-500/10 text-yellow-400"
+                              : p.status === "processing"
+                              ? "bg-blue-500/10 text-blue-400"
                               : ""
                           }
                         >
@@ -211,21 +237,47 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Stripe Connect</CardTitle>
+              <CardTitle className="text-lg">Bank payout setup</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your Stripe account to receive payouts directly to
-                your bank in your local currency.
+              <p className="text-sm text-muted-foreground mb-3">
+                Weekly rewards are settled as <strong className="font-medium text-foreground">direct bank transfers</strong>{" "}
+                through our <abbr title="Reserve Bank of India">RBI</abbr>-authorised payment partner. Card payments on
+                Sponsor use tokenised card flows on the partner side (we never store full card numbers). For payouts, add
+                your bank account as a beneficiary with the partner, then save the reference id they issue below.
               </p>
+              <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                Complete beneficiary KYC / bank verification in your{" "}
+                <a
+                  href="https://dashboard.razorpay.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline underline-offset-2"
+                >
+                  Razorpay dashboard
+                </a>{" "}
+                (RazorpayX) if prompted—this aligns with standard Indian payment and settlement norms.
+              </p>
+              <label className="text-xs text-muted-foreground block mb-1">
+                Beneficiary reference (bank payout id, starts with <span className="font-mono">fa_</span>)
+              </label>
+              <input
+                type="text"
+                value={payoutFundId}
+                onChange={(e) => setPayoutFundId(e.target.value)}
+                placeholder="fa_xxxxxxxxxxxx"
+                className="w-full min-h-[44px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mb-3"
+                autoComplete="off"
+                inputMode="text"
+              />
               <Button
                 variant="outline"
                 size="lg"
                 className="w-full"
-                onClick={handleStripeConnect}
-                disabled={connectingStripe}
+                onClick={handleSavePayoutAccount}
+                disabled={connectingPayout}
               >
-                {connectingStripe ? "Connecting..." : "Connect Stripe Account"}
+                {connectingPayout ? "Saving..." : "Save bank payout details"}
               </Button>
             </CardContent>
           </Card>

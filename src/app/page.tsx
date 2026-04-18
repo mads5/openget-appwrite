@@ -30,7 +30,7 @@ export default function HomePage() {
           <span className="text-primary">Open Source</span>
         </h1>
         <p className="max-w-2xl text-lg text-muted-foreground">
-          List your repo. We find the contributors. Donors fund a monthly pool.
+          List your repo. We find the contributors. Sponsors fund a monthly pool.
           Contributors get paid weekly based on their code quality. Simple.
         </p>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
@@ -39,7 +39,7 @@ export default function HomePage() {
           </Link>
           <Link href="/donate">
             <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              Donate to the Pool
+              Sponsor the pool
             </Button>
           </Link>
         </div>
@@ -66,11 +66,11 @@ export default function HomePage() {
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
                 <span className="text-primary text-2xl font-bold">2</span>
               </div>
-              <CardTitle className="text-lg">Donate Monthly</CardTitle>
+              <CardTitle className="text-lg">Sponsor monthly</CardTitle>
             </CardHeader>
             <CardContent className="text-muted-foreground">
-              Anyone can donate to the monthly funding pool using their
-              preferred payment method. Your money goes into a shared pot
+              Anyone can sponsor the monthly funding pool using their
+              preferred payment method. Your payment goes into a shared pot
               that gets distributed to contributors based on their code quality.
             </CardContent>
           </Card>
@@ -84,7 +84,7 @@ export default function HomePage() {
             <CardContent className="text-muted-foreground">
               Every week, the pool is distributed to repos based on stars and
               popularity, then to each contributor based on their quality score.
-              Register and connect Stripe to receive your payout.
+              Register and complete payout onboarding to receive your share.
             </CardContent>
           </Card>
         </div>
@@ -96,7 +96,7 @@ export default function HomePage() {
             { label: "Repos Listed", value: String(stats.repos) },
             { label: "Contributors", value: String(stats.contributors) },
             { label: "Current Pool", value: formatCents(stats.poolCents) },
-            { label: "Donors", value: String(stats.donors) },
+            { label: "Sponsors", value: String(stats.donors) },
           ].map((stat) => (
             <div key={stat.label}>
               <div className="text-2xl font-bold text-primary sm:text-3xl">{stat.value}</div>
@@ -113,8 +113,9 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold mb-4">Are you a contributor?</h2>
           <p className="text-muted-foreground mb-6">
             If you&apos;ve contributed to any listed repo, you&apos;re already
-            eligible. Register on OpenGet and connect your Stripe account to
-            start receiving weekly payouts.
+            eligible. Register on OpenGet and complete payout onboarding (bank /
+            UPI or other method our payment partner supports) to receive weekly
+            payouts.
           </p>
           <Link href="/contributors">
             <Button variant="outline" size="lg">

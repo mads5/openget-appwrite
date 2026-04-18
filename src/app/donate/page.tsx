@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
@@ -10,6 +11,7 @@ import {
   createCheckoutSession,
   createUpiQr,
   checkUpiQrStatus,
+  type RazorpayCheckoutPayload,
 } from "@/lib/api";
 import { PoolCard } from "@/components/pool/pool-card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,21 @@ import {
   type PoolTypeId,
 } from "@/lib/pool-types";
 import type { Models } from "appwrite";
+import { formatOpenGetFunctionError } from "@/lib/payment-errors";
+
+function loadRazorpayScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  const w = window as unknown as { Razorpay?: unknown };
+  if (w.Razorpay) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Could not load payment checkout"));
+    document.body.appendChild(s);
+  });
+}
 
 const CURRENCIES = [
   { code: "usd", symbol: "$", label: "USD ($)", presets: [500, 1000, 2500, 5000, 10000], methods: ["Visa", "Mastercard", "Amex"] },
@@ -127,15 +144,48 @@ export default function DonatePage() {
     setDonating(true);
     setError(null);
     try {
-      const { checkout_url } = await createCheckoutSession(
+      const session: RazorpayCheckoutPayload = await createCheckoutSession(
         amount,
         message || undefined,
         currency.code,
         selectedPoolType,
       );
-      window.location.href = checkout_url;
+      const key = session.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+      if (!key || !session.order_id) {
+        throw new Error("Payment gateway is not configured.");
+      }
+      await loadRazorpayScript();
+      const Rzp = (window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { open: () => void } })
+        .Razorpay;
+      if (!Rzp) throw new Error("Checkout unavailable in this browser.");
+
+      const rzp = new Rzp({
+        key,
+        amount: session.amount,
+        currency: session.currency,
+        order_id: session.order_id,
+        name: "OpenGet",
+        description: session.description?.slice(0, 240) ?? "Sponsor pool",
+        handler(response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) {
+          const q = new URLSearchParams({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          window.location.href = `/donate/success?${q.toString()}`;
+        },
+        modal: {
+          ondismiss: () => setDonating(false),
+        },
+      });
+      rzp.open();
+      setDonating(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start payment. Try again.");
+      setError(formatOpenGetFunctionError(err));
       setDonating(false);
     }
   };
@@ -161,7 +211,7 @@ export default function DonatePage() {
         }
       }, 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate UPI QR. Try again.");
+      setError(formatOpenGetFunctionError(err));
       setDonating(false);
     }
   };
@@ -184,9 +234,9 @@ export default function DonatePage() {
   return (
     <div className="container py-8 max-w-2xl mx-auto">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold sm:text-3xl">Donate to the Pool</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Sponsor the pool</h1>
         <p className="text-muted-foreground mt-2">
-          Your donation goes to a monthly shared pool. Every week, funds are
+          Your sponsor payment funds a monthly shared pool. Every week, funds are
           distributed to contributors based on their code quality scores.
         </p>
       </div>
@@ -212,7 +262,7 @@ export default function DonatePage() {
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Donations are earmarked for this lane. See{" "}
+          Sponsor funds are earmarked for this lane. See{" "}
           <a href="/enterprise" className="underline underline-offset-2">
             For enterprises
           </a>{" "}
@@ -278,11 +328,11 @@ export default function DonatePage() {
                 <div className="text-4xl mb-4 text-green-500 sm:text-5xl">&#10003;</div>
                 <h2 className="text-xl font-bold mb-2">Payment Received!</h2>
                 <p className="text-muted-foreground mb-4">
-                  Your donation of {fmt(amount)} has been received.
+                  Your payment of {fmt(amount)} has been received.
                   Thank you for supporting open source!
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={closeQr}>Donate Again</Button>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={closeQr}>Sponsor again</Button>
                   <Button className="w-full sm:w-auto" asChild><a href="/contributors">View Contributors</a></Button>
                 </div>
               </div>
@@ -383,6 +433,16 @@ export default function DonatePage() {
             </div>
           )}
 
+          <p className="mb-4 text-xs text-muted-foreground leading-relaxed rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+            By paying, you agree to our{" "}
+            <Link href="/legal/terms" className="text-primary underline underline-offset-2">
+              Terms of Service
+            </Link>
+            . Payments are made to OpenGet as a <strong className="font-medium text-foreground">commercial sponsor payment</strong> for
+            platform services and pool allocation — not a charitable contribution or tax-deductible donation unless we
+            state otherwise in writing.
+          </p>
+
           {user ? (
             <div className="space-y-3">
               {isInr && (
@@ -402,7 +462,7 @@ export default function DonatePage() {
                 onClick={handleDonate}
                 disabled={donating || amount < (currency.code === "jpy" ? 50 : 100)}
               >
-                {donating ? "Redirecting..." : `${isInr ? "Pay" : "Donate"} ${fmt(amount)} via Card`}
+                {donating ? "Opening checkout..." : `${isInr ? "Pay" : "Sponsor"} ${fmt(amount)} via Card`}
               </Button>
             </div>
           ) : (
@@ -415,14 +475,14 @@ export default function DonatePage() {
                 startGithubOAuthSession(account, "/donate", "/donate?auth_error=true");
               }}
             >
-              Sign in to Donate
+              Sign in to sponsor
             </Button>
           )}
 
           <p className="text-xs text-muted-foreground text-center mt-4">
             {isInr
-              ? "Scan the UPI QR with any UPI app, or pay via card. Secure payments powered by Razorpay & Stripe."
-              : `Pay securely via ${currency.methods.join(", ")}. Stripe handles currency conversion automatically.`}
+              ? "Scan the UPI QR with any UPI app, or pay via card. Payments are processed by our authorized payment partners (for example Razorpay when enabled for India)."
+              : `Pay securely via ${currency.methods.join(", ")}. Currency conversion may be handled by our payment partner.`}
           </p>
         </CardContent>
       </Card>

@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js" />
   <img src="https://img.shields.io/badge/Appwrite-Cloud-F02E65?style=for-the-badge&logo=appwrite&logoColor=white" alt="Appwrite" />
-  <img src="https://img.shields.io/badge/Stripe-Payments-635BFF?style=for-the-badge&logo=stripe&logoColor=white" alt="Stripe" />
+  <img src="https://img.shields.io/badge/Razorpay-Payments-0C2451?style=for-the-badge&logo=razorpay&logoColor=white" alt="Razorpay" />
   <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind" />
 </p>
@@ -45,10 +45,10 @@ OpenGet creates a **monthly donation pool** and shares it **weekly** with contri
    List a Repo          Donate               Score              Distribute          Get Paid
   ┌───────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐
   │ Sign in   │    │ Anyone can   │    │ Nightly cron │    │ Weekly cron  │    │ Register  │
-  │ with      │───>│ donate to    │───>│ scrapes      │───>│ splits pool  │───>│ + connect │
-  │ GitHub    │    │ the monthly  │    │ GitHub &     │    │ across repos │    │ Stripe    │
-  │ + pick    │    │ pool via     │    │ computes     │    │ then across  │    │ Express   │
-  │ your repo │    │ Stripe / UPI │    │ 6-factor     │    │ contributors │    │ = weekly  │
+  │ with      │───>│ donate to    │───>│ scrapes      │───>│ splits pool  │───>│ + fund    │
+  │ GitHub    │    │ the monthly  │    │ GitHub &     │    │ across repos │    │ account   │
+  │ + pick    │    │ pool via     │    │ computes     │    │ then across  │    │ (Rzp X)   │
+  │ your repo │    │ Razorpay/UPI │    │ 6-factor     │    │ contributors │    │ = weekly  │
   │           │    │              │    │ score        │    │ by score     │    │ payouts   │
   └───────────┘    └──────────────┘    └──────────────┘    └──────────────┘    └───────────┘
 ```
@@ -56,10 +56,10 @@ OpenGet creates a **monthly donation pool** and shares it **weekly** with contri
 | Step | What Happens |
 |------|-------------|
 | **1. List** | Sign in with GitHub, pick a repo. OpenGet saves the repo right away and starts finding contributors. |
-| **2. Donate** | Anyone donates to the monthly pool (9 currencies via Stripe, UPI stub for INR). Donations target the **collecting** pool for next month. |
+| **2. Donate** | Anyone donates to the monthly pool (multi-currency via Razorpay where enabled; UPI stub for INR). Donations target the **collecting** pool for next month. |
 | **3. Score** | A nightly GitHub Actions job calls `openget-api` to refresh repo data, check contribution activity, and update contributor scores. |
 | **4. Distribute** | A weekly GitHub Actions job calls `openget-api` every Monday to split the week's budget across repos, then across eligible contributors. Min payout: **$0.50**. |
-| **5. Get Paid** | Contributors register on OpenGet, connect Stripe Express, and receive weekly payouts directly to their bank. |
+| **5. Get Paid** | Contributors register on OpenGet, add a RazorpayX fund account id for bank payouts, and receive weekly payouts when the distribution runs. |
 
 ---
 
@@ -140,7 +140,7 @@ Patch speed, project health, simple pooled funding, and fair distribution are su
 
 ## Quick Start
 
-> **Prerequisites:** Node.js >= 18 &bull; An [Appwrite Cloud](https://cloud.appwrite.io) project &bull; [Stripe](https://stripe.com) account &bull; [GitHub PAT](https://github.com/settings/tokens)
+> **Prerequisites:** Node.js >= 18 &bull; An [Appwrite Cloud](https://cloud.appwrite.io) project &bull; [Razorpay](https://razorpay.com) merchant account (Checkout + webhooks; RazorpayX for bank payouts) &bull; [GitHub PAT](https://github.com/settings/tokens)
 
 ```bash
 # 1. Clone
@@ -205,8 +205,8 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
               │   External Services   │
               │                       │
               │  GitHub API (v3)      │
-              │  Stripe Checkout      │
-              │  Stripe Connect       │
+              │  Razorpay Checkout    │
+              │  RazorpayX payouts    │
               │  GitHub Actions cron  │
               └───────────────────────┘
 ```
@@ -219,7 +219,7 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 |:------|:----------|
 | **Frontend** | Next.js 14 &bull; React 18 &bull; TypeScript &bull; Tailwind CSS &bull; Radix UI &bull; Lucide icons |
 | **Backend** | Appwrite Cloud (SGP) — Database, Auth, Functions, Sites |
-| **Payments** | Stripe Checkout &bull; Webhooks &bull; Connect Express |
+| **Payments** | Razorpay Checkout &bull; Webhooks &bull; RazorpayX (fund accounts / payouts) |
 | **Data** | GitHub REST API v3 (`stats/contributors`, `search/issues`) |
 | **CI** | GitHub Actions (auto schema sync on push to master) |
 | **Font** | Self-hosted Inter via `@fontsource-variable/inter` |
@@ -235,10 +235,10 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 | `/repos/[id]` | Repo detail + contributor breakdown | No |
 | `/contributors` | Leaderboard ranked by quality score | No |
 | `/contributors/[id]` | Contributor detail + per-repo contributions | No |
-| `/donate` | Multi-currency donation (9 currencies, Stripe + UPI stub) | Yes |
+| `/donate` | Multi-currency donation (Razorpay Checkout + UPI stub) | Yes |
 | `/donate/success` | Post-payment thank-you | No |
 | `/list-repo` | GitHub repo picker — one-click listing | Yes |
-| `/dashboard` | Earnings, registration, Stripe Connect onboarding | Yes |
+| `/dashboard` | Earnings, registration, RazorpayX payout account (fund id) | Yes |
 
 ---
 
@@ -256,7 +256,7 @@ openget-appwrite/
 │   │   ├── contributors/           #   Leaderboard + detail pages
 │   │   ├── donate/                 #   Multi-currency donation flow
 │   │   ├── list-repo/              #   GitHub repo picker (authed)
-│   │   └── dashboard/              #   Earnings, registration, Stripe Connect
+│   │   └── dashboard/              #   Earnings, registration, payout account
 │   ├── components/                 # Reusable UI (header, tables, pool card)
 │   ├── lib/
 │   │   ├── appwrite.ts             #   Appwrite client + collection constants
@@ -270,9 +270,9 @@ openget-appwrite/
 │   ├── openget-api/                #   Consolidated action router
 │   ├── fetch-contributors/         #   Legacy standalone scoring job
 │   ├── distribute-pool/            #   Legacy standalone distribution job
-│   ├── create-checkout/            #   Stripe Checkout session
-│   ├── stripe-webhook/             #   Stripe payment confirmation
-│   ├── stripe-connect/             #   Stripe Express onboarding
+│   ├── create-checkout/            #   Deprecated stub (use openget-api)
+│   ├── stripe-webhook/             #   Deprecated stub (use openget-api)
+│   ├── stripe-connect/             #   Deprecated stub (use openget-api)
 │   ├── list-repo/                  #   List a GitHub repo
 │   ├── get-my-repos/               #   Fetch user's GitHub repos
 │   ├── get-repo-contributors/      #   Contributors for a repo
@@ -306,6 +306,7 @@ openget-appwrite/
 | Variable | Required | Default | Description |
 |:---------|:--------:|:-------:|:------------|
 | `NEXT_PUBLIC_CURRENCY` | No | `usd` | Display currency. Supports: `usd`, `eur`, `gbp`, `inr`, `jpy`, `cad`, `aud`, `sgd`, `brl` |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | — | Same as Razorpay Key ID for hosted Checkout (optional if the function returns `key_id`) |
 
 > Appwrite endpoint and project ID are set in `src/lib/appwrite.ts`. Change them there if using a different project.
 
@@ -320,10 +321,13 @@ openget-appwrite/
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
 | `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
-| `STRIPE_SECRET_KEY` | **Yes** | — | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | **Yes** | — | Stripe webhook signing secret |
-| `STRIPE_CONNECT_REFRESH_URL` | No | — | Redirect after Connect refresh |
-| `STRIPE_CONNECT_RETURN_URL` | No | — | Redirect after Connect completes |
+| `RAZORPAY_KEY_ID` | **Yes** | — | Razorpay Key ID (server + `NEXT_PUBLIC_*` for Checkout) |
+| `RAZORPAY_KEY_SECRET` | **Yes** | — | Razorpay Key Secret |
+| `RAZORPAY_WEBHOOK_SECRET` | **Yes** | — | Webhook signing secret (`payment.captured`, `order.paid`, `payout.*`) |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | — | Same as Key ID (browser Checkout; optional if API returns `key_id`) |
+| `RAZORPAYX_ACCOUNT_NUMBER` | For payouts | — | RazorpayX account number for `process-payouts` |
+| `RAZORPAYX_PAYOUT_CURRENCY` | No | `INR` | Must align with how `amount_cents` is interpreted |
+| `RAZORPAYX_PAYOUT_MODE` | No | `IMPS` | Bank rail (region-specific) |
 
 **GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The **browser** reads the GitHub OAuth token from **`account.listIdentities()`** and sends it to **`openget-api`** as `github_access_token` (the Functions admin API often cannot read that token). The function then falls back to the **`users`** document, server-side identities, or **`GITHUB_TOKEN`**.
 
@@ -357,7 +361,7 @@ The Appwrite database (`openget-db`) has **10 collections**:
 | `platform_fees` | 1% fee tracking per donation |
 | `monthly_contributor_stats` | Monthly PR raised/merged per contributor per repo |
 | `weekly_distributions` | Audit trail for each weekly distribution run |
-| `users` | Profiles (Stripe Connect account, GitHub info) |
+| `users` | Profiles (payout fund account id / flags — legacy attribute names `stripe_*`; GitHub info) |
 
 ### Apply / Update Schema
 
@@ -463,6 +467,50 @@ The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). A
 
 ---
 
+## Razorpay setup
+
+OpenGet uses **Razorpay** for **donations in** (hosted Checkout via Orders API) and **RazorpayX** for **payouts out** (bank transfers to contributor fund accounts). All of this is implemented in the single **`openget-api`** router.
+
+- **Donations in** — `create-checkout` creates a Razorpay **Order**; the browser opens Razorpay Checkout. Webhooks **`payment.captured`** / **`order.paid`** confirm the donation and credit the pool (`?action=razorpay-webhook`, alias `stripe-webhook`).
+- **Payouts out** — `distribute-pool` creates `payouts` rows; `process-payouts` calls the RazorpayX **Payouts** API. Webhooks **`payout.processed`** / **`payout.failed`** / **`payout.reversed`** update row status. Contributors paste a **fund account id** (`fa_...`) on `/dashboard` (`payout-onboarding`, alias `stripe-connect`).
+
+Use Razorpay **test mode** keys first, then switch to live. International currencies depend on your Razorpay account settings.
+
+### 1. Razorpay dashboard
+
+1. Create or open a Razorpay account; enable **International payments** if you need non-INR card currencies.
+2. **API keys** (Test / Live): copy **Key ID** and **Key Secret** &rarr; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`. Optionally set **`NEXT_PUBLIC_RAZORPAY_KEY_ID`** on the Site to match Key ID.
+3. **Webhooks &rarr; Add new URL**: Appwrite execution URL for **`openget-api`** with `?action=razorpay-webhook` (or `stripe-webhook` for backwards compatibility). Subscribe at minimum to **`payment.captured`**, **`order.paid`**, **`payout.processed`**, **`payout.failed`**, **`payout.reversed`**. Copy the **secret** &rarr; `RAZORPAY_WEBHOOK_SECRET`.
+4. **RazorpayX** (payouts): complete business verification, add a **business account number** &rarr; `RAZORPAYX_ACCOUNT_NUMBER`. Contributors create **fund accounts** in the RazorpayX dashboard and paste ids on OpenGet.
+
+### 2. Environment variables
+
+Configure these on **`openget-api`** (and public Key ID on the frontend / Appwrite Site as above). See [`.env.example`](.env.example) for the full list.
+
+| Variable | Purpose |
+| -------- | ------- |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | REST + Checkout |
+| `RAZORPAY_WEBHOOK_SECRET` | HMAC verification for webhook body |
+| `RAZORPAYX_ACCOUNT_NUMBER` | Source account for `process-payouts` |
+| `RAZORPAYX_PAYOUT_CURRENCY` / `RAZORPAYX_PAYOUT_MODE` | Payout denomination and rail |
+
+### 3. Database schema
+
+Run `npm run db:sync` so `users` has payout flags (`stripe_payouts_enabled`, etc.—legacy names) and `payouts` has `failure_reason`. Donations store the Razorpay **order id** in `stripe_session_id`.
+
+### 4. Smoke test
+
+1. **Donation:** `/donate`, complete Checkout in test mode. After webhook delivery, `donations` &rarr; `confirmed` and pool totals increase.
+2. **Payout account:** `/dashboard`, save a test **`fa_...`** if you use RazorpayX test fund accounts.
+3. **Payout row:** run `process-payouts` (or the weekly job); expect `processing` with a Razorpay payout id stored in `stripe_transfer_id`.
+
+Common `payouts` states:
+
+- `blocked` + `no_payout_account` / `payouts_not_enabled` / `invalid_fund_account` — fix fund id on `users`.
+- `failed` — RazorpayX/API error; see `failure_reason`.
+
+---
+
 ## Contributing
 
 1. Fork the repo
@@ -483,5 +531,5 @@ This project is open source. See the repository for license details.
 <p align="center">
   <strong>Open<span>Get</span></strong> — Rewarding Open Source Contributors
   <br />
-  <sub>Built with Appwrite &bull; Stripe &bull; Next.js &bull; GitHub API</sub>
+  <sub>Built with Appwrite &bull; Razorpay &bull; Next.js &bull; GitHub API</sub>
 </p>
