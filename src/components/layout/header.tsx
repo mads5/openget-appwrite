@@ -65,7 +65,7 @@ export function Header() {
   const navLinks = [
     { href: "/repos", label: "Repos" },
     { href: "/contributors", label: "Contributors" },
-    { href: "/donate", label: "Sponsor" },
+    { href: "/enterprise/audit", label: "Audit" },
     { href: "/enterprise", label: "For enterprises" },
     ...(user
       ? [
@@ -76,18 +76,30 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="container flex h-16 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-6">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="OpenGet" width={48} height={48} className="rounded-xl" />
-            <span className="font-bold text-lg sm:text-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-[4.25rem] items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-8">
+          <Link href="/" className="flex items-center gap-3 group">
+            <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 shadow-[0_0_24px_-4px_hsl(172_66%_48%/0.45)]">
+              <Image
+                src="/logo.png"
+                alt=""
+                width={36}
+                height={36}
+                className="rounded-lg transition-transform group-hover:scale-105"
+              />
+            </span>
+            <span className="font-display font-semibold text-lg sm:text-xl tracking-tight">
               Open<span className="text-primary">Get</span>
             </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
+          <nav className="hidden md:flex items-center gap-1 text-sm" aria-label="Main">
             {navLinks.map((item) => (
-              <Link key={item.href} href={item.href} className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-lg px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              >
                 {item.label}
               </Link>
             ))}

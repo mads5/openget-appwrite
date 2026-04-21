@@ -1,4 +1,4 @@
-/** Keep in sync with Appwrite `pool-types.js` modules and docs/POOL_TYPES.md */
+/** Work-area tag ids; keep in sync with `docs/POOL_TYPES.md` and server `pool-types` modules. */
 export const POOL_TYPES = [
   "innovation",
   "security_compliance",

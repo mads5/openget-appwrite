@@ -5,16 +5,16 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js" />
   <img src="https://img.shields.io/badge/Appwrite-Cloud-F02E65?style=for-the-badge&logo=appwrite&logoColor=white" alt="Appwrite" />
-  <img src="https://img.shields.io/badge/Razorpay-Payments-0C2451?style=for-the-badge&logo=razorpay&logoColor=white" alt="Razorpay" />
   <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind" />
 </p>
 
 <h1 align="center">OpenGet</h1>
-<h3 align="center">Reward the People Behind Open Source</h3>
+<h3 align="center">The Human Verification Layer for the AI-Code Era</h3>
 
 <p align="center">
-  List repos. Fund a pool. Pay contributors weekly — based on real code quality, not popularity contests.
+  <strong>Trust-as-a-Service:</strong> 6-factor steward scores, public proof-of-work profiles, SVG badges, and
+  (roadmap) enterprise dependency Human-Risk reports. See <code>CONTEXT.md</code> for product context.
 </p>
 
 <p align="center">
@@ -23,43 +23,31 @@
   <a href="#-scoring-formula">Scoring</a> &bull;
   <a href="#-environment-variables">Config</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
-  <a href="#-governance">Governance</a> &bull;
   <a href="#-for-enterprises">For enterprises</a>
 </p>
 
 ---
 
-## The Problem
+## The problem
 
-Open source runs the world, but most contributors never see a dollar. Sponsorship platforms reward maintainers, not the people writing code. There's no fair, automated way to distribute funds based on *actual work*.
+When AI can generate code at near-zero cost, the scarce signal is **human** judgment: who merges, reviews, and maintains critical dependencies.
 
-## The Solution
+## The solution
 
-OpenGet creates a **monthly donation pool** and shares it **weekly** with contributors using a **6-factor scoring model**. It rewards real work like merged PRs, reviews, releases, and issue work — not just popularity.
+OpenGet is a **reputation and supply-chain risk** data platform. The **6-factor model** (merged PRs, reviews, triage) powers **public leaderboards**, **embeddable badges** (`/api/badge/{username}`), a **verification JSON API** (`/api/verify`), and a **B2B audit** shell (`/enterprise/audit`).
+
+**Web UI (v2):** **Outfit** + **JetBrains Mono** (see `src/lib/fonts.ts`), teal-forward theme (`globals.css`), shared `PageHeader` layout, and `/api/health` for the Next app. The **`openget-api`** function exposes `?action=health` / `?action=version` and reads optional **`app_meta.schema_version`** after `db:sync`.
 
 ---
 
-## How It Works
+## How it works
 
-```
-   List a Repo          Donate               Score              Distribute          Get Paid
-  ┌───────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐
-  │ Sign in   │    │ Anyone can   │    │ Nightly cron │    │ Weekly cron  │    │ Register  │
-  │ with      │───>│ donate to    │───>│ scrapes      │───>│ splits pool  │───>│ + fund    │
-  │ GitHub    │    │ the monthly  │    │ GitHub &     │    │ across repos │    │ account   │
-  │ + pick    │    │ pool via     │    │ computes     │    │ then across  │    │ (Rzp X)   │
-  │ your repo │    │ Razorpay/UPI │    │ 6-factor     │    │ contributors │    │ = weekly  │
-  │           │    │              │    │ score        │    │ by score     │    │ payouts   │
-  └───────────┘    └──────────────┘    └──────────────┘    └──────────────┘    └───────────┘
-```
-
-| Step | What Happens |
-|------|-------------|
-| **1. List** | Sign in with GitHub, pick a repo. OpenGet saves the repo right away and starts finding contributors. |
-| **2. Donate** | Anyone donates to the monthly pool (multi-currency via Razorpay where enabled; UPI stub for INR). Donations target the **collecting** pool for next month. |
-| **3. Score** | A nightly GitHub Actions job calls `openget-api` to refresh repo data, check contribution activity, and update contributor scores. |
-| **4. Distribute** | A weekly GitHub Actions job calls `openget-api` every Monday to split the week's budget across repos, then across eligible contributors. Min payout: **$0.50**. |
-| **5. Get Paid** | Contributors register on OpenGet, add a RazorpayX fund account id for bank payouts, and receive weekly payouts when the distribution runs. |
+| Step | What happens |
+|------|----------------|
+| **1. List** | Sign in with GitHub, pick a repo. OpenGet discovers contributors and runs the **6-factor** score nightly. |
+| **2. Claim** | Register your handle so the leaderboard and **badge** reflect verified stewardship. |
+| **3. Prove** | Use **/api/badge/`{github}`** (SVG) and **/api/verify?user=`** (JSON; optional `OPENGET_VERIFY_API_KEYS`) for integrations. |
+| **4. Enterprise** | **/enterprise/audit** — Human-Risk / dependency report MVP (package→maintainer join on roadmap). |
 
 ---
 
@@ -90,57 +78,15 @@ Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + 
 | **Merge Gate** | A repo only counts in F4 if the contributor has at least 1 merged PR there. |
 | **Hard Caps** | Every factor is capped to prevent outlier gaming. |
 
----
-
-## Pool & Distribution Lifecycle
-
-```
-                          MONTHLY LIFECYCLE
-  ╔═══════════════╗                              ╔═══════════════╗
-  ║   COLLECTING   ║  ──── 1st of month ────>    ║    ACTIVE      ║
-  ║               ║                              ║               ║
-  ║ Donations     ║                              ║ Weekly dist.  ║
-  ║ go here       ║                              ║ every Monday  ║
-  ╚═══════════════╝                              ╚═══════╤═══════╝
-                                                         │
-                                              last day of month
-                                                         │
-                                                         ▼
-                                                 ╔═══════════════╗
-                                                 ║   COMPLETED    ║
-                                                 ║               ║
-                                                 ║ Remaining     ║
-                                                 ║ funds dist.   ║
-                                                 ╚═══════════════╝
-                                                         │
-                                              new Collecting pool
-                                               auto-created ──►
-```
-
-| Concept | Detail |
-|---------|--------|
-| **Platform fee** | Tiered fee with a small minimum floor, tracked in `platform_fees` |
-| **Daily budget** | `distributable_cents / days_in_month` |
-| **Weekly budget** | `daily_budget * 7` (or remaining, whichever is less) |
-| **Strategic pools** | Four parallel lanes per month; donors pick at checkout. Each **listed repo** gets automatic `eligible_pool_types` from OpenGet's scoring run, so repos do not all share every pool's budget. See [docs/POOL_TYPES.md](docs/POOL_TYPES.md). |
-| **Repo weighting** | `sqrt(stars+forks) × (0.35 + 0.65 × criticality_score) × (1 + min(1.5, 1/bus_factor))` — nightly GitHub heuristic for **criticality** (v1) and **bus factor** (authors needed for ~50% of commits), reducing pure star-count bias. |
-| **Contributor weighting** | `total_score` within each repo's budget |
-| **Minimum payout** | $0.50 — smaller amounts roll over |
-| **Audit trail** | Every distribution creates a `weekly_distributions` record |
-
-## Governance
-
-OpenGet does **not** let donors direct payouts to specific pull requests. Funds flow through **public contributor scoring** and **repo weighting** rules so no single employer captures a maintainer’s roadmap—supporting neutral, multi-sponsor narratives.
-
 ## For enterprises
 
-Patch speed, project health, simple pooled funding, and fair distribution are summarized in-app on **`/enterprise`** and in [docs/POOL_TYPES.md](docs/POOL_TYPES.md).
+OSPOs and platform teams can use **Human-Risk**–style views to connect **dependencies** to **verified maintainers**. Product copy and the audit shell live at **`/enterprise`** and **`/enterprise/audit`**.
 
 ---
 
 ## Quick Start
 
-> **Prerequisites:** Node.js >= 18 &bull; An [Appwrite Cloud](https://cloud.appwrite.io) project &bull; [Razorpay](https://razorpay.com) merchant account (Checkout + webhooks; RazorpayX for bank payouts) &bull; [GitHub PAT](https://github.com/settings/tokens)
+> **Prerequisites:** Node.js >= 18 &bull; An [Appwrite Cloud](https://cloud.appwrite.io) project &bull; [GitHub PAT](https://github.com/settings/tokens) (for `openget-api` and scoring)
 
 ```bash
 # 1. Clone
@@ -183,7 +129,7 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 │                        BROWSER                                  │
 │              Next.js 14 (SSR on Appwrite Sites)                │
 │                                                                 │
-│   /repos  /contributors  /donate  /dashboard  /list-repo       │
+│   /repos  /contributors  /list-repo  /dashboard  /enterprise │
 └──────────────┬──────────────────────┬───────────────────────────┘
                │                      │
         Appwrite SDK            Appwrite Functions
@@ -205,8 +151,6 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
               │   External Services   │
               │                       │
               │  GitHub API (v3)      │
-              │  Razorpay Checkout    │
-              │  RazorpayX payouts    │
               │  GitHub Actions cron  │
               └───────────────────────┘
 ```
@@ -219,7 +163,6 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 |:------|:----------|
 | **Frontend** | Next.js 14 &bull; React 18 &bull; TypeScript &bull; Tailwind CSS &bull; Radix UI &bull; Lucide icons |
 | **Backend** | Appwrite Cloud (SGP) — Database, Auth, Functions, Sites |
-| **Payments** | Razorpay Checkout &bull; Webhooks &bull; RazorpayX (fund accounts / payouts) |
 | **Data** | GitHub REST API v3 (`stats/contributors`, `search/issues`) |
 | **CI** | GitHub Actions (auto schema sync on push to master) |
 | **Font** | Self-hosted Inter via `@fontsource-variable/inter` |
@@ -235,10 +178,11 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 | `/repos/[id]` | Repo detail + contributor breakdown | No |
 | `/contributors` | Leaderboard ranked by quality score | No |
 | `/contributors/[id]` | Contributor detail + per-repo contributions | No |
-| `/donate` | Multi-currency donation (Razorpay Checkout + UPI stub) | Yes |
-| `/donate/success` | Post-payment thank-you | No |
 | `/list-repo` | GitHub repo picker — one-click listing | Yes |
-| `/dashboard` | Earnings, registration, RazorpayX payout account (fund id) | Yes |
+| `/dashboard` | Steward profile, registration, and stats | Yes |
+| `/enterprise` | Enterprise messaging | No |
+| `/enterprise/audit` | Dependency / Human-Risk audit shell (MVP) | No |
+| `/legal/terms`, `/legal/privacy` | Legal pages | No |
 
 ---
 
@@ -251,34 +195,28 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 openget-appwrite/
 ├── src/
 │   ├── app/                        # Next.js App Router pages
-│   │   ├── page.tsx                #   Homepage (stats, how-it-works)
+│   │   ├── page.tsx                #   Homepage
 │   │   ├── repos/                  #   Browse listed repos
 │   │   ├── contributors/           #   Leaderboard + detail pages
-│   │   ├── donate/                 #   Multi-currency donation flow
 │   │   ├── list-repo/              #   GitHub repo picker (authed)
-│   │   └── dashboard/              #   Earnings, registration, payout account
-│   ├── components/                 # Reusable UI (header, tables, pool card)
+│   │   └── dashboard/              #   Steward profile, registration, stats
+│   ├── components/                 # Reusable UI (header, tables)
 │   ├── lib/
 │   │   ├── appwrite.ts             #   Appwrite client + collection constants
 │   │   ├── api.ts                  #   Data fetchers + function executors
-│   │   ├── seed-data.ts            #   Currency config + formatCents()
+│   │   ├── seed-data.ts            #   Display helpers
 │   │   └── utils.ts                #   cn(), formatCurrency(), formatNumber()
 │   ├── types/index.ts              # Shared TypeScript interfaces
 │   └── middleware.ts               # Passthrough (required by Appwrite Sites)
 │
 ├── functions/                      # Appwrite Functions (each has own package.json)
 │   ├── openget-api/                #   Consolidated action router
-│   ├── fetch-contributors/         #   Legacy standalone scoring job
-│   ├── distribute-pool/            #   Legacy standalone distribution job
-│   ├── create-checkout/            #   Deprecated stub (use openget-api)
-│   ├── stripe-webhook/             #   Deprecated stub (use openget-api)
-│   ├── stripe-connect/             #   Deprecated stub (use openget-api)
+│   ├── fetch-contributors/         #   Nightly scoring job
 │   ├── list-repo/                  #   List a GitHub repo
 │   ├── get-my-repos/               #   Fetch user's GitHub repos
 │   ├── get-repo-contributors/      #   Contributors for a repo
 │   ├── register-contributor/       #   Link user to contributor record
-│   ├── get-earnings/               #   Payout history
-│   └── upi-payment/                #   UPI QR stub (INR)
+│   └── …                           #   Other workers as needed
 │
 ├── scripts/
 │   ├── setup-database.js           # Idempotent DB schema provisioning
@@ -306,7 +244,8 @@ openget-appwrite/
 | Variable | Required | Default | Description |
 |:---------|:--------:|:-------:|:------------|
 | `NEXT_PUBLIC_CURRENCY` | No | `usd` | Display currency. Supports: `usd`, `eur`, `gbp`, `inr`, `jpy`, `cad`, `aud`, `sgd`, `brl` |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | — | Same as Razorpay Key ID for hosted Checkout (optional if the function returns `key_id`) |
+| `APPWRITE_API_KEY` | For server routes / `db:sync` | — | **Server only.** Used by Next.js API routes (`/api/verify`, `/api/badge/...`) and `npm run db:sync`. Never expose to the client. |
+| `OPENGET_VERIFY_API_KEYS` | No | — | Comma-separated keys for optional keyed access to verification JSON (if enforced in your deployment). |
 
 > Appwrite endpoint and project ID are set in `src/lib/appwrite.ts`. Change them there if using a different project.
 
@@ -321,13 +260,6 @@ openget-appwrite/
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
 | `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
-| `RAZORPAY_KEY_ID` | **Yes** | — | Razorpay Key ID (server + `NEXT_PUBLIC_*` for Checkout) |
-| `RAZORPAY_KEY_SECRET` | **Yes** | — | Razorpay Key Secret |
-| `RAZORPAY_WEBHOOK_SECRET` | **Yes** | — | Webhook signing secret (`payment.captured`, `order.paid`, `payout.*`) |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | — | Same as Key ID (browser Checkout; optional if API returns `key_id`) |
-| `RAZORPAYX_ACCOUNT_NUMBER` | For payouts | — | RazorpayX account number for `process-payouts` |
-| `RAZORPAYX_PAYOUT_CURRENCY` | No | `INR` | Must align with how `amount_cents` is interpreted |
-| `RAZORPAYX_PAYOUT_MODE` | No | `IMPS` | Bank rail (region-specific) |
 
 **GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The **browser** reads the GitHub OAuth token from **`account.listIdentities()`** and sends it to **`openget-api`** as `github_access_token` (the Functions admin API often cannot read that token). The function then falls back to the **`users`** document, server-side identities, or **`GITHUB_TOKEN`**.
 
@@ -348,20 +280,17 @@ openget-appwrite/
 
 ## Database
 
-The Appwrite database (`openget-db`) has **10 collections**:
+The Appwrite database (`openget-db`) includes collections for **repos**, **contributors**, **repo_contributions**, **monthly_contributor_stats**, **users**, and supporting tables used by the scoring pipeline and the app. Run **`npm run db:sync`** to align schema with the repo.
 
 | Collection | Purpose |
 |:-----------|:--------|
+| `app_meta` | Singleton rows; **`schema_version`** (default `2`) for migration hooks and function health |
 | `repos` | Listed GitHub repos (stars, forks, `repo_score`, owner, language) |
-| `contributors` | Discovered contributors (`total_score`, `total_contributions`, registration status) |
+| `contributors` | Discovered contributors (scores, `percentile_global`, registration) |
 | `repo_contributions` | Per-repo metrics: commits, PRs merged, reviews, lines, issues, score |
-| `pools` | Monthly funding pools (`collecting` / `active` / `completed` lifecycle) |
-| `donations` | Individual donation records linked to pools |
-| `payouts` | Payout records per contributor per distribution round |
-| `platform_fees` | 1% fee tracking per donation |
 | `monthly_contributor_stats` | Monthly PR raised/merged per contributor per repo |
-| `weekly_distributions` | Audit trail for each weekly distribution run |
-| `users` | Profiles (payout fund account id / flags — legacy attribute names `stripe_*`; GitHub info) |
+| `users` | Profiles, GitHub linkage, and session-related fields |
+| *others* | Additional tables from `setup-database.js` (full historical data model) |
 
 ### Apply / Update Schema
 
@@ -380,7 +309,7 @@ If you see two **`contributors`** documents for one person (one with GitHub **lo
 
 1. Prefer the document created by contributor discovery (correct **`github_id`** / **`github_username`** from GitHub).
 2. If the wrong row has **`user_id`** set, copy that value onto the canonical document, then delete the duplicate.
-3. Update **`repo_contributions`** (and **`payouts`**, if any) that reference the duplicate **`contributor_id`** to point at the canonical contributor `$id`, or delete the duplicate only after references are moved.
+3. Update any documents that reference the duplicate **`contributor_id`** to point at the canonical contributor `$id`, or delete the duplicate only after references are updated.
 
 ---
 
@@ -424,12 +353,11 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 
 **PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
 
-### Scheduled Jobs
+### Scheduled jobs
 
 | Trigger | Schedule | Purpose |
 |:--------|:---------|:--------|
 | `openget-nightly-scoring.yml` | Daily at 2:00 AM UTC | Calls `openget-api` with `action=fetch-contributors` |
-| `openget-weekly-distribution.yml` | Weekly Monday at midnight UTC | Calls `openget-api` with `action=distribute-pool` |
 
 ---
 
@@ -439,13 +367,9 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 
 Pushes to `master` / `main` run [`.github/workflows/deploy-appwrite-functions.yml`](.github/workflows/deploy-appwrite-functions.yml), which executes [`scripts/deploy-functions.js`](scripts/deploy-functions.js) for **`openget-api`**. Add the **`APPWRITE_API_KEY`** repository secret to enable deployments; optional **`APPWRITE_ENDPOINT`** and **`APPWRITE_PROJECT_ID`** override defaults. If the secret is missing, the workflow skips deployment so forks do not fail CI.
 
-### Scheduled Scoring And Payouts
+### Scheduled scoring
 
-GitHub Actions now handles the schedule on free tier:
-
-1. [`.github/workflows/openget-nightly-scoring.yml`](.github/workflows/openget-nightly-scoring.yml) calls `openget-api` with `action=fetch-contributors`.
-2. [`.github/workflows/openget-weekly-distribution.yml`](.github/workflows/openget-weekly-distribution.yml) calls `openget-api` with `action=distribute-pool`.
-3. Both workflows also support `workflow_dispatch`, so you can run them manually from GitHub when needed.
+[`.github/workflows/openget-nightly-scoring.yml`](.github/workflows/openget-nightly-scoring.yml) calls `openget-api` with `action=fetch-contributors`.
 
 ### Automatic Schema Sync
 
@@ -461,53 +385,9 @@ Every push to `master` triggers `.github/workflows/sync-appwrite-schema.yml`:
 
 The frontend deploys as an **Appwrite Site** (SSR via `output: 'standalone'`). Appwrite watches the repo and triggers builds on push. Preview URLs are generated per PR automatically.
 
-**Limitations of PR previews:** Previews rebuild **only the Next.js site**, not Appwrite **Functions** or database data. Testing flows that depend on `openget-api` (GitHub repos, registration, checkout, etc.) requires a **new deployment** of [`functions/openget-api`](functions/openget-api) as described above, then retest on the preview or production URL.
+**Limitations of PR previews:** Previews rebuild **only** the **Next.js site**, not Appwrite **Functions** or database data. Testing flows that depend on `openget-api` (GitHub repos, registration, scoring) requires a **new deployment** of [`functions/openget-api`](functions/openget-api) as described above, then retest on the preview or production URL.
 
 **OAuth on preview hosts:** If **Sign in with GitHub** fails or redirects incorrectly on a `*.appwrite.network` preview but works on your main Site URL, check **Appwrite Console** → **Auth** (allowed platforms / redirect URLs for your Site and OAuth providers) and your **GitHub OAuth App** settings so the preview origin is permitted where Appwrite requires it. The GitHub authorization callback usually remains Appwrite’s endpoint; the **success redirect** back to your app may use the preview hostname and must be allowed by Appwrite Auth configuration.
-
----
-
-## Razorpay setup
-
-OpenGet uses **Razorpay** for **donations in** (hosted Checkout via Orders API) and **RazorpayX** for **payouts out** (bank transfers to contributor fund accounts). All of this is implemented in the single **`openget-api`** router.
-
-- **Donations in** — `create-checkout` creates a Razorpay **Order**; the browser opens Razorpay Checkout. Webhooks **`payment.captured`** / **`order.paid`** confirm the donation and credit the pool (`?action=razorpay-webhook`, alias `stripe-webhook`).
-- **Payouts out** — `distribute-pool` creates `payouts` rows; `process-payouts` calls the RazorpayX **Payouts** API. Webhooks **`payout.processed`** / **`payout.failed`** / **`payout.reversed`** update row status. Contributors paste a **fund account id** (`fa_...`) on `/dashboard` (`payout-onboarding`, alias `stripe-connect`).
-
-Use Razorpay **test mode** keys first, then switch to live. International currencies depend on your Razorpay account settings.
-
-### 1. Razorpay dashboard
-
-1. Create or open a Razorpay account; enable **International payments** if you need non-INR card currencies.
-2. **API keys** (Test / Live): copy **Key ID** and **Key Secret** &rarr; `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`. Optionally set **`NEXT_PUBLIC_RAZORPAY_KEY_ID`** on the Site to match Key ID.
-3. **Webhooks &rarr; Add new URL**: Appwrite execution URL for **`openget-api`** with `?action=razorpay-webhook` (or `stripe-webhook` for backwards compatibility). Subscribe at minimum to **`payment.captured`**, **`order.paid`**, **`payout.processed`**, **`payout.failed`**, **`payout.reversed`**. Copy the **secret** &rarr; `RAZORPAY_WEBHOOK_SECRET`.
-4. **RazorpayX** (payouts): complete business verification, add a **business account number** &rarr; `RAZORPAYX_ACCOUNT_NUMBER`. Contributors create **fund accounts** in the RazorpayX dashboard and paste ids on OpenGet.
-
-### 2. Environment variables
-
-Configure these on **`openget-api`** (and public Key ID on the frontend / Appwrite Site as above). See [`.env.example`](.env.example) for the full list.
-
-| Variable | Purpose |
-| -------- | ------- |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | REST + Checkout |
-| `RAZORPAY_WEBHOOK_SECRET` | HMAC verification for webhook body |
-| `RAZORPAYX_ACCOUNT_NUMBER` | Source account for `process-payouts` |
-| `RAZORPAYX_PAYOUT_CURRENCY` / `RAZORPAYX_PAYOUT_MODE` | Payout denomination and rail |
-
-### 3. Database schema
-
-Run `npm run db:sync` so `users` has payout flags (`stripe_payouts_enabled`, etc.—legacy names) and `payouts` has `failure_reason`. Donations store the Razorpay **order id** in `stripe_session_id`.
-
-### 4. Smoke test
-
-1. **Donation:** `/donate`, complete Checkout in test mode. After webhook delivery, `donations` &rarr; `confirmed` and pool totals increase.
-2. **Payout account:** `/dashboard`, save a test **`fa_...`** if you use RazorpayX test fund accounts.
-3. **Payout row:** run `process-payouts` (or the weekly job); expect `processing` with a Razorpay payout id stored in `stripe_transfer_id`.
-
-Common `payouts` states:
-
-- `blocked` + `no_payout_account` / `payouts_not_enabled` / `invalid_fund_account` — fix fund id on `users`.
-- `failed` — RazorpayX/API error; see `failure_reason`.
 
 ---
 
@@ -529,7 +409,7 @@ This project is open source. See the repository for license details.
 ---
 
 <p align="center">
-  <strong>Open<span>Get</span></strong> — Rewarding Open Source Contributors
+  <strong>Open<span>Get</span></strong> — Human Verification for Open Source
   <br />
-  <sub>Built with Appwrite &bull; Razorpay &bull; Next.js &bull; GitHub API</sub>
+  <sub>Built with Appwrite &bull; Next.js &bull; GitHub API</sub>
 </p>

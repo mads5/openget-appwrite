@@ -5,7 +5,7 @@ import { getLegalInfo } from "@/lib/legal-info";
 export const metadata: Metadata = {
   title: "Privacy Policy | OpenGet",
   description:
-    "How OpenGet collects, uses, and shares personal data when you use our platform — authentication, payments, and contributors.",
+    "How OpenGet collects, uses, and shares personal data — authentication, GitHub and Appwrite, reputation scoring, and optional verification API access.",
 };
 
 function Section({
@@ -42,11 +42,11 @@ export default function PrivacyPolicyPage() {
     <div className="container py-10 max-w-3xl mx-auto space-y-10">
       <div className="space-y-3">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground">Last updated: April 18, 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: April 22, 2026</p>
         <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground leading-relaxed">
           This policy describes how <strong className="text-foreground">{legal.entityName}</strong> (&quot;Operator,&quot;
-          &quot;we,&quot; &quot;us&quot;) processes personal data when you use OpenGet. It is a general notice;{" "}
-          <strong className="text-foreground">local laws</strong> (for example, India&apos;s Digital Personal Data
+          &quot;we,&quot; &quot;us&quot;) processes personal data when you use OpenGet.{" "}
+          <strong className="text-foreground">Local laws</strong> (for example, India&apos;s Digital Personal Data
           Protection Act, 2023) may give you additional rights. Have counsel review for your operating jurisdictions.
         </div>
       </div>
@@ -75,9 +75,16 @@ export default function PrivacyPolicyPage() {
             lists, activity metrics) as permitted by GitHub&apos;s terms and APIs.
           </li>
           <li>
-            <strong className="text-foreground">Payment-related data:</strong> When you pay or receive payouts, our
-            payment processors collect payment details, billing information, and verification data (for example, KYC).
-            We typically receive limited tokens, transaction ids, amounts, and status — not full card numbers.
+            <strong className="text-foreground">Server-side and API use:</strong> If you or your organization use server
+            routes, Appwrite, or a verification key (for example, <code className="text-xs">APPWRITE_API_KEY</code> in
+            deployment, or <code className="text-xs">OPENGET_VERIFY_API_KEYS</code> where we offer keyed access to public
+            verification endpoints), we process requests, keys (hashed or stored per our implementation), and related
+            logs for security, rate limits, and abuse prevention.
+          </li>
+          <li>
+            <strong className="text-foreground">Commercial transactions (if offered):</strong> If you buy a
+            subscription or other paid product from us, a payment processor may handle card or invoice data under its
+            terms; we receive limited status and reference information — not full card numbers.
           </li>
           <li>
             <strong className="text-foreground">Technical and usage data:</strong> IP address, device/browser type,
@@ -92,9 +99,8 @@ export default function PrivacyPolicyPage() {
 
       <Section id="purposes" title="3. How we use data (purposes)">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Provide, operate, and improve the Platform (including pools, scoring, and payouts).</li>
-          <li>Authenticate users, prevent fraud and abuse, and secure accounts.</li>
-          <li>Process sponsor payments and contributor payouts; comply with financial regulations and processor rules.</li>
+          <li>Provide, operate, and improve the Platform (reputation, profiles, enterprise views, and verification APIs).</li>
+          <li>Authenticate users, prevent fraud and abuse, and secure accounts and API keys.</li>
           <li>Communicate with you about the service, updates, and support.</li>
           <li>Comply with law, enforce our{" "}
             <Link href="/legal/terms" className="text-primary underline underline-offset-2">
@@ -125,9 +131,8 @@ export default function PrivacyPolicyPage() {
             repository data per GitHub&apos;s terms.
           </li>
           <li>
-            <strong className="text-foreground">Payment processors</strong> authorized by Operator (for example
-            Razorpay or other Reserve Bank of India–regulated payment aggregators for India, and such international
-            providers as we enable) to collect sponsor payments and send contributor payouts.
+            <strong className="text-foreground">Payment and billing partners</strong> if you purchase a commercial
+            product; they process card or invoice data under their terms for those transactions.
           </li>
           <li>
             <strong className="text-foreground">Infrastructure and analytics providers</strong> we use to host, monitor,
@@ -147,8 +152,8 @@ export default function PrivacyPolicyPage() {
       <Section id="retention" title="5. Retention and security">
         <p>
           We retain data as long as needed to provide the Platform, meet legal and accounting obligations, and resolve
-          disputes. Some logs and transaction records may be kept longer where required. We use reasonable technical and
-          organizational measures to protect data; no method of transmission over the Internet is 100% secure.
+          disputes. We use reasonable technical and organizational measures to protect data; no method of transmission
+          over the Internet is 100% secure.
         </p>
       </Section>
 
@@ -169,10 +174,9 @@ export default function PrivacyPolicyPage() {
       <Section id="transfers" title="7. International transfers">
         <p>
           Operator is oriented toward <strong className="text-foreground">India</strong>, but infrastructure (such as
-          Appwrite in Singapore) and payment partners may process data outside India. Where Indian law requires it, we
-          rely on permitted mechanisms for cross-border transfers (including government notifications and standard
-          contractual clauses as applicable). By using the Platform, you understand that your data may be transferred to
-          and processed in countries where our processors operate.
+          Appwrite in Singapore) and future processors may process data outside India. Where Indian law requires it, we
+          rely on permitted mechanisms for cross-border transfers. By using the Platform, you understand that your data
+          may be transferred to and processed in countries where our processors operate.
         </p>
       </Section>
 

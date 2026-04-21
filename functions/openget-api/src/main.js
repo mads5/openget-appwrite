@@ -1,25 +1,7 @@
 import { Client, Databases, Query, Users, ID, Functions, ExecutionMethod } from 'node-appwrite';
-import {
-  computeRepoDistributionWeight,
-  filterReposForDistribution,
-} from './repo-distribution.js';
 import { filterReposForPoolType, computeEligiblePoolTypes } from './pool-eligibility.js';
-import {
-  DEFAULT_CHECKOUT_POOL_TYPE,
-  POOL_TYPES,
-  POOL_TYPE_DESCRIPTIONS,
-} from './pool-types.js';
-import {
-  getRazorpayClient,
-  verifyRazorpayWebhookSignature,
-  amountToRazorpaySmallestUnit,
-  createRazorpayXPayout,
-} from './payment-gateway-razorpay.js';
-import { hashPayoutPin, verifyPayoutPin, isValidPinFormat } from './payout-pin.js';
 
 const DATABASE_ID = 'openget-db';
-const PLATFORM_FEE_RATE = 0.01;
-const PLATFORM_FEE_MIN_CENTS = 50;
 
 const COL = {
   REPOS: 'repos',
@@ -34,7 +16,6 @@ const COL = {
   USERS: 'users',
 };
 
-const MIN_PAYOUT_CENTS = 50;
 const SCORE_WEIGHTS = {
   total_contributions: 0.15,
   prs_raised: 0.10,
@@ -49,51 +30,6 @@ const QUALIFIED_REPO_CAP = 20;
 const REVIEW_CAP = 200;
 const RELEASE_CAP = 30;
 const MIN_REPO_SCORE = 5;
-
-function calculatePlatformFeeCents(amountCents, totalPoolCents = 0) {
-  const amount = Math.max(0, Number(amountCents || 0));
-  const poolTotal = Math.max(0, Number(totalPoolCents || 0));
-
-  // Tiered fee to keep platform sustainable for small pools/donations.
-  // - Early/small pools: slightly higher percentage + floor
-  // - Large pools: keep fee lower to stay donor-friendly
-  let rate = PLATFORM_FEE_RATE;
-  if (poolTotal < 100000) rate = 0.03; // < $1,000 pooled: 3%
-  else if (poolTotal < 1000000) rate = 0.02; // < $10,000 pooled: 2%
-  else rate = 0.01; // large pools: 1%
-
-  const pctFee = Math.ceil(amount * rate);
-  const fee = Math.max(PLATFORM_FEE_MIN_CENTS, pctFee);
-  return Math.min(amount, fee);
-}
-
-/**
- * @param {import('node-appwrite').Models.Document[]} documents
- * @param {string} poolType
- */
-function resolveCollectingPoolForType(documents, poolType) {
-  const pt = POOL_TYPES.includes(poolType) ? poolType : DEFAULT_CHECKOUT_POOL_TYPE;
-  let poolDoc = documents.find((p) => String(p.pool_type || '') === pt);
-  if (!poolDoc && pt === DEFAULT_CHECKOUT_POOL_TYPE) {
-    poolDoc = documents.find((p) => !p.pool_type || !String(p.pool_type).trim());
-  }
-  return poolDoc || documents[0] || null;
-}
-
-function daysInMonth(year, month) {
-  return new Date(year, month, 0).getDate();
-}
-
-function getActiveMonthInfo() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const totalDays = daysInMonth(y, m);
-  const dayOfMonth = now.getDate();
-  const dayOfWeek = now.getDay();
-  const isLastDay = dayOfMonth === totalDays;
-  return { year: y, month: m, totalDays, dayOfMonth, dayOfWeek, isLastDay };
-}
 
 const GH_HEADERS_BASE = {
   Accept: 'application/vnd.github+json',
@@ -385,7 +321,7 @@ async function recomputeContributorAggregate(db, contributorId, monthKey) {
     }
   }
 
-  const score = computeContributorScore(
+  const result = computeContributorScore(
     totalContributions,
     prsRaisedMonth,
     prsMergedMonth,
@@ -395,9 +331,15 @@ async function recomputeContributorAggregate(db, contributorId, monthKey) {
   );
 
   await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contributorId, {
-    total_score: score,
+    total_score: result.score,
     total_contributions: totalContributions,
     repo_count: allRc.total,
+    score_f1: result.factors.f1,
+    score_f2: result.factors.f2,
+    score_f3: result.factors.f3,
+    score_f4: result.factors.f4,
+    score_f5: result.factors.f5,
+    score_f6: result.factors.f6,
   });
 }
 
@@ -409,6 +351,10 @@ async function fetchReleasesForRepoWithHeaders(owner, repo, ghHeaders) {
   return res.json();
 }
 
+/**
+ * 6-factor model. Returns raw factor strengths (0–1) for the contributor profile UI.
+ * @returns {{ score: number, factors: { f1: number, f2: number, f3: number, f4: number, f5: number, f6: number, mergeRatioPenalty: number } }}
+ */
 function computeContributorScore(
   totalContributions,
   prsRaised,
@@ -443,397 +389,11 @@ function computeContributorScore(
     f5 * SCORE_WEIGHTS.review_activity +
     f6 * SCORE_WEIGHTS.release_triage;
 
-  return Math.round(raw * 1000) / 1000;
-}
-
-async function ensureCollectingPools(db) {
-  const now = new Date();
-  const nextMonth = now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2;
-  const nextYear = nextMonth === 1 ? now.getFullYear() + 1 : now.getFullYear();
-  const nextTotalDays = daysInMonth(nextYear, nextMonth);
-  const roundStart = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
-  const roundEnd = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextTotalDays).padStart(2, '0')}`;
-
-  const existing = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-    Query.equal('status', 'collecting'),
-    Query.limit(100),
-  ]);
-
-  const legacy = existing.documents.find(
-    (p) => p.round_start === roundStart && !(p.pool_type && String(p.pool_type).trim()),
-  );
-  if (legacy) {
-    await db.updateDocument(DATABASE_ID, COL.POOLS, legacy.$id, {
-      pool_type: 'community_match',
-    });
-    legacy.pool_type = 'community_match';
-  }
-
-  const out = [];
-  for (const poolType of POOL_TYPES) {
-    const found = existing.documents.find(
-      (p) => p.round_start === roundStart && String(p.pool_type || '') === poolType,
-    );
-    if (found) {
-      out.push(found);
-      continue;
-    }
-    const name = `Pool ${roundStart.slice(0, 7)} - ${poolType}`;
-    const desc = POOL_TYPE_DESCRIPTIONS[poolType] || '';
-    const pool = await db.createDocument(DATABASE_ID, COL.POOLS, ID.unique(), {
-      name,
-      description: `${desc} (${roundStart} to ${roundEnd})`,
-      total_amount_cents: 0,
-      platform_fee_cents: 0,
-      distributable_amount_cents: 0,
-      daily_budget_cents: 0,
-      remaining_cents: 0,
-      donor_count: 0,
-      status: 'collecting',
-      round_start: roundStart,
-      round_end: roundEnd,
-      pool_type: poolType,
-    });
-    out.push(pool);
-  }
-  return out;
-}
-
-async function activatePool(db, pool) {
-  const existingFee = Number(pool.platform_fee_cents || 0);
-  const fee =
-    existingFee > 0
-      ? existingFee
-      : calculatePlatformFeeCents(pool.total_amount_cents || 0, pool.total_amount_cents || 0);
-  const distributable = Math.max(0, (pool.total_amount_cents || 0) - fee);
-  const [y, m] = pool.round_start.split('-').map(Number);
-  const totalDays = daysInMonth(y, m);
-  const dailyBudget = Math.floor(distributable / totalDays);
-
-  await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-    status: 'active',
-    platform_fee_cents: fee,
-    distributable_amount_cents: distributable,
-    daily_budget_cents: dailyBudget,
-    remaining_cents: distributable,
-  });
-
+  const score = Math.round(raw * 1000) / 1000;
   return {
-    ...pool,
-    status: 'active',
-    platform_fee_cents: fee,
-    distributable_amount_cents: distributable,
-    daily_budget_cents: dailyBudget,
-    remaining_cents: distributable,
+    score,
+    factors: { f1, f2, f3, f4, f5, f6, mergeRatioPenalty },
   };
-}
-
-async function listActivePools(db) {
-  const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-    Query.equal('status', 'active'),
-    Query.limit(100),
-  ]);
-  return active.documents;
-}
-
-async function activateAllCollectingForCurrentMonth(db) {
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-    Query.equal('status', 'collecting'),
-    Query.limit(100),
-  ]);
-  const matched = collecting.documents.filter(
-    (p) => p.round_start && p.round_start.startsWith(monthKey),
-  );
-  const activated = [];
-  for (const p of matched) {
-    activated.push(await activatePool(db, p));
-  }
-  return activated;
-}
-
-async function ensureActivePools(db) {
-  let active = await listActivePools(db);
-  if (active.length > 0) return active;
-  await activateAllCollectingForCurrentMonth(db);
-  active = await listActivePools(db);
-  return active;
-}
-
-async function distributeWeekly(db, pool, budget) {
-  const repos = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(5000)]);
-  let reposWithScore = filterReposForDistribution(repos.documents);
-  const poolType = pool.pool_type && String(pool.pool_type).trim();
-  if (poolType) {
-    reposWithScore = filterReposForPoolType(reposWithScore, poolType);
-  }
-
-  if (reposWithScore.length === 0) {
-    const msg = poolType
-      ? `No repos eligible for pool_type=${poolType} (or missing score)`
-      : 'No repos with score > 0';
-    return {
-      pool_id: pool.$id,
-      distributed_cents: 0,
-      payouts_created: 0,
-      message: msg,
-    };
-  }
-
-  const repoWeights = reposWithScore.map((r) => ({
-    repo: r,
-    weight: computeRepoDistributionWeight(r),
-  }));
-  const totalWeight = repoWeights.reduce((s, rw) => s + rw.weight, 0);
-
-  let totalDistributed = 0;
-  let totalPayouts = 0;
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-
-  for (const { repo, weight } of repoWeights) {
-    const repoBudget = Math.floor((weight / totalWeight) * budget);
-    if (repoBudget <= 0) continue;
-
-    const contribs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-      Query.equal('repo_id', repo.$id),
-      Query.limit(5000),
-    ]);
-
-    const eligible = [];
-    for (const rc of contribs.documents) {
-      try {
-        const contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
-        if (!contributor.user_id) continue;
-        if ((contributor.total_score || 0) <= 0) continue;
-        eligible.push({ rc, contributor });
-      } catch {
-        continue;
-      }
-    }
-
-    if (eligible.length === 0) continue;
-
-    const totalScore = eligible.reduce((s, e) => s + (e.contributor.total_score || 0), 0);
-    if (totalScore <= 0) continue;
-
-    const rawShares = eligible.map((e) => ({
-      ...e,
-      raw: ((e.contributor.total_score || 0) / totalScore) * repoBudget,
-    }));
-    const floors = rawShares.map((r) => Math.floor(r.raw));
-    const remainder = repoBudget - floors.reduce((a, b) => a + b, 0);
-    const order = rawShares
-      .map((r, i) => ({ i, frac: r.raw - floors[i] }))
-      .sort((a, b) => b.frac - a.frac);
-    const amounts = [...floors];
-    for (let r = 0; r < remainder && r < order.length; r++) {
-      amounts[order[r].i] += 1;
-    }
-
-    for (let i = 0; i < eligible.length; i++) {
-      const amount = amounts[i];
-      if (amount < MIN_PAYOUT_CENTS) continue;
-
-      await db.createDocument(DATABASE_ID, COL.PAYOUTS, ID.unique(), {
-        pool_id: pool.$id,
-        contributor_id: eligible[i].contributor.$id,
-        amount_cents: amount,
-        score_snapshot: eligible[i].contributor.total_score || 0,
-        status: 'pending',
-      });
-      totalDistributed += amount;
-      totalPayouts++;
-    }
-  }
-
-  await db.createDocument(DATABASE_ID, COL.WEEKLY_DISTRIBUTIONS, ID.unique(), {
-    pool_id: pool.$id,
-    week_start: weekStart.toISOString().slice(0, 10),
-    week_end: weekEnd.toISOString().slice(0, 10),
-    budget_cents: budget,
-    distributed_cents: totalDistributed,
-    payouts_created: totalPayouts,
-  });
-
-  return {
-    pool_id: pool.$id,
-    distributed_cents: totalDistributed,
-    payouts_created: totalPayouts,
-  };
-}
-
-/**
- * Credit pool after Razorpay marks an order paid (payment.captured / order.paid webhook).
- * `donations.stripe_session_id` stores the Razorpay order id (legacy column name).
- */
-async function confirmDonationAfterRazorpayOrder(db, orderId, log, error) {
-  try {
-    const matches = await db.listDocuments(DATABASE_ID, COL.DONATIONS, [
-      Query.equal('stripe_session_id', orderId),
-      Query.limit(1),
-    ]);
-    const donation = matches.documents[0];
-    if (!donation) {
-      if (log) log(`razorpay confirm: no donation for order ${orderId}`);
-      return;
-    }
-    if (donation.status === 'confirmed') {
-      if (log) log(`razorpay confirm: donation ${donation.$id} already confirmed`);
-      return;
-    }
-    const donationId = donation.$id;
-    const poolId = donation.pool_id;
-    if (!poolId) {
-      if (error) error(`razorpay confirm: donation ${donationId} missing pool_id`);
-      return;
-    }
-    const amountCents = donation.amount_cents;
-    const pool = await db.getDocument(DATABASE_ID, COL.POOLS, poolId);
-    const feeCents = calculatePlatformFeeCents(amountCents, pool.total_amount_cents || 0);
-    const distributable = amountCents - feeCents;
-
-    await db.updateDocument(DATABASE_ID, COL.DONATIONS, donationId, { status: 'confirmed' });
-    await db.updateDocument(DATABASE_ID, COL.POOLS, poolId, {
-      total_amount_cents: (pool.total_amount_cents || 0) + amountCents,
-      platform_fee_cents: (pool.platform_fee_cents || 0) + feeCents,
-      distributable_amount_cents: (pool.distributable_amount_cents || 0) + distributable,
-      donor_count: (pool.donor_count || 0) + 1,
-    });
-
-    await db.createDocument(DATABASE_ID, COL.PLATFORM_FEES, ID.unique(), {
-      pool_id: poolId,
-      amount_cents: feeCents,
-      source_donation_id: donationId,
-    });
-    if (log) log(`razorpay confirm: donation ${donationId} pool ${poolId}`);
-  } catch (e) {
-    if (error) error(`razorpay confirm failed: ${e.message}`);
-  }
-}
-
-/**
- * Process pending payouts via RazorpayX (fund account payouts).
- * Shared between `process-payouts` and weekly `distribute-pool`.
- *
- * Requires RAZORPAY_KEY_* plus RAZORPAYX_ACCOUNT_NUMBER. Contributor `users.stripe_connect_account_id`
- * must hold a RazorpayX fund account id (`fa_...`). Amounts use the same smallest-unit convention
- * as pool accounting; `RAZORPAYX_PAYOUT_CURRENCY` must match how `amount_cents` is interpreted.
- */
-async function processPendingPayouts(db, { limit = 50, log, error } = {}) {
-  const rzp = await getRazorpayClient();
-  const fromAccount = process.env.RAZORPAYX_ACCOUNT_NUMBER;
-  if (!rzp || !fromAccount) {
-    return {
-      processed: 0,
-      failed: 0,
-      blocked: 0,
-      total: 0,
-      skipped: true,
-      reason: 'RAZORPAY_KEY_ID/SECRET or RAZORPAYX_ACCOUNT_NUMBER not configured',
-    };
-  }
-
-  const payoutCurrency = (process.env.RAZORPAYX_PAYOUT_CURRENCY || 'INR').toUpperCase();
-  const payoutMode = process.env.RAZORPAYX_PAYOUT_MODE || 'IMPS';
-
-  const safeLimit = Math.min(Math.max(1, Number(limit) || 50), 100);
-  const pending = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
-    Query.equal('status', 'pending'),
-    Query.limit(safeLimit),
-  ]);
-
-  let processed = 0;
-  let failed = 0;
-  let blocked = 0;
-
-  for (const p of pending.documents) {
-    let contributor;
-    try {
-      contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, p.contributor_id);
-    } catch (e) {
-      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
-        status: 'blocked',
-        failure_reason: 'contributor_not_found',
-      });
-      blocked++;
-      continue;
-    }
-
-    let userDoc = null;
-    try {
-      const byGithub = await db.listDocuments(DATABASE_ID, COL.USERS, [
-        Query.equal('github_id', contributor.user_id || ''),
-        Query.limit(1),
-      ]);
-      userDoc = byGithub.documents[0] || null;
-      if (!userDoc) {
-        try {
-          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, contributor.user_id);
-        } catch {
-          userDoc = null;
-        }
-      }
-    } catch {
-      userDoc = null;
-    }
-
-    const acct = userDoc?.stripe_connect_account_id || null;
-    const ready = userDoc?.stripe_payouts_enabled === true;
-    if (!acct || !ready) {
-      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
-        status: 'blocked',
-        failure_reason: !acct ? 'no_payout_account' : 'payouts_not_enabled',
-      });
-      blocked++;
-      continue;
-    }
-
-    if (!String(acct).startsWith('fa_')) {
-      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
-        status: 'blocked',
-        failure_reason: 'invalid_fund_account',
-      });
-      blocked++;
-      continue;
-    }
-
-    try {
-      const refId = `og_${String(p.$id).replace(/-/g, '').slice(0, 28)}`;
-      const rpayout = await createRazorpayXPayout({
-        account_number: fromAccount,
-        fund_account_id: acct,
-        amount: p.amount_cents,
-        currency: payoutCurrency,
-        mode: payoutMode,
-        purpose: 'payout',
-        queue_if_inactive: true,
-        reference_id: refId,
-        narration: 'OpenGet contributor payout',
-        notes: { payout_id: String(p.$id), pool_id: String(p.pool_id || '') },
-      });
-      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
-        status: 'processing',
-        stripe_transfer_id: rpayout.id,
-      });
-      processed++;
-      if (log) log(`razorpay payout ${rpayout.id} for payout ${p.$id} -> ${acct}`);
-    } catch (e) {
-      const reason = String(e?.message || e || 'payout_error').slice(0, 200);
-      await db.updateDocument(DATABASE_ID, COL.PAYOUTS, p.$id, {
-        status: 'failed',
-        failure_reason: reason,
-      });
-      failed++;
-      if (error) error(`payout ${p.$id} failed: ${reason}`);
-    }
-  }
-
-  return { processed, failed, blocked, total: pending.documents.length };
 }
 
 function daysSince(dateLike) {
@@ -1062,6 +622,42 @@ export default async ({ req, res, log, error }) => {
 
   try {
     switch (action) {
+      case 'health':
+      case 'ping': {
+        let database_schema = null;
+        try {
+          const meta = await db.listDocuments(DATABASE_ID, 'app_meta', [Query.limit(1)]);
+          const doc = meta.documents[0];
+          if (doc && doc.schema_version != null) database_schema = doc.schema_version;
+        } catch {
+          /* optional: collection not created yet */
+        }
+        return res.json({
+          ok: true,
+          service: 'openget-api',
+          time: new Date().toISOString(),
+          database_schema,
+        });
+      }
+
+      case 'version': {
+        return res.json({
+          service: 'openget-api',
+          api: 2,
+          runtime: process.version,
+          actions: [
+            'health',
+            'version',
+            'list-repo',
+            'delist-repo',
+            'get-my-repos',
+            'get-repo-contributors',
+            'register-contributor',
+            'fetch-contributors',
+            'audit-dependencies',
+          ],
+        });
+      }
 
       // ---- LIST REPO ----
       case 'list-repo': {
@@ -1394,508 +990,6 @@ export default async ({ req, res, log, error }) => {
         }
 
         return res.json({ ...contribDoc, is_registered: true });
-      }
-
-      // ---- CREATE CHECKOUT (Razorpay order for hosted Checkout) ----
-      case 'create-checkout': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const rzp = await getRazorpayClient();
-        if (!rzp) return res.json({ error: 'Payment gateway not configured' }, 500);
-
-        const {
-          amount_cents,
-          currency = 'usd',
-          message = '',
-          pool_type: requestedPoolType = DEFAULT_CHECKOUT_POOL_TYPE,
-        } = body;
-        if (!amount_cents) return res.json({ error: 'Missing required fields' }, 400);
-
-        const collectingAll = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        let poolDoc = resolveCollectingPoolForType(collectingAll.documents, String(requestedPoolType || ''));
-        if (!poolDoc) {
-          const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-            Query.equal('status', 'active'),
-            Query.limit(100),
-          ]);
-          poolDoc = resolveCollectingPoolForType(active.documents, String(requestedPoolType || ''));
-        }
-        if (!poolDoc) return res.json({ error: 'No pool available for donations' }, 404);
-        const poolId = poolDoc.$id;
-        const poolLabel = poolDoc.pool_type
-          ? String(poolDoc.pool_type)
-          : DEFAULT_CHECKOUT_POOL_TYPE;
-        const productName = `OpenGet (${poolLabel})`;
-
-        const razorpayAmount = amountToRazorpaySmallestUnit(amount_cents, String(currency || 'usd'));
-        if (razorpayAmount < 1) return res.json({ error: 'Invalid amount' }, 400);
-        const currencyUpper = String(currency || 'usd').toUpperCase();
-
-        const donation = await db.createDocument(DATABASE_ID, COL.DONATIONS, ID.unique(), {
-          pool_id: poolId,
-          donor_id: userId,
-          amount_cents,
-          message: message || null,
-          status: 'pending',
-        });
-
-        let order;
-        try {
-          order = await rzp.orders.create({
-            amount: razorpayAmount,
-            currency: currencyUpper,
-            receipt: String(donation.$id).slice(0, 40),
-            notes: {
-              donation_id: String(donation.$id),
-              pool_id: String(poolId),
-              pool_type: String(poolLabel),
-            },
-          });
-        } catch (e) {
-          try {
-            await db.deleteDocument(DATABASE_ID, COL.DONATIONS, donation.$id);
-          } catch { /* ignore */ }
-          return res.json({ error: String(e?.message || e || 'order_failed').slice(0, 200) }, 502);
-        }
-
-        await db.updateDocument(DATABASE_ID, COL.DONATIONS, donation.$id, { stripe_session_id: order.id });
-        return res.json({
-          provider: 'razorpay',
-          key_id: process.env.RAZORPAY_KEY_ID,
-          order_id: order.id,
-          amount: razorpayAmount,
-          currency: currencyUpper,
-          donation_id: donation.$id,
-          description: `${productName} — ${(POOL_TYPE_DESCRIPTIONS[poolLabel] || 'Open source contributor pool').slice(0, 200)}`,
-        });
-      }
-
-      // ---- RAZORPAY WEBHOOK (alias: stripe-webhook for existing URLs) ----
-      case 'razorpay-webhook':
-      case 'stripe-webhook': {
-        const rzp = await getRazorpayClient();
-        if (!rzp) return res.json({ error: 'Payment gateway not configured' }, 500);
-
-        const whSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-        const sig =
-          req.headers?.['x-razorpay-signature'] ||
-          req.headers?.['X-Razorpay-Signature'] ||
-          '';
-        const raw =
-          typeof req.bodyRaw === 'string'
-            ? req.bodyRaw
-            : typeof req.body === 'string'
-              ? req.body
-              : JSON.stringify(req.body ?? {});
-
-        if (whSecret) {
-          if (!sig || !verifyRazorpayWebhookSignature(raw, sig, whSecret)) {
-            return res.json({ error: 'Invalid signature' }, 400);
-          }
-        } else {
-          log('razorpay webhook: RAZORPAY_WEBHOOK_SECRET not set — skipping signature check');
-        }
-
-        const evt = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
-        const eventName = evt.event || '';
-
-        if (eventName === 'payment.captured') {
-          const pay = evt.payload?.payment?.entity;
-          const orderId = pay?.order_id;
-          if (orderId) await confirmDonationAfterRazorpayOrder(db, orderId, log, error);
-        } else if (eventName === 'order.paid') {
-          const ord = evt.payload?.order?.entity;
-          const orderId = ord?.id;
-          if (orderId) await confirmDonationAfterRazorpayOrder(db, orderId, log, error);
-        } else if (
-          eventName === 'payout.processed' ||
-          eventName === 'payout.failed' ||
-          eventName === 'payout.reversed'
-        ) {
-          const pout = evt.payload?.payout?.entity || {};
-          const payoutRzId = pout.id;
-          if (payoutRzId) {
-            try {
-              const matches = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
-                Query.equal('stripe_transfer_id', payoutRzId),
-                Query.limit(1),
-              ]);
-              const payoutDoc = matches.documents[0];
-              if (payoutDoc) {
-                const patch = { stripe_transfer_id: payoutRzId };
-                if (eventName === 'payout.processed') {
-                  patch.status = 'completed';
-                  patch.completed_at = new Date().toISOString();
-                } else {
-                  patch.status = 'failed';
-                  patch.failure_reason = String(
-                    pout.status_description || pout.status || eventName,
-                  ).slice(0, 200);
-                }
-                await db.updateDocument(DATABASE_ID, COL.PAYOUTS, payoutDoc.$id, patch);
-                log(`razorpay ${eventName} -> payout ${payoutDoc.$id}`);
-              } else {
-                log(`razorpay ${eventName}: no payout row for ${payoutRzId}`);
-              }
-            } catch (e) {
-              error(`razorpay payout webhook: ${e.message}`);
-            }
-          }
-        }
-
-        return res.json({ received: true });
-      }
-
-      // ---- PAYOUT ACCESS PIN (6-digit; hash only — protects contributor payout card entry UI) ----
-      case 'get-payout-security-status': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        let userDoc;
-        try {
-          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
-        } catch {
-          return res.json({ error: 'User profile not found' }, 404);
-        }
-        const h = userDoc.payout_pin_hash;
-        return res.json({ pin_set: typeof h === 'string' && h.length > 0 });
-      }
-
-      case 'set-payout-pin': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const { pin, pin_confirm: pinConfirm, current_pin: currentPin } = body;
-        let userDoc;
-        try {
-          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
-        } catch {
-          return res.json({ error: 'User profile not found' }, 404);
-        }
-        const existing = userDoc.payout_pin_hash;
-        const hasPin = typeof existing === 'string' && existing.length > 0;
-
-        if (hasPin) {
-          if (!isValidPinFormat(String(currentPin || ''))) {
-            return res.json({ error: 'Current 6-digit PIN is required to change your PIN' }, 400);
-          }
-          if (!verifyPayoutPin(String(currentPin), existing)) {
-            return res.json({ error: 'Current PIN is incorrect' }, 401);
-          }
-        }
-
-        if (!isValidPinFormat(String(pin || '')) || !isValidPinFormat(String(pinConfirm || ''))) {
-          return res.json({ error: 'PIN must be exactly 6 digits' }, 400);
-        }
-        if (String(pin) !== String(pinConfirm)) {
-          return res.json({ error: 'PIN confirmation does not match' }, 400);
-        }
-
-        const nextHash = hashPayoutPin(String(pin));
-        await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
-          payout_pin_hash: nextHash,
-        });
-        return res.json({ ok: true, message: hasPin ? 'PIN updated.' : 'PIN saved. Use it to unlock the debit card form when adding payout details.' });
-      }
-
-      case 'verify-payout-pin': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        if (!isValidPinFormat(String(body.pin || ''))) {
-          return res.json({ error: 'PIN must be exactly 6 digits' }, 400);
-        }
-        let userDoc;
-        try {
-          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
-        } catch {
-          return res.json({ error: 'User profile not found' }, 404);
-        }
-        const existing = userDoc.payout_pin_hash;
-        if (!existing || !verifyPayoutPin(String(body.pin), existing)) {
-          return res.json({ error: 'Incorrect PIN' }, 401);
-        }
-        return res.json({ ok: true });
-      }
-
-      // ---- PAYOUT ONBOARDING (bank beneficiary ref for RazorpayX; aliases for older clients) ----
-      case 'payout-onboarding':
-      case 'bank-payout-setup':
-      case 'stripe-connect': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-
-        const { fund_account_id: fundAccountId } = body;
-
-        let userDoc;
-        try {
-          userDoc = await db.getDocument(DATABASE_ID, COL.USERS, userId);
-        } catch {
-          return res.json({ error: 'User profile not found' }, 404);
-        }
-
-        const fa = fundAccountId != null ? String(fundAccountId).trim() : '';
-        if (fa.length > 0 && !fa.startsWith('fa_')) {
-          return res.json(
-            {
-              error: 'Beneficiary reference must start with fa_.',
-            },
-            400,
-          );
-        }
-        if (fa && fa.startsWith('fa_')) {
-          await db.updateDocument(DATABASE_ID, COL.USERS, userDoc.$id, {
-            stripe_connect_account_id: fa,
-            stripe_charges_enabled: true,
-            stripe_payouts_enabled: true,
-          });
-          return res.json({
-            provider: 'razorpay',
-            account_id: fa,
-            onboarding_url: null,
-            message:
-              'Bank payout details saved. Settlements go to the linked bank account through our authorised payment partner when weekly payouts run.',
-          });
-        }
-
-        return res.json({
-          provider: 'razorpay',
-          account_id: userDoc.stripe_connect_account_id || null,
-          onboarding_url: null,
-          message:
-            'Legacy beneficiary id lookup. Prefer the dashboard debit card flow; fund account ids are optional for some settlement backends.',
-        });
-      }
-
-      // ---- PROCESS PAYOUTS (RazorpayX) ----
-      case 'process-payouts': {
-        const result = await processPendingPayouts(db, {
-          limit: Number(body.limit ?? req.query?.limit ?? 50),
-          log,
-          error,
-        });
-        return res.json(result);
-      }
-
-      // ---- UPI PAYMENT (removed; use create-checkout + Razorpay Checkout for INR UPI) ----
-      case 'upi-payment': {
-        return res.json(
-          {
-            error:
-              'Static UPI QR is disabled. Use Sponsor checkout (create-checkout); Razorpay Checkout supports UPI and cards for India.',
-          },
-          410,
-        );
-      }
-
-      // ---- GET EARNINGS ----
-      case 'get-earnings': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [Query.equal('user_id', userId), Query.limit(1)]);
-        if (contribs.documents.length === 0) {
-          return res.json({ contributor_id: '00000000-0000-0000-0000-000000000000', total_earned_cents: 0, pending_cents: 0, payouts: [] });
-        }
-        const contributor = contribs.documents[0];
-        const payoutDocs = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
-          Query.equal('contributor_id', contributor.$id), Query.orderDesc('$createdAt'), Query.limit(50),
-        ]);
-        const payouts = payoutDocs.documents.map(p => ({
-          id: p.$id, pool_id: p.pool_id, contributor_id: p.contributor_id,
-          amount_cents: p.amount_cents, score_snapshot: p.score_snapshot || 0,
-          status: p.status, stripe_transfer_id: p.stripe_transfer_id || null,
-          created_at: p.$createdAt, completed_at: p.completed_at || null,
-          failure_reason: p.failure_reason || null,
-        }));
-        const totalEarned = payouts.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount_cents, 0);
-        const pending = payouts.filter(p => p.status === 'pending' || p.status === 'processing').reduce((s, p) => s + p.amount_cents, 0);
-        return res.json({ contributor_id: contributor.$id, total_earned_cents: totalEarned, pending_cents: pending, payouts });
-      }
-
-      // ---- DISTRIBUTE POOL (weekly) — mirrors functions/distribute-pool/src/main.js ----
-      case 'distribute-pool': {
-        const mode =
-          req.query?.mode ||
-          body.mode ||
-          req.query?.distribution_action ||
-          body.distribution_action ||
-          'weekly';
-
-        if (mode === 'ensure-collecting') {
-          const pools = await ensureCollectingPools(db);
-          return res.json({
-            pools: pools.map((p) => ({
-              pool_id: p.$id,
-              pool_type: p.pool_type || null,
-              status: p.status,
-            })),
-          });
-        }
-
-        if (mode === 'activate') {
-          const activated = await activateAllCollectingForCurrentMonth(db);
-          if (activated.length === 0) {
-            const fallback = await ensureActivePools(db);
-            if (fallback.length === 0) {
-              return res.json({ error: 'No pool to activate' }, 404);
-            }
-            return res.json({
-              pools: fallback.map((p) => ({
-                pool_id: p.$id,
-                pool_type: p.pool_type || null,
-                status: p.status,
-              })),
-            });
-          }
-          return res.json({
-            pools: activated.map((p) => ({
-              pool_id: p.$id,
-              pool_type: p.pool_type || null,
-              status: p.status,
-            })),
-          });
-        }
-
-        if (mode === 'finalize-month') {
-          const { isLastDay } = getActiveMonthInfo();
-          if (!isLastDay && !body.force) {
-            return res.json({
-              message: 'Not the last day of the month. Pass force=true to override.',
-            });
-          }
-
-          const pools = await ensureActivePools(db);
-          if (pools.length === 0) {
-            return res.json({ message: 'No active pool to finalize' });
-          }
-
-          const results = [];
-          for (const pool of pools) {
-            const remaining = pool.remaining_cents || 0;
-            if (remaining <= 0) {
-              await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-                status: 'completed',
-              });
-              results.push({
-                pool_id: pool.$id,
-                distributed_cents: 0,
-                payouts_created: 0,
-                message: 'No remaining funds',
-              });
-              continue;
-            }
-            const result = await distributeWeekly(db, pool, remaining);
-            await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-              status: 'completed',
-              remaining_cents: 0,
-            });
-            results.push(result);
-          }
-
-          await ensureCollectingPools(db);
-          return res.json({ message: 'Month finalized', results });
-        }
-
-        const pools = await ensureActivePools(db);
-        if (pools.length === 0) return res.json({ error: 'No active pool found' }, 404);
-
-        const batchResults = [];
-        let totalDistributed = 0;
-        let totalPayouts = 0;
-
-        for (const pool of pools) {
-          const weeklyBudget = (pool.daily_budget_cents || 0) * 7;
-          const budget = Math.min(weeklyBudget, pool.remaining_cents || 0);
-          if (budget <= 0) continue;
-          const result = await distributeWeekly(db, pool, budget);
-
-          await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-            remaining_cents: Math.max(0, (pool.remaining_cents || 0) - result.distributed_cents),
-          });
-
-          batchResults.push({
-            pool_id: pool.$id,
-            pool_type: pool.pool_type || null,
-            ...result,
-          });
-          totalDistributed += result.distributed_cents;
-          totalPayouts += result.payouts_created;
-        }
-
-        if (batchResults.length === 0) {
-          return res.json({ error: 'No budget remaining for this week across active pools' }, 400);
-        }
-
-        // Chain payout processing so a single weekly cron does compute + pay.
-        // Opt-out via `skip_payouts: true` (e.g. dry-run or when RazorpayX is not configured).
-        let payoutSummary = null;
-        if (!body.skip_payouts) {
-          try {
-            payoutSummary = await processPendingPayouts(db, { log, error });
-          } catch (e) {
-            error(`process-payouts chain failed: ${e.message}`);
-            payoutSummary = { error: e.message };
-          }
-        }
-
-        return res.json({
-          distributed_cents: totalDistributed,
-          payouts_created: totalPayouts,
-          pools: batchResults,
-          payouts: payoutSummary,
-        });
-      }
-
-      // ---- GET COLLECTING POOL ----
-      case 'get-collecting-pool': {
-        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        if (collecting.documents.length === 0) return res.json({ pool: null });
-        return res.json({ pool: collecting.documents[0] });
-      }
-
-      case 'list-collecting-pools': {
-        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        return res.json({
-          pools: collecting.documents.map((p) => ({
-            id: p.$id,
-            pool_type: p.pool_type || null,
-            name: p.name,
-            description: p.description,
-            round_start: p.round_start,
-            round_end: p.round_end,
-            total_amount_cents: p.total_amount_cents || 0,
-            donor_count: p.donor_count || 0,
-          })),
-        });
-      }
-
-      case 'get-pool-impact': {
-        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'active'),
-          Query.limit(100),
-        ]);
-        const repoCount = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(1)]);
-        return res.json({
-          collecting: collecting.documents.map((p) => ({
-            id: p.$id,
-            pool_type: p.pool_type || null,
-            round_start: p.round_start,
-            total_amount_cents: p.total_amount_cents || 0,
-            donor_count: p.donor_count || 0,
-          })),
-          active: active.documents.map((p) => ({
-            id: p.$id,
-            pool_type: p.pool_type || null,
-            round_start: p.round_start,
-            remaining_cents: p.remaining_cents || 0,
-            distributable_amount_cents: p.distributable_amount_cents || 0,
-          })),
-          listed_repos: repoCount.total,
-        });
       }
 
       // ---- FETCH CONTRIBUTORS (background) ----
@@ -2247,15 +1341,49 @@ export default async ({ req, res, log, error }) => {
         return res.json(summary);
       }
 
-      default:
-        return res.json({ error: `Unknown action: ${action}`, available: [
-          'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
-          'create-checkout', 'razorpay-webhook', 'stripe-webhook',
-          'get-payout-security-status', 'set-payout-pin', 'verify-payout-pin',
-          'payout-onboarding', 'bank-payout-setup', 'stripe-connect', 'process-payouts', 'upi-payment',
-          'get-earnings', 'distribute-pool', 'get-collecting-pool', 'list-collecting-pools', 'get-pool-impact',
-          'fetch-contributors',
-        ]}, 400);
+      // ---- B2B: dependency audit (MVP stub; full resolver in a later deploy) ----
+      case 'audit-dependencies': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const deps = body.dependencies;
+        const count =
+          deps && typeof deps === 'object' && !Array.isArray(deps) ? Object.keys(deps).length : 0;
+        return res.json({
+          version: 1,
+          message:
+            'Human-Risk report pipeline: MVP stub. Use /enterprise/audit in the web app. Full package→maintainer join ships next.',
+          packages_received: count,
+        });
+      }
+
+      default: {
+        if (!action) {
+          return res.json(
+            {
+              service: 'openget-api',
+              message: 'Pass ?action=... in the query string or { "action": "..." } in the JSON body.',
+              discover: ['health', 'version', 'list-repo', 'fetch-contributors', 'register-contributor', 'audit-dependencies'],
+            },
+            200,
+          );
+        }
+        return res.json(
+          {
+            error: `Unknown action: ${action}`,
+            available: [
+              'health',
+              'version',
+              'list-repo',
+              'delist-repo',
+              'get-my-repos',
+              'get-repo-contributors',
+              'register-contributor',
+              'fetch-contributors',
+              'audit-dependencies',
+            ],
+          },
+          400,
+        );
+      }
     }
   } catch (e) {
     error(`Error in ${action}: ${e.message}`);

@@ -5,6 +5,7 @@ export const APPWRITE_PROJECT_ID = "69cd72ef00259a9a29b9";
 export const DATABASE_ID = "openget-db";
 
 export const COLLECTION = {
+  APP_META: "app_meta",
   REPOS: "repos",
   CONTRIBUTORS: "contributors",
   REPO_CONTRIBUTIONS: "repo_contributions",

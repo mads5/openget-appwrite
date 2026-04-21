@@ -110,11 +110,11 @@ export function RepoTable({ repos }: RepoTableProps) {
               <th className="text-left px-3 py-3 text-sm font-medium whitespace-nowrap">#</th>
               <th className="text-left px-3 py-3 text-sm font-medium min-w-[200px]">Repository</th>
               <th className="text-left px-3 py-3 text-sm font-medium hidden lg:table-cell max-w-[200px]">
-                Pool lanes
+                Focus
               </th>
               <th
                 className="text-right px-3 py-3 text-sm font-medium whitespace-nowrap"
-                title="Popularity weight: stars + forks (used in distributions)"
+                title="Popularity weight: stars + forks"
               >
                 Pop.
               </th>

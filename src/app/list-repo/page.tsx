@@ -7,6 +7,7 @@ import { getMyGithubRepos, listRepo, delistRepo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/site/page-header";
 import type { GitHubRepoInfo } from "@/types";
 import type { Models } from "appwrite";
 
@@ -90,14 +91,18 @@ export default function ListRepoPage() {
 
   if (!user) {
     return (
-      <div className="container py-20 text-center">
-        <h2 className="text-2xl font-bold mb-4">Sign in to list your repo</h2>
+      <div>
+        <PageHeader
+          title="List a repository"
+          description="Connect GitHub so we can show repos you can add to the OpenGet index."
+        />
+        <div className="container py-12 text-center max-w-md mx-auto">
         <p className="text-muted-foreground mb-6">
-          Connect your GitHub account so we can see your repos and list them
-          on OpenGet.
+          Sign in to load repositories you have access to and trigger contributor discovery.
         </p>
         <Button
           type="button"
+          size="lg"
           onClick={(e) => {
             e.preventDefault();
             startGithubOAuthSession(account, "/list-repo", "/list-repo?auth_error=true");
@@ -105,19 +110,18 @@ export default function ListRepoPage() {
         >
           Sign in with GitHub
         </Button>
+        </div>
       </div>
     );
   }
 
   return (
+    <div>
+      <PageHeader
+        title="List a repository"
+        description="Add a repo to the OpenGet index. Nightly scoring discovers contributors and runs the 6-factor model."
+      />
     <div className="container py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">List Your Repo</h1>
-        <p className="text-muted-foreground mt-1">
-          Your GitHub repos sorted by stars. Click &quot;List&quot; to add one to
-          OpenGet. We&apos;ll discover all contributors automatically.
-        </p>
-      </div>
 
       {message && (
         <div className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 text-sm">
@@ -184,6 +188,7 @@ export default function ListRepoPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

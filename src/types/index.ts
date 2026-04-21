@@ -15,7 +15,7 @@ export interface Repo {
   bus_factor?: number;
   /** True if SECURITY.md exists on default branch (from nightly fetch). */
   has_security_md?: boolean;
-  /** Pool lanes this repo receives distributions from (nightly-computed). */
+  /** Work-area tags derived from scoring (nightly). */
   eligible_pool_types?: string[];
   /** Short AI-generated blurb (cached on first view when OPENAI_API_KEY is configured server-side). */
   ai_summary?: string | null;
@@ -50,6 +50,15 @@ export interface Contributor {
   total_contributions: number;
   is_registered: boolean;
   created_at: string;
+  /** Normalized factor strength 0–1 (F1…F6), written by nightly scoring when DB attributes exist. */
+  score_f1?: number;
+  score_f2?: number;
+  score_f3?: number;
+  score_f4?: number;
+  score_f5?: number;
+  score_f6?: number;
+  /** ~0–100 global rank vs other contributors (optional; backfilled from scoring job). */
+  percentile_global?: number;
 }
 
 export interface ContributorDetail extends Contributor {
@@ -89,17 +98,6 @@ export interface Pool {
   created_at: string;
 }
 
-export interface CollectingPoolSummary {
-  id: string;
-  pool_type: string | null;
-  name: string;
-  description: string | null;
-  round_start: string;
-  round_end: string;
-  total_amount_cents: number;
-  donor_count: number;
-}
-
 export interface WeeklyDistribution {
   id: string;
   pool_id: string;
@@ -126,7 +124,7 @@ export interface Payout {
   amount_cents: number;
   score_snapshot: number;
   status: "pending" | "processing" | "completed" | "failed" | "blocked";
-  /** Appwrite attribute name; holds Razorpay payout id when set. */
+  /** Appwrite attribute name; external transfer reference when set. */
   stripe_transfer_id: string | null;
   created_at: string;
   completed_at: string | null;
@@ -140,7 +138,7 @@ export interface User {
   avatar_url: string | null;
   display_name: string | null;
   email: string | null;
-  /** Appwrite attribute name; RazorpayX fund account id (`fa_...`) when set. */
+  /** Appwrite attribute name; external account reference when set. */
   stripe_connect_account_id: string | null;
   created_at: string;
 }

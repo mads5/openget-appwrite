@@ -16,7 +16,7 @@ export function getLegalInfo() {
     address:
       process.env.NEXT_PUBLIC_LEGAL_REGISTERED_ADDRESS?.trim() ||
       "India — full registered address will be published here once the business is incorporated or formally registered.",
-    /** Public email for legal / privacy / Razorpay or partner inquiries. */
+    /** Public email for legal and privacy inquiries. */
     contactEmail:
       process.env.NEXT_PUBLIC_LEGAL_CONTACT_EMAIL?.trim() ||
       "veerkalantri1+openget@gmail.com",
