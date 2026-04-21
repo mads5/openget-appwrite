@@ -34,7 +34,7 @@ When AI can generate code at near-zero cost, the scarce signal is **human** judg
 
 ## The solution
 
-OpenGet is a **reputation and supply-chain risk** data platform. The **6-factor model** (merged PRs, reviews, triage) powers **public leaderboards**, **embeddable badges** (`/api/badge/{username}`), a **verification JSON API** (`/api/verify`), and a **B2B audit** shell (`/enterprise/audit`).
+OpenGet is a **reputation and supply-chain risk** data platform. The **6-factor model** (merged PRs, reviews, triage) powers **public leaderboards**, **embeddable badges** (`/api/badge/{username}`), a **verification JSON API** (`/api/verify`), and a **Human-Risk audit** at **`/enterprise/audit`**: paste **`package.json`**, resolve each dependency via the **npm registry** → **GitHub** from the `repository` field, then join **listed repos** and **top maintainers** from the OpenGet index (`openget-api` action **`audit-dependencies`**; sign-in required).
 
 **Web UI (v2):** **Outfit** + **JetBrains Mono** (see `src/lib/fonts.ts`), teal-forward theme (`globals.css`), shared `PageHeader` layout, and `/api/health` for the Next app. The **`openget-api`** function exposes `?action=health` / `?action=version` and reads optional **`app_meta.schema_version`** after `db:sync`.
 
@@ -47,7 +47,7 @@ OpenGet is a **reputation and supply-chain risk** data platform. The **6-factor 
 | **1. List** | Sign in with GitHub, pick a repo. OpenGet discovers contributors and runs the **6-factor** score nightly. |
 | **2. Claim** | Register your handle so the leaderboard and **badge** reflect verified stewardship. |
 | **3. Prove** | Use **/api/badge/`{github}`** (SVG) and **/api/verify?user=`** (JSON; optional `OPENGET_VERIFY_API_KEYS`) for integrations. |
-| **4. Enterprise** | **/enterprise/audit** — Human-Risk / dependency report MVP (package→maintainer join on roadmap). |
+| **4. Enterprise** | **/enterprise/audit** — npm → GitHub → OpenGet index (listed repos + maintainer scores); lockfile graph and export on roadmap. |
 
 ---
 
@@ -181,7 +181,7 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 | `/list-repo` | GitHub repo picker — one-click listing | Yes |
 | `/dashboard` | Steward profile, registration, and stats | Yes |
 | `/enterprise` | Enterprise messaging | No |
-| `/enterprise/audit` | Dependency / Human-Risk audit shell (MVP) | No |
+| `/enterprise/audit` | Human-Risk audit: `package.json` → npm → GitHub → OpenGet (auth) | Yes |
 | `/legal/terms`, `/legal/privacy` | Legal pages | No |
 
 ---

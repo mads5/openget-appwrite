@@ -150,3 +150,53 @@ export interface PlatformFee {
   source_donation_id: string;
   created_at: string;
 }
+
+/** Result row from `openget-api` action `audit-dependencies` (v2). */
+export interface AuditMaintainerRow {
+  contributor_id: string;
+  github_username: string;
+  is_registered: boolean;
+  contribution_score: number;
+  prs_merged: number;
+  reviews: number;
+  openget_total_score: number | null;
+}
+
+export interface AuditItem {
+  package: string;
+  npm: {
+    name?: string;
+    version?: string;
+    license?: string | null;
+    error?: string;
+    status?: number;
+  } | null;
+  github: { full_name: string; url: string } | null;
+  openget: {
+    status: "npm_error" | "no_github" | "not_listed" | "listed";
+    reason?: string;
+    message?: string;
+    repo_id?: string;
+    full_name?: string;
+    repo_score?: number | null;
+    bus_factor?: number | null;
+    criticality_score?: number | null;
+    has_security_md?: boolean;
+    stars?: number | null;
+    forks?: number | null;
+    top_maintainers?: AuditMaintainerRow[];
+  };
+}
+
+export interface DependencyAuditResult {
+  version: 2;
+  summary: {
+    packages_requested: number;
+    packages_total_in_manifest: number;
+    truncated: boolean;
+    max_packages: number;
+    resolved_to_github: number;
+    in_openget_index: number;
+  };
+  items: AuditItem[];
+}
