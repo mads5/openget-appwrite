@@ -9,11 +9,16 @@ import type { Contributor } from "@/types";
 export default function ContributorsPage() {
   const [contributors, setContributors] = useState<Contributor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadError(null);
     listContributors()
       .then((res) => setContributors(res.contributors))
-      .catch(() => {})
+      .catch((err) => {
+        setContributors([]);
+        setLoadError(err instanceof Error ? err.message : "Could not load contributors.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -28,6 +33,8 @@ export default function ContributorsPage() {
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
+      ) : loadError ? (
+        <p className="text-center text-sm text-destructive py-12 px-2">{loadError}</p>
       ) : (
         <ContributorTable contributors={contributors} />
       )}

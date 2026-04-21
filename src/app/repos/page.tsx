@@ -11,11 +11,16 @@ import type { Repo } from "@/types";
 export default function ReposPage() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadError(null);
     listRepos()
       .then((res) => setRepos(res.repos))
-      .catch(() => {})
+      .catch((err) => {
+        setRepos([]);
+        setLoadError(err instanceof Error ? err.message : "Could not load repositories.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -36,6 +41,8 @@ export default function ReposPage() {
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
+      ) : loadError ? (
+        <p className="text-center text-sm text-destructive py-12 px-2">{loadError}</p>
       ) : (
         <RepoTable repos={repos} />
       )}

@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/site/page-header";
 
 export default function EnterprisePage() {
-  const [stats, setStats] = useState({ repos: 0, contributors: 0, loading: true });
+  const [stats, setStats] = useState({ repos: 0, contributors: 0, loading: true, error: false });
 
   useEffect(() => {
     getStats()
-      .then((s) => setStats({ ...s, loading: false }))
-      .catch(() => setStats((prev) => ({ ...prev, loading: false })));
+      .then((s) => setStats({ ...s, loading: false, error: false }))
+      .catch(() => setStats({ repos: 0, contributors: 0, loading: false, error: true }));
   }, []);
 
   return (
@@ -63,6 +63,8 @@ export default function EnterprisePage() {
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               Loading…
             </div>
+          ) : stats.error ? (
+            <p className="text-sm text-destructive">Could not load index counts. Check connectivity and try again.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
               <div>
@@ -77,6 +79,20 @@ export default function EnterprisePage() {
           )}
         </CardContent>
       </Card>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Public verification API</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          JSON verification and SVG badges for integrations. Server routes need{" "}
+          <code className="text-xs font-mono text-foreground/90">APPWRITE_API_KEY</code> on the Next.js host (see
+          project README). Optional keyed access: <code className="text-xs font-mono">OPENGET_VERIFY_API_KEYS</code>.
+        </p>
+        <pre className="overflow-x-auto rounded-xl border border-border/50 bg-background/50 p-4 text-left text-xs font-mono leading-relaxed text-muted-foreground">
+          <code className="text-primary/90">GET</code> /api/verify?user=octocat
+          <br />
+          <code className="text-primary/90">GET</code> /api/badge/octocat
+        </pre>
+      </section>
 
       <div className="flex flex-wrap gap-3">
         <Button asChild>

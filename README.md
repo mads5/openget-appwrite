@@ -249,6 +249,8 @@ openget-appwrite/
 
 > Appwrite endpoint and project ID are set in `src/lib/appwrite.ts`. Change them there if using a different project.
 
+**Production: SVG badge and verification API (Next.js host):** The browser uses the public Appwrite client, but `/api/badge/...` and `/api/verify` run on the **Next.js server** and need **`APPWRITE_API_KEY`** in that environment (e.g. Appwrite Sites **Environment variables** or Vercel **Project** → **Settings** → **Environment Variables**), not only on Appwrite Functions. After adding the key, redeploy the site. You can check readiness with `GET /api/health` — the JSON includes `badge_routes_configured: true` when the key is present.
+
 </details>
 
 <details>

@@ -43,10 +43,19 @@ export async function GET(
     if (/APPWRITE_API_KEY/.test(message)) {
       return new NextResponse(
         "Badge unavailable: set APPWRITE_API_KEY on the Next.js server for this deployment.",
-        { status: 503 },
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store",
+          },
+        },
       );
     }
-    return new NextResponse("Server error", { status: 500 });
+    return new NextResponse("Server error", {
+      status: 500,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 }
 

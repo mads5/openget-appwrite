@@ -121,9 +121,10 @@ export default function HomePage() {
                 <span className="text-sm font-medium uppercase tracking-wider">Public APIs</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Use verification JSON and badge URLs in CI and internal tools. Server routes read Appwrite with your
-                project key; optional <code className="font-mono text-xs text-foreground/80">OPENGET_VERIFY_API_KEYS</code> for
-                gated access.
+                Use verification JSON and badge URLs in CI and internal tools. The Next.js host must have{" "}
+                <code className="font-mono text-xs text-foreground/80">APPWRITE_API_KEY</code> (server only) for these
+                routes; optional <code className="font-mono text-xs text-foreground/80">OPENGET_VERIFY_API_KEYS</code>{" "}
+                for gated JSON access.
               </p>
               <pre className="mt-4 overflow-x-auto rounded-xl border border-border/50 bg-background/50 p-4 text-left text-xs font-mono leading-relaxed text-muted-foreground">
                 <code className="text-primary/90">GET</code> /api/verify?user=octocat

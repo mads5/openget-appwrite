@@ -40,6 +40,31 @@ export default function EnterpriseAuditPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Card className="og-glass border-border/50">
+          <CardHeader>
+            <CardTitle className="text-base">Use the live index today</CardTitle>
+            <CardDescription>
+              Browse public repos and contributor scores while the file-based audit is in development.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/repos">Repositories</Link>
+              </Button>
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/contributors">Contributors</Link>
+              </Button>
+            </div>
+            <p className="text-xs">Same stewardship data powers verification APIs:</p>
+            <pre className="overflow-x-auto rounded-lg border border-border/50 bg-background/50 p-3 text-left text-xs font-mono text-muted-foreground">
+              GET /api/verify?user=octocat
+              <br />
+              GET /api/badge/octocat
+            </pre>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
