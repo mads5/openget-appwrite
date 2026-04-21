@@ -13,7 +13,7 @@ export default function ContributorsPage() {
 
   useEffect(() => {
     setLoadError(null);
-    listContributors()
+    listContributors(1, 500)
       .then((res) => setContributors(res.contributors))
       .catch((err) => {
         setContributors([]);
@@ -26,7 +26,7 @@ export default function ContributorsPage() {
     <div>
       <PageHeader
         title="Contributors"
-        description="Ranked by the 6-factor stewardship model. Claim your handle on the dashboard to connect your GitHub identity to a public record."
+        description="Ranked by the 6-factor stewardship model (includes people discovered on listed repositories—such as the industry-curated set after a successful import). Claim your handle on the dashboard to link your GitHub identity."
       />
       <div className="container py-8">
       {loading ? (

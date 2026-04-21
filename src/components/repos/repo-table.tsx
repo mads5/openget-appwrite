@@ -5,9 +5,22 @@ import { useMemo, useState } from "react";
 import { Repo } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { POOL_TYPE_LABELS, type PoolTypeId } from "@/lib/pool-types";
+import { INDUSTRY_DEFAULT_REPOS } from "@/lib/industry-default-repos";
+
+type SortPreset =
+  | "industry_ref"
+  | "stars_desc"
+  | "stars_asc"
+  | "repo_score_desc"
+  | "criticality_desc"
+  | "bus_factor_desc"
+  | "name_asc"
+  | "contributors_desc";
 
 interface RepoTableProps {
   repos: Repo[];
+  /** Puts `INDUSTRY_DEFAULT_REPOS` order first, then other repos by stars. */
+  defaultSort?: SortPreset;
 }
 
 function formatNumber(n: number): string {
@@ -26,15 +39,6 @@ function formatBf(v: number | undefined): string {
   return v < 10 ? v.toFixed(1) : String(Math.round(v));
 }
 
-type SortPreset =
-  | "stars_desc"
-  | "stars_asc"
-  | "repo_score_desc"
-  | "criticality_desc"
-  | "bus_factor_desc"
-  | "name_asc"
-  | "contributors_desc";
-
 function sortRepos(repos: Repo[], preset: SortPreset): Repo[] {
   const copy = [...repos];
   const num = (a: number | undefined, b: number | undefined, desc: boolean) => {
@@ -42,8 +46,15 @@ function sortRepos(repos: Repo[], preset: SortPreset): Repo[] {
     const bv = b ?? 0;
     return desc ? bv - av : av - bv;
   };
+  const industryOrder = new Map(INDUSTRY_DEFAULT_REPOS.map((r, i) => [r.full_name, i]));
   copy.sort((a, b) => {
     switch (preset) {
+      case "industry_ref": {
+        const oa = industryOrder.has(a.full_name) ? (industryOrder.get(a.full_name) ?? 999) : 10000;
+        const ob = industryOrder.has(b.full_name) ? (industryOrder.get(b.full_name) ?? 999) : 10000;
+        if (oa !== ob) return oa - ob;
+        return num(a.stars, b.stars, true);
+      }
       case "stars_desc":
         return num(a.stars, b.stars, true);
       case "stars_asc":
@@ -69,8 +80,8 @@ function poolLabel(id: string): string {
   return POOL_TYPE_LABELS[id as PoolTypeId] ?? id;
 }
 
-export function RepoTable({ repos }: RepoTableProps) {
-  const [sort, setSort] = useState<SortPreset>("stars_desc");
+export function RepoTable({ repos, defaultSort = "stars_desc" }: RepoTableProps) {
+  const [sort, setSort] = useState<SortPreset>(defaultSort);
   const sorted = useMemo(() => sortRepos(repos, sort), [repos, sort]);
 
   if (!repos.length) {
@@ -93,6 +104,7 @@ export function RepoTable({ repos }: RepoTableProps) {
           onChange={(e) => setSort(e.target.value as SortPreset)}
           className="flex min-h-[44px] w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-0 sm:h-9 sm:w-auto sm:min-w-[220px] sm:text-sm"
         >
+          <option value="industry_ref">Industry reference, then stars</option>
           <option value="stars_desc">Stars (highest first)</option>
           <option value="stars_asc">Stars (lowest first)</option>
           <option value="repo_score_desc">Popularity score (stars + forks)</option>

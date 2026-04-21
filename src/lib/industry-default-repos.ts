@@ -1,6 +1,7 @@
 /**
  * Default “industry reference” set: widely depended-on open-source projects across stacks.
- * Shown on /repos; merged with live index by `full_name`. Not auto-inserted into Appwrite.
+ * `full_name` list is mirrored in `functions/openget-api/src/industry-refs.js` for `import-industry-repos`.
+ * After `npm run seed:industry`, these appear in the same repos table (listed_by `industry-curated`) with real scores.
  */
 export type IndustryRepo = {
   full_name: string;

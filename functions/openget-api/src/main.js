@@ -7,6 +7,7 @@ import {
   fetchNpmLatest,
   sleep as auditSleep,
 } from './audit-resolve.js';
+import { INDUSTRY_FULL_NAMES, INDUSTRY_IMPORT_BATCH } from './industry-refs.js';
 
 const DATABASE_ID = 'openget-db';
 
@@ -569,6 +570,120 @@ async function triggerSelfAsync(client, payload, log) {
   }
 }
 
+const LISTED_BY_INDUSTRY = 'industry-curated';
+
+/**
+ * Shared path for listing a public GitHub repo: DB row + optional lister link + async fetch-contributors.
+ */
+async function ingestPublicGitHubRepo({ db, client, users, log, githubUrl, listedBy, linkLister, userId }) {
+  const match = githubUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (!match) return { type: 'error', status: 400, error: 'Invalid GitHub URL' };
+  const [, owner, repoName] = match;
+  const fullName = `${owner}/${repoName.replace(/\.git$/, '')}`;
+
+  const existing = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.equal('full_name', fullName), Query.limit(1)]);
+  if (existing.documents.length > 0) return { type: 'exists' };
+
+  const ghToken = process.env.GITHUB_TOKEN || '';
+  const ghHeaders = { 'User-Agent': 'OpenGet', Accept: 'application/vnd.github.v3+json' };
+  if (ghToken) ghHeaders.Authorization = `token ${ghToken}`;
+
+  const ghRes = await fetch(`https://api.github.com/repos/${fullName}`, { headers: ghHeaders });
+  if (!ghRes.ok) return { type: 'error', status: 404, error: 'GitHub repo not found' };
+  const gh = await ghRes.json();
+
+  const hasSecurityMd = await fetch(
+    `https://api.github.com/repos/${fullName}/contents/SECURITY.md`,
+    { headers: ghHeaders },
+  )
+    .then((r) => r.status === 200)
+    .catch(() => false);
+  const eligibleTypes = computeEligiblePoolTypes({
+    stars: gh.stargazers_count || 0,
+    forks: gh.forks_count || 0,
+    criticality_score: 0.5,
+    bus_factor: 3,
+    open_issues: gh.open_issues_count || 0,
+    days_since_push: daysSince(gh.pushed_at),
+    has_security_md: hasSecurityMd,
+  });
+
+  const doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), {
+    github_url: gh.html_url,
+    owner: gh.owner.login,
+    repo_name: gh.name,
+    full_name: gh.full_name,
+    description: gh.description || null,
+    language: gh.language || null,
+    stars: gh.stargazers_count || 0,
+    forks: gh.forks_count || 0,
+    repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
+    criticality_score: 0.5,
+    bus_factor: 3,
+    has_security_md: hasSecurityMd,
+    license: gh.license?.spdx_id || null,
+    eligible_pool_types: JSON.stringify(eligibleTypes),
+    listed_by: listedBy,
+    contributor_count: 0,
+  });
+  let seededContributorCount = 0;
+
+  try {
+    const snapshot = await fetchContributorsSnapshot(fullName, ghHeaders, log);
+    seededContributorCount = Array.isArray(snapshot) ? snapshot.length : 0;
+    await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, {
+      contributor_count: seededContributorCount,
+      contributors_fetched_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    log(`ingest: initial contributor count failed: ${e.message}`);
+  }
+
+  let contributorCount = 0;
+  if (linkLister && userId) {
+    try {
+      const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+        Query.equal('user_id', userId), Query.limit(1),
+      ]);
+      if (contribs.documents.length > 0) {
+        const contrib = contribs.documents[0];
+        await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), {
+          contributor_id: contrib.$id,
+          repo_id: doc.$id,
+          repo_full_name: gh.full_name,
+          commits: 0, prs_merged: 0, lines_added: 0, lines_removed: 0,
+          reviews: 0, issues_closed: 0, score: 0,
+          last_contribution_at: new Date().toISOString(),
+        });
+        const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+          Query.equal('contributor_id', contrib.$id), Query.limit(1),
+        ]);
+        await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contrib.$id, {
+          repo_count: rcCount.total,
+        });
+        contributorCount = await reconcileRepoContributorCount(db, doc.$id);
+      }
+    } catch (e) {
+      log(`ingest: linking lister as contributor: ${e.message}`);
+    }
+  }
+
+  await triggerSelfAsync(
+    client,
+    { action: 'fetch-contributors', repoId: doc.$id, offset: 0 },
+    log,
+  );
+
+  return {
+    type: 'created',
+    response: {
+      id: doc.$id,
+      ...doc,
+      contributor_count: Math.max(seededContributorCount, contributorCount),
+    },
+  };
+}
+
 /**
  * Resolve router action. Prefer JSON body — Appwrite executions often omit or flatten `req.query`
  * even when the client sends `/?action=...` on the execution path.
@@ -662,6 +777,7 @@ export default async ({ req, res, log, error }) => {
             'register-contributor',
             'fetch-contributors',
             'audit-dependencies',
+            'import-industry-repos',
           ],
         });
       }
@@ -672,107 +788,81 @@ export default async ({ req, res, log, error }) => {
         const { github_url } = body;
         if (!github_url) return res.json({ error: 'github_url is required' }, 400);
 
-        const match = github_url.match(/github\.com\/([^/]+)\/([^/]+)/);
-        if (!match) return res.json({ error: 'Invalid GitHub URL' }, 400);
-        const [, owner, repoName] = match;
-        const fullName = `${owner}/${repoName.replace(/\.git$/, '')}`;
-
-        const existing = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.equal('full_name', fullName), Query.limit(1)]);
-        if (existing.documents.length > 0) return res.json({ error: 'Repo already listed' }, 409);
-
-        const ghToken = process.env.GITHUB_TOKEN || '';
-        const ghHeaders = { 'User-Agent': 'OpenGet', Accept: 'application/vnd.github.v3+json' };
-        if (ghToken) ghHeaders.Authorization = `token ${ghToken}`;
-
-        const ghRes = await fetch(`https://api.github.com/repos/${fullName}`, { headers: ghHeaders });
-        if (!ghRes.ok) return res.json({ error: 'GitHub repo not found' }, 404);
-        const gh = await ghRes.json();
-
-        const hasSecurityMd = await fetch(
-          `https://api.github.com/repos/${fullName}/contents/SECURITY.md`,
-          { headers: ghHeaders },
-        )
-          .then((r) => r.status === 200)
-          .catch(() => false);
-        const eligibleTypes = computeEligiblePoolTypes({
-          stars: gh.stargazers_count || 0,
-          forks: gh.forks_count || 0,
-          criticality_score: 0.5,
-          bus_factor: 3,
-          open_issues: gh.open_issues_count || 0,
-          days_since_push: daysSince(gh.pushed_at),
-          has_security_md: hasSecurityMd,
-        });
-
-        const doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), {
-          github_url: gh.html_url,
-          owner: gh.owner.login,
-          repo_name: gh.name,
-          full_name: gh.full_name,
-          description: gh.description || null,
-          language: gh.language || null,
-          stars: gh.stargazers_count || 0,
-          forks: gh.forks_count || 0,
-          repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
-          criticality_score: 0.5,
-          bus_factor: 3,
-          has_security_md: hasSecurityMd,
-          license: gh.license?.spdx_id || null,
-          eligible_pool_types: JSON.stringify(eligibleTypes),
-          listed_by: userId,
-          contributor_count: 0,
-        });
-        let seededContributorCount = 0;
-
-        try {
-          const snapshot = await fetchContributorsSnapshot(fullName, ghHeaders, log);
-          seededContributorCount = Array.isArray(snapshot) ? snapshot.length : 0;
-          await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, {
-            contributor_count: seededContributorCount,
-            contributors_fetched_at: new Date().toISOString(),
-          });
-        } catch (e) {
-          log(`list-repo: initial contributor count failed: ${e.message}`);
-        }
-
-        // Link the lister as initial contributor so repo_count updates immediately
-        let contributorCount = 0;
-        try {
-          const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
-            Query.equal('user_id', userId), Query.limit(1),
-          ]);
-          if (contribs.documents.length > 0) {
-            const contrib = contribs.documents[0];
-            await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), {
-              contributor_id: contrib.$id,
-              repo_id: doc.$id,
-              repo_full_name: gh.full_name,
-              commits: 0, prs_merged: 0, lines_added: 0, lines_removed: 0,
-              reviews: 0, issues_closed: 0, score: 0,
-              last_contribution_at: new Date().toISOString(),
-            });
-            const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-              Query.equal('contributor_id', contrib.$id), Query.limit(1),
-            ]);
-            await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contrib.$id, {
-              repo_count: rcCount.total,
-            });
-            contributorCount = await reconcileRepoContributorCount(db, doc.$id);
-          }
-        } catch (e) {
-          log(`list-repo: linking lister as contributor: ${e.message}`);
-        }
-
-        // Kick off a full contributor sync asynchronously so the HTTP reply stays fast
-        // while every GitHub contributor gets a contributors + repo_contributions row.
-        // The fetch-contributors action self-chains additional chunks until done.
-        await triggerSelfAsync(
+        const result = await ingestPublicGitHubRepo({
+          db,
           client,
-          { action: 'fetch-contributors', repoId: doc.$id, offset: 0 },
+          users,
           log,
-        );
+          githubUrl: String(github_url).trim(),
+          listedBy: userId,
+          linkLister: true,
+          userId,
+        });
+        if (result.type === 'error') return res.json({ error: result.error }, result.status);
+        if (result.type === 'exists') return res.json({ error: 'Repo already listed' }, 409);
+        return res.json(result.response);
+      }
 
-        return res.json({ id: doc.$id, ...doc, contributor_count: Math.max(seededContributorCount, contributorCount) });
+      // ---- Import industry reference repos (operator; self-chains in batches) ----
+      case 'import-industry-repos': {
+        const expected = process.env.OPENGET_INDUSTRY_IMPORT_SECRET;
+        if (!expected) {
+          return res.json({ error: 'OPENGET_INDUSTRY_IMPORT_SECRET is not set on this function' }, 501);
+        }
+        if (String(body.secret || '') !== String(expected)) {
+          return res.json({ error: 'Unauthorized' }, 401);
+        }
+        const offset = Math.max(0, Number(body.offset) || 0);
+        const batch = Math.max(1, Math.min(INDUSTRY_IMPORT_BATCH, Number(body.batch_size) || INDUSTRY_IMPORT_BATCH));
+        const slice = INDUSTRY_FULL_NAMES.slice(offset, offset + batch);
+        const results = [];
+        for (const fullName of slice) {
+          const url = `https://github.com/${fullName}`;
+          try {
+            const r = await ingestPublicGitHubRepo({
+              db,
+              client,
+              users,
+              log,
+              githubUrl: url,
+              listedBy: LISTED_BY_INDUSTRY,
+              linkLister: false,
+              userId: null,
+            });
+            if (r.type === 'exists') {
+              results.push({ full_name: fullName, status: 'already_listed' });
+            } else if (r.type === 'error') {
+              results.push({ full_name: fullName, status: 'error', error: r.error });
+            } else {
+              results.push({ full_name: fullName, status: 'imported', repo_id: r.response.id });
+            }
+          } catch (e) {
+            log(`import-industry-repos ${fullName}: ${e.message}`);
+            results.push({ full_name: fullName, status: 'error', error: e.message });
+          }
+        }
+        const nextOffset = offset + slice.length;
+        const done = nextOffset >= INDUSTRY_FULL_NAMES.length;
+        if (!done) {
+          await triggerSelfAsync(
+            client,
+            {
+              action: 'import-industry-repos',
+              secret: String(body.secret),
+              offset: nextOffset,
+            },
+            log,
+          );
+        }
+        return res.json({
+          ok: true,
+          industry_total: INDUSTRY_FULL_NAMES.length,
+          offset,
+          next_offset: nextOffset,
+          done,
+          batch: slice.length,
+          results,
+        });
       }
 
       // ---- GET MY REPOS ----
@@ -1537,7 +1627,15 @@ export default async ({ req, res, log, error }) => {
             {
               service: 'openget-api',
               message: 'Pass ?action=... in the query string or { "action": "..." } in the JSON body.',
-              discover: ['health', 'version', 'list-repo', 'fetch-contributors', 'register-contributor', 'audit-dependencies'],
+              discover: [
+                'health',
+                'version',
+                'list-repo',
+                'fetch-contributors',
+                'register-contributor',
+                'audit-dependencies',
+                'import-industry-repos',
+              ],
             },
             200,
           );
@@ -1555,9 +1653,10 @@ export default async ({ req, res, log, error }) => {
               'register-contributor',
               'fetch-contributors',
               'audit-dependencies',
+              'import-industry-repos',
             ],
-          },
-          400,
+        },
+        400,
         );
       }
     }

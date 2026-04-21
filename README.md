@@ -262,8 +262,11 @@ openget-appwrite/
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
 | `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
+| `OPENGET_INDUSTRY_IMPORT_SECRET` | For bulk seed | — | Shared secret to authorize **`import-industry-repos`**: add the same value to the function env, then set it locally in `.env.local` and run **`npm run seed:industry`** to ingest 20 public benchmark repos (`listed_by`: `industry-curated`). Chains in batches; re-run is safe. |
 
 **GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The **browser** reads the GitHub OAuth token from **`account.listIdentities()`** and sends it to **`openget-api`** as `github_access_token` (the Functions admin API often cannot read that token). The function then falls back to the **`users`** document, server-side identities, or **`GITHUB_TOKEN`**.
+
+**Industry benchmark repos:** The **Repos** table can include a fixed set of 20 well-known public GitHub projects (see `src/lib/industry-default-repos.ts` and `functions/openget-api/src/industry-refs.js`). They are not magic: run **`npm run deploy:api`**, set **`OPENGET_INDUSTRY_IMPORT_SECRET`** on the function, run **`npm run seed:industry`** from a machine with **`APPWRITE_API_KEY`** and the same secret. Each repo is ingested like **List a repository**, then **`fetch-contributors`** runs in the background; contributors appear on **Contributors** as discovery completes. Default sort on **Repos** is “Industry reference, then stars” when you use the seed.
 
 </details>
 
