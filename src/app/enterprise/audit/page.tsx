@@ -59,7 +59,14 @@ export default function EnterpriseAuditPage() {
       });
       setResult(r);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Audit failed");
+      const raw = e instanceof Error ? e.message : "Audit failed";
+      if (/Unknown action:\s*audit-dependencies/i.test(raw)) {
+        setError(
+          "The openget-api function in Appwrite is running an old build. Deploy the latest: from the repo, run npm run deploy:api (APPWRITE_API_KEY in env). Merging code does not update the function until a new deployment is active.",
+        );
+      } else {
+        setError(raw);
+      }
     } finally {
       setLoading(false);
     }

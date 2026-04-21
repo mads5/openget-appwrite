@@ -358,6 +358,8 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 
 **PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
 
+**Audit: `Unknown action: audit-dependencies`:** The **Supply-chain Human-Risk** page uses the `audit-dependencies` action. If the UI shows this error, the active **`openget-api` deployment** predates that handler. Run **`npm run deploy:api`**, then confirm the new deployment is active in the Appwrite console.
+
 ### Scheduled jobs
 
 | Trigger | Schedule | Purpose |
