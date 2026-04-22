@@ -77,7 +77,10 @@ export default function PrivacyPolicyPage() {
           <li>
             <strong className="text-foreground">OpenGet Shield (if you use it):</strong> Your browser may request camera
             and microphone access for a <strong className="text-foreground">local preview only</strong>. We do not
-            record, upload, or store that audio or video on our servers.
+            record, upload, or store that audio or video on our servers. If the Operator enables optional AI-authored
+            challenges, prompts may be sent to <strong className="text-foreground">Google (Gemini)</strong> or{" "}
+            <strong className="text-foreground">OpenAI</strong> from the app server under their respective terms; only
+            challenge text is generated — your typed answer is checked on our infrastructure.
           </li>
           <li>
             <strong className="text-foreground">Server-side and API use:</strong> If you or your organization use server

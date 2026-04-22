@@ -262,14 +262,18 @@ openget-appwrite/
 <details>
 <summary><strong>Backend</strong> (Appwrite Function env vars)</summary>
 
+**Where to set them:** [Appwrite Console](https://cloud.appwrite.io) → your project → **Functions** → **`openget-api`** → **Settings** → **Variables** (environment variables). Save, then **redeploy** `openget-api` so a new deployment picks up changes. For local runs of the function bundle, use a root `.env` or your process manager — never commit keys.
+
 | Variable | Required | Default | Description |
 |:---------|:--------:|:-------:|:------------|
 | `APPWRITE_API_KEY` | **Yes** | — | Server API key (database + users perms) |
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
 | `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
-| `OPENAI_API_KEY` | No | — | If set on **`openget-api`**, each Shield session can receive a harder, unique AI-written `shieldFix` exercise (multi-line bugs, up to ~30 min). Validation uses **server-side** test vectors only. If unset, Shield uses a **large rotating static pool** (still `shieldFix` + hidden tests); a tiny parity puzzle is only a last-resort fallback if that pool fails to load. |
-| `OPENAI_SHIELD_MODEL` | No | `gpt-4o-mini` | Chat completion model for Shield prompt generation. |
+| `GEMINI_API_KEY` | No | — | **Preferred for Shield** when set on **`openget-api`**: Google [Gemini API](https://ai.google.dev/) key (create one in [Google AI Studio](https://aistudio.google.com/apikey)). Used to author unique `shieldFix` challenges; grading is still **server-side** only. Subject to Google’s quotas and terms (free tiers exist but can change). |
+| `GEMINI_SHIELD_MODEL` | No | `gemini-2.0-flash` | Gemini model id for Shield (must support JSON `responseMimeType`, e.g. **Gemini 1.5/2** Flash). |
+| `OPENAI_API_KEY` | No | — | **Fallback** if Gemini is unset or fails: OpenAI for Shield challenge text only. Same validation rules as Gemini. |
+| `OPENAI_SHIELD_MODEL` | No | `gpt-4o-mini` | OpenAI chat model when Shield uses OpenAI. |
 | `OPENGET_INDUSTRY_IMPORT_SECRET` | For bulk seed | — | Shared secret to authorize **`import-industry-repos`**: add the same value to the function env, then set it locally in `.env.local` and run **`npm run seed:industry`** to ingest 20 public benchmark repos (`listed_by`: `industry-curated`). Chains in batches; re-run is safe. |
 | `OPENGET_SCORE_SALT` | Recommended | — | HMAC input for **deterministic** noise in scoring (set on `openget-api` only; not in the browser). |
 | `OPENGET_JSON_INGEST_SECRET` | For Guardian ingest | — | Authorize **`ingest-openget-json`**; can match **`OPENGET_INDUSTRY_IMPORT_SECRET`** for simplicity. |
