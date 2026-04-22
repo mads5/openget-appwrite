@@ -15,7 +15,7 @@ export interface Repo {
   bus_factor?: number;
   /** True if SECURITY.md exists on default branch (from nightly fetch). */
   has_security_md?: boolean;
-  /** Pool lanes this repo receives distributions from (nightly-computed). */
+  /** Work-area tags derived from scoring (nightly). */
   eligible_pool_types?: string[];
   /** Short AI-generated blurb (cached on first view when OPENAI_API_KEY is configured server-side). */
   ai_summary?: string | null;
@@ -50,6 +50,15 @@ export interface Contributor {
   total_contributions: number;
   is_registered: boolean;
   created_at: string;
+  /** Normalized factor strength 0–1 (F1…F6), written by nightly scoring when DB attributes exist. */
+  score_f1?: number;
+  score_f2?: number;
+  score_f3?: number;
+  score_f4?: number;
+  score_f5?: number;
+  score_f6?: number;
+  /** ~0–100 global rank vs other contributors (optional; backfilled from scoring job). */
+  percentile_global?: number;
 }
 
 export interface ContributorDetail extends Contributor {
@@ -89,17 +98,6 @@ export interface Pool {
   created_at: string;
 }
 
-export interface CollectingPoolSummary {
-  id: string;
-  pool_type: string | null;
-  name: string;
-  description: string | null;
-  round_start: string;
-  round_end: string;
-  total_amount_cents: number;
-  donor_count: number;
-}
-
 export interface WeeklyDistribution {
   id: string;
   pool_id: string;
@@ -125,10 +123,12 @@ export interface Payout {
   contributor_id: string;
   amount_cents: number;
   score_snapshot: number;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "completed" | "failed" | "blocked";
+  /** Appwrite attribute name; external transfer reference when set. */
   stripe_transfer_id: string | null;
   created_at: string;
   completed_at: string | null;
+  failure_reason?: string | null;
 }
 
 export interface User {
@@ -138,6 +138,7 @@ export interface User {
   avatar_url: string | null;
   display_name: string | null;
   email: string | null;
+  /** Appwrite attribute name; external account reference when set. */
   stripe_connect_account_id: string | null;
   created_at: string;
 }
@@ -148,4 +149,54 @@ export interface PlatformFee {
   amount_cents: number;
   source_donation_id: string;
   created_at: string;
+}
+
+/** Result row from `openget-api` action `audit-dependencies` (v2). */
+export interface AuditMaintainerRow {
+  contributor_id: string;
+  github_username: string;
+  is_registered: boolean;
+  contribution_score: number;
+  prs_merged: number;
+  reviews: number;
+  openget_total_score: number | null;
+}
+
+export interface AuditItem {
+  package: string;
+  npm: {
+    name?: string;
+    version?: string;
+    license?: string | null;
+    error?: string;
+    status?: number;
+  } | null;
+  github: { full_name: string; url: string } | null;
+  openget: {
+    status: "npm_error" | "no_github" | "not_listed" | "listed";
+    reason?: string;
+    message?: string;
+    repo_id?: string;
+    full_name?: string;
+    repo_score?: number | null;
+    bus_factor?: number | null;
+    criticality_score?: number | null;
+    has_security_md?: boolean;
+    stars?: number | null;
+    forks?: number | null;
+    top_maintainers?: AuditMaintainerRow[];
+  };
+}
+
+export interface DependencyAuditResult {
+  version: 2;
+  summary: {
+    packages_requested: number;
+    packages_total_in_manifest: number;
+    truncated: boolean;
+    max_packages: number;
+    resolved_to_github: number;
+    in_openget_index: number;
+  };
+  items: AuditItem[];
 }

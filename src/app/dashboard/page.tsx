@@ -3,79 +3,65 @@
 import { useEffect, useState } from "react";
 import { account } from "@/lib/appwrite";
 import { startGithubOAuthSession } from "@/lib/oauth";
-import { getEarnings, registerContributor, onboardStripeConnect, getMyContributor } from "@/lib/api";
+import { registerContributor, getMyContributor } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCents } from "@/lib/seed-data";
-import type { Payout } from "@/types";
+import Link from "next/link";
+import { PageHeader } from "@/components/site/page-header";
+import { README_ENV_SECTION_URL } from "@/lib/site";
 import type { Models } from "appwrite";
-
-interface EarningsData {
-  contributor_id: string;
-  total_earned_cents: number;
-  pending_cents: number;
-  payouts: Payout[];
-}
 
 export default function DashboardPage() {
   const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
-  const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
-  const [registered, setRegistered] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [myContributor, setMyContributor] = useState<Awaited<ReturnType<typeof getMyContributor>>>(null);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [badgeRoutesConfigured, setBadgeRoutesConfigured] = useState<boolean | null>(null);
+  const [copiedBadge, setCopiedBadge] = useState(false);
+  const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    account.get().then(async (u) => {
-      setUser(u);
-      const myContrib = await getMyContributor();
-      if (myContrib) setRegistered(true);
-      try {
-        const earningsData = await getEarnings();
-        setEarnings(earningsData);
-        if (earningsData.contributor_id !== "00000000-0000-0000-0000-000000000000") {
-          setRegistered(true);
+    setOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json() as Promise<{ badge_routes_configured?: boolean }>)
+      .then((d) => setBadgeRoutesConfigured(Boolean(d.badge_routes_configured)))
+      .catch(() => setBadgeRoutesConfigured(false));
+  }, []);
+
+  useEffect(() => {
+    account
+      .get()
+      .then(async (u) => {
+        setUser(u);
+        try {
+          const c = await getMyContributor();
+          setMyContributor(c);
+        } catch {
+          setMyContributor(null);
         }
-      } catch {
-        // Earnings unavailable
-      }
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleRegister = async () => {
     setRegistering(true);
-    setMessage(null);
+    setErrorNotice(null);
+    setSuccessNotice(null);
     try {
-      await registerContributor();
-      setRegistered(true);
-      setMessage("You're registered! You'll receive payouts from listed repos you contribute to.");
+      const c = await registerContributor();
+      setMyContributor(c);
+      setSuccessNotice("Your GitHub handle is now linked. Your OpenGet score and badges reflect verified stewardship.");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Registration failed");
+      setErrorNotice(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setRegistering(false);
-    }
-  };
-
-  const handleStripeConnect = async () => {
-    if (!user) return;
-    setConnectingStripe(true);
-    setMessage(null);
-    try {
-      const result = await onboardStripeConnect(user.$id, user.email || "");
-      if (result.onboarding_url) {
-        window.location.href = result.onboarding_url;
-      } else {
-        setMessage("Stripe account created. Reload to check status.");
-      }
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Stripe connection failed. Make sure Stripe is configured.");
-    } finally {
-      setConnectingStripe(false);
     }
   };
 
@@ -89,156 +75,159 @@ export default function DashboardPage() {
 
   if (!user) {
     return (
-      <div className="container py-20 text-center">
-        <h2 className="text-2xl font-bold mb-4">Sign in to view your dashboard</h2>
-        <p className="text-muted-foreground mb-6">
-          Connect your GitHub account to see your earnings, register as a
-          contributor, and manage payouts.
-        </p>
-        <Button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            startGithubOAuthSession(account, "/dashboard", "/dashboard?auth_error=true");
-          }}
-        >
-          Sign in with GitHub
-        </Button>
+      <div>
+        <PageHeader
+          title="Dashboard"
+          description="Sign in with GitHub to link your handle to a verified stewardship record and public profile."
+        />
+        <div className="container max-w-lg py-12">
+        <Card className="og-glass border-border/50">
+          <CardHeader>
+            <CardTitle>Sign in</CardTitle>
+            <CardDescription>GitHub is used to match your account to public contribution history.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => startGithubOAuthSession(account, "/dashboard", "/dashboard?auth_error=true")}
+              className="w-full"
+            >
+              Sign in with GitHub
+            </Button>
+          </CardContent>
+        </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
-      <div className="flex items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">{user.name}</h1>
-          <p className="text-muted-foreground">Your Dashboard</p>
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        title="Dashboard"
+        description={
+          <>
+            Human verification for your public record — scores emphasize merge, review, and triage. See{" "}
+            <Link href="/" className="text-primary hover:underline">
+              how it works
+            </Link>
+            .
+          </>
+        }
+      />
+    <div className="container max-w-2xl py-10 space-y-6">
+      {errorNotice && <p className="text-sm text-destructive">{errorNotice}</p>}
+      {successNotice && <p className="text-sm text-green-400">{successNotice}</p>}
 
-      {message && (
-        <div className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 text-sm">
-          {message}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {!registered && (
-            <Card className="border-primary/30">
-              <CardHeader>
-                <CardTitle>Register as a Contributor</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Register your GitHub username on OpenGet so you can receive
-                  payouts from repos you contribute to.
-                </p>
-                <Button onClick={handleRegister} disabled={registering}>
-                  {registering ? "Registering..." : "Register Now"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Earnings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <div>
-                  <div className="text-3xl font-bold text-primary">
-                    {formatCents(earnings?.total_earned_cents ?? 0)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Earned</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold">
-                    {formatCents(earnings?.pending_cents ?? 0)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Pending</div>
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground mb-4">
-                Payouts are distributed weekly from the monthly donation pool.
-                Amounts shown in USD; Stripe converts to your local bank
-                currency automatically.
-              </p>
-
-              {earnings?.payouts && earnings.payouts.length > 0 ? (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium mb-2">Recent Payouts</h3>
-                  {earnings.payouts.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
-                    >
-                      <div className="text-sm">
-                        {new Date(p.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{formatCents(p.amount_cents)}</span>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            p.status === "completed"
-                              ? "bg-green-500/10 text-green-400"
-                              : p.status === "failed"
-                              ? "bg-red-500/10 text-red-400"
-                              : ""
-                          }
-                        >
-                          {p.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  No payouts yet. Your earnings will appear here after a
-                  weekly distribution round.
+      <Card>
+        <CardHeader>
+          <CardTitle>Your profile</CardTitle>
+          <CardDescription>Link your GitHub account so we can show your 6-factor proof-of-work to others.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {myContributor ? (
+            <>
+              {badgeRoutesConfigured === false && (
+                <p className="text-sm text-amber-200/90 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                  SVG badge and verification routes need <code className="text-xs font-mono">APPWRITE_API_KEY</code> on
+                  this Next.js host (not only on Appwrite Functions).{" "}
+                  <a
+                    href={README_ENV_SECTION_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Environment variables
+                  </a>{" "}
+                  · check <code className="text-xs font-mono">/api/health</code> for{" "}
+                  <code className="text-xs font-mono">badge_routes_configured</code>.
                 </p>
               )}
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">{myContributor.github_username}</p>
+                  <p className="text-sm text-muted-foreground">
+                    OpenGet score: <strong className="text-foreground">{myContributor.total_score.toFixed(3)}</strong>
+                  </p>
+                  {myContributor.is_registered && (
+                    <Badge className="mt-2" variant="secondary">
+                      Claimed
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="default" size="sm">
+                    <Link href={`/contributors/${myContributor.id}`}>View public profile</Link>
+                  </Button>
+                  {myContributor.github_username ? (
+                    badgeRoutesConfigured === false ? (
+                      <Button variant="outline" size="sm" disabled title="Configure APPWRITE_API_KEY on the Next.js host">
+                        Open SVG badge
+                      </Button>
+                    ) : (
+                      <Button asChild variant="outline" size="sm">
+                        <a
+                          href={`/api/badge/${encodeURIComponent(myContributor.github_username)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open SVG badge
+                        </a>
+                      </Button>
+                    )
+                  ) : null}
+                </div>
+              </div>
+              {myContributor.github_username && badgeRoutesConfigured ? (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs text-muted-foreground">README / docs embed (Markdown)</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                    <pre className="flex-1 overflow-x-auto rounded-md border border-border/60 bg-background/50 p-2 text-xs font-mono text-muted-foreground">
+                      {origin
+                        ? `![OpenGet score](${origin}/api/badge/${encodeURIComponent(myContributor.github_username)})`
+                        : "…"}
+                    </pre>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={!origin}
+                      onClick={() => {
+                        const u = myContributor.github_username;
+                        if (!u || !origin) return;
+                        const md = `![OpenGet score](${origin}/api/badge/${encodeURIComponent(u)})`;
+                        void navigator.clipboard.writeText(md).then(() => {
+                          setCopiedBadge(true);
+                          window.setTimeout(() => setCopiedBadge(false), 2000);
+                        });
+                      }}
+                    >
+                      {copiedBadge ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <Button onClick={handleRegister} disabled={registering}>
+              {registering ? "Linking…" : "Link GitHub contributor profile"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Stripe Connect</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your Stripe account to receive payouts directly to
-                your bank in your local currency.
-              </p>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleStripeConnect}
-                disabled={connectingStripe}
-              >
-                {connectingStripe ? "Connecting..." : "Connect Stripe Account"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Links</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <a href="/list-repo" className="block text-sm text-primary hover:underline">List a Repo</a>
-              <a href="/contributors" className="block text-sm text-primary hover:underline">View Contributors</a>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>For enterprises</CardTitle>
+          <CardDescription>Dependency Human-Risk reports (MVP) — same scoring engine, B2B packaging next.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href="/enterprise/audit">Open supply-chain audit (preview)</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
     </div>
   );
 }

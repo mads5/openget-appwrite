@@ -1,18 +1,15 @@
-import { Client, Databases, Query, Users, ID } from 'node-appwrite';
-import {
-  computeRepoDistributionWeight,
-  filterReposForDistribution,
-} from './repo-distribution.js';
+import { Client, Databases, Query, Users, ID, Functions, ExecutionMethod } from 'node-appwrite';
 import { filterReposForPoolType, computeEligiblePoolTypes } from './pool-eligibility.js';
 import {
-  DEFAULT_CHECKOUT_POOL_TYPE,
-  POOL_TYPES,
-  POOL_TYPE_DESCRIPTIONS,
-} from './pool-types.js';
+  listDependencyNamesFromPackageJson,
+  listDependencyNamesFromObject,
+  githubFullNameFromNpmRepository,
+  fetchNpmLatest,
+  sleep as auditSleep,
+} from './audit-resolve.js';
+import { INDUSTRY_FULL_NAMES, INDUSTRY_IMPORT_BATCH } from './industry-refs.js';
 
 const DATABASE_ID = 'openget-db';
-const PLATFORM_FEE_RATE = 0.01;
-const PLATFORM_FEE_MIN_CENTS = 50;
 
 const COL = {
   REPOS: 'repos',
@@ -27,7 +24,6 @@ const COL = {
   USERS: 'users',
 };
 
-const MIN_PAYOUT_CENTS = 50;
 const SCORE_WEIGHTS = {
   total_contributions: 0.15,
   prs_raised: 0.10,
@@ -42,51 +38,6 @@ const QUALIFIED_REPO_CAP = 20;
 const REVIEW_CAP = 200;
 const RELEASE_CAP = 30;
 const MIN_REPO_SCORE = 5;
-
-function calculatePlatformFeeCents(amountCents, totalPoolCents = 0) {
-  const amount = Math.max(0, Number(amountCents || 0));
-  const poolTotal = Math.max(0, Number(totalPoolCents || 0));
-
-  // Tiered fee to keep platform sustainable for small pools/donations.
-  // - Early/small pools: slightly higher percentage + floor
-  // - Large pools: keep fee lower to stay donor-friendly
-  let rate = PLATFORM_FEE_RATE;
-  if (poolTotal < 100000) rate = 0.03; // < $1,000 pooled: 3%
-  else if (poolTotal < 1000000) rate = 0.02; // < $10,000 pooled: 2%
-  else rate = 0.01; // large pools: 1%
-
-  const pctFee = Math.ceil(amount * rate);
-  const fee = Math.max(PLATFORM_FEE_MIN_CENTS, pctFee);
-  return Math.min(amount, fee);
-}
-
-/**
- * @param {import('node-appwrite').Models.Document[]} documents
- * @param {string} poolType
- */
-function resolveCollectingPoolForType(documents, poolType) {
-  const pt = POOL_TYPES.includes(poolType) ? poolType : DEFAULT_CHECKOUT_POOL_TYPE;
-  let poolDoc = documents.find((p) => String(p.pool_type || '') === pt);
-  if (!poolDoc && pt === DEFAULT_CHECKOUT_POOL_TYPE) {
-    poolDoc = documents.find((p) => !p.pool_type || !String(p.pool_type).trim());
-  }
-  return poolDoc || documents[0] || null;
-}
-
-function daysInMonth(year, month) {
-  return new Date(year, month, 0).getDate();
-}
-
-function getActiveMonthInfo() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const totalDays = daysInMonth(y, m);
-  const dayOfMonth = now.getDate();
-  const dayOfWeek = now.getDay();
-  const isLastDay = dayOfMonth === totalDays;
-  return { year: y, month: m, totalDays, dayOfMonth, dayOfWeek, isLastDay };
-}
 
 const GH_HEADERS_BASE = {
   Accept: 'application/vnd.github+json',
@@ -170,21 +121,35 @@ async function fetchHasSecurityMdWithHeaders(owner, repoName, ghHeaders) {
   return res.status === 200;
 }
 
-async function fetchStatsContributorsWithHeaders(owner, repo, ghHeaders) {
+// GitHub's /stats/contributors endpoint returns 202 Accepted while the stats
+// cache is being (re)computed. Cold or low-traffic repos can stay in that
+// state indefinitely (observed 150s+ with no progress), so we poll for a
+// bounded window and then return null so the caller can gracefully degrade
+// to the /contributors snapshot (which doesn't have this behavior).
+async function fetchStatsContributorsWithHeaders(owner, repo, ghHeaders, log) {
   const url = `https://api.github.com/repos/${owner}/${repo}/stats/contributors`;
-  for (let attempt = 0; attempt < 8; attempt++) {
+  const maxAttempts = 12;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const res = await fetch(url, { headers: ghHeaders });
     if (res.status === 202) {
-      await sleep(3000);
+      const wait = Math.min(6000, 2000 + attempt * 500);
+      await sleep(wait);
       continue;
+    }
+    if (res.status === 204) {
+      return [];
     }
     if (!res.ok) {
       const t = await res.text();
       throw new Error(`stats/contributors ${res.status}: ${t}`);
     }
-    return res.json();
+    const body = await res.json();
+    return Array.isArray(body) ? body : [];
   }
-  throw new Error('GitHub stats/contributors did not become ready in time');
+  if (typeof log === 'function') {
+    log(`stats/contributors not ready for ${owner}/${repo} after ${maxAttempts} attempts; falling back to contributor snapshot only`);
+  }
+  return null;
 }
 
 function currentMonthKey() {
@@ -364,7 +329,7 @@ async function recomputeContributorAggregate(db, contributorId, monthKey) {
     }
   }
 
-  const score = computeContributorScore(
+  const result = computeContributorScore(
     totalContributions,
     prsRaisedMonth,
     prsMergedMonth,
@@ -374,9 +339,15 @@ async function recomputeContributorAggregate(db, contributorId, monthKey) {
   );
 
   await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contributorId, {
-    total_score: score,
+    total_score: result.score,
     total_contributions: totalContributions,
     repo_count: allRc.total,
+    score_f1: result.factors.f1,
+    score_f2: result.factors.f2,
+    score_f3: result.factors.f3,
+    score_f4: result.factors.f4,
+    score_f5: result.factors.f5,
+    score_f6: result.factors.f6,
   });
 }
 
@@ -388,6 +359,10 @@ async function fetchReleasesForRepoWithHeaders(owner, repo, ghHeaders) {
   return res.json();
 }
 
+/**
+ * 6-factor model. Returns raw factor strengths (0–1) for the contributor profile UI.
+ * @returns {{ score: number, factors: { f1: number, f2: number, f3: number, f4: number, f5: number, f6: number, mergeRatioPenalty: number } }}
+ */
 function computeContributorScore(
   totalContributions,
   prsRaised,
@@ -422,227 +397,10 @@ function computeContributorScore(
     f5 * SCORE_WEIGHTS.review_activity +
     f6 * SCORE_WEIGHTS.release_triage;
 
-  return Math.round(raw * 1000) / 1000;
-}
-
-async function ensureCollectingPools(db) {
-  const now = new Date();
-  const nextMonth = now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2;
-  const nextYear = nextMonth === 1 ? now.getFullYear() + 1 : now.getFullYear();
-  const nextTotalDays = daysInMonth(nextYear, nextMonth);
-  const roundStart = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
-  const roundEnd = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextTotalDays).padStart(2, '0')}`;
-
-  const existing = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-    Query.equal('status', 'collecting'),
-    Query.limit(100),
-  ]);
-
-  const legacy = existing.documents.find(
-    (p) => p.round_start === roundStart && !(p.pool_type && String(p.pool_type).trim()),
-  );
-  if (legacy) {
-    await db.updateDocument(DATABASE_ID, COL.POOLS, legacy.$id, {
-      pool_type: 'community_match',
-    });
-    legacy.pool_type = 'community_match';
-  }
-
-  const out = [];
-  for (const poolType of POOL_TYPES) {
-    const found = existing.documents.find(
-      (p) => p.round_start === roundStart && String(p.pool_type || '') === poolType,
-    );
-    if (found) {
-      out.push(found);
-      continue;
-    }
-    const name = `Pool ${roundStart.slice(0, 7)} - ${poolType}`;
-    const desc = POOL_TYPE_DESCRIPTIONS[poolType] || '';
-    const pool = await db.createDocument(DATABASE_ID, COL.POOLS, ID.unique(), {
-      name,
-      description: `${desc} (${roundStart} to ${roundEnd})`,
-      total_amount_cents: 0,
-      platform_fee_cents: 0,
-      distributable_amount_cents: 0,
-      daily_budget_cents: 0,
-      remaining_cents: 0,
-      donor_count: 0,
-      status: 'collecting',
-      round_start: roundStart,
-      round_end: roundEnd,
-      pool_type: poolType,
-    });
-    out.push(pool);
-  }
-  return out;
-}
-
-async function activatePool(db, pool) {
-  const existingFee = Number(pool.platform_fee_cents || 0);
-  const fee =
-    existingFee > 0
-      ? existingFee
-      : calculatePlatformFeeCents(pool.total_amount_cents || 0, pool.total_amount_cents || 0);
-  const distributable = Math.max(0, (pool.total_amount_cents || 0) - fee);
-  const [y, m] = pool.round_start.split('-').map(Number);
-  const totalDays = daysInMonth(y, m);
-  const dailyBudget = Math.floor(distributable / totalDays);
-
-  await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-    status: 'active',
-    platform_fee_cents: fee,
-    distributable_amount_cents: distributable,
-    daily_budget_cents: dailyBudget,
-    remaining_cents: distributable,
-  });
-
+  const score = Math.round(raw * 1000) / 1000;
   return {
-    ...pool,
-    status: 'active',
-    platform_fee_cents: fee,
-    distributable_amount_cents: distributable,
-    daily_budget_cents: dailyBudget,
-    remaining_cents: distributable,
-  };
-}
-
-async function listActivePools(db) {
-  const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-    Query.equal('status', 'active'),
-    Query.limit(100),
-  ]);
-  return active.documents;
-}
-
-async function activateAllCollectingForCurrentMonth(db) {
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-    Query.equal('status', 'collecting'),
-    Query.limit(100),
-  ]);
-  const matched = collecting.documents.filter(
-    (p) => p.round_start && p.round_start.startsWith(monthKey),
-  );
-  const activated = [];
-  for (const p of matched) {
-    activated.push(await activatePool(db, p));
-  }
-  return activated;
-}
-
-async function ensureActivePools(db) {
-  let active = await listActivePools(db);
-  if (active.length > 0) return active;
-  await activateAllCollectingForCurrentMonth(db);
-  active = await listActivePools(db);
-  return active;
-}
-
-async function distributeWeekly(db, pool, budget) {
-  const repos = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(5000)]);
-  let reposWithScore = filterReposForDistribution(repos.documents);
-  const poolType = pool.pool_type && String(pool.pool_type).trim();
-  if (poolType) {
-    reposWithScore = filterReposForPoolType(reposWithScore, poolType);
-  }
-
-  if (reposWithScore.length === 0) {
-    const msg = poolType
-      ? `No repos eligible for pool_type=${poolType} (or missing score)`
-      : 'No repos with score > 0';
-    return {
-      pool_id: pool.$id,
-      distributed_cents: 0,
-      payouts_created: 0,
-      message: msg,
-    };
-  }
-
-  const repoWeights = reposWithScore.map((r) => ({
-    repo: r,
-    weight: computeRepoDistributionWeight(r),
-  }));
-  const totalWeight = repoWeights.reduce((s, rw) => s + rw.weight, 0);
-
-  let totalDistributed = 0;
-  let totalPayouts = 0;
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-
-  for (const { repo, weight } of repoWeights) {
-    const repoBudget = Math.floor((weight / totalWeight) * budget);
-    if (repoBudget <= 0) continue;
-
-    const contribs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-      Query.equal('repo_id', repo.$id),
-      Query.limit(5000),
-    ]);
-
-    const eligible = [];
-    for (const rc of contribs.documents) {
-      try {
-        const contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
-        if (!contributor.user_id) continue;
-        if ((contributor.total_score || 0) <= 0) continue;
-        eligible.push({ rc, contributor });
-      } catch {
-        continue;
-      }
-    }
-
-    if (eligible.length === 0) continue;
-
-    const totalScore = eligible.reduce((s, e) => s + (e.contributor.total_score || 0), 0);
-    if (totalScore <= 0) continue;
-
-    const rawShares = eligible.map((e) => ({
-      ...e,
-      raw: ((e.contributor.total_score || 0) / totalScore) * repoBudget,
-    }));
-    const floors = rawShares.map((r) => Math.floor(r.raw));
-    const remainder = repoBudget - floors.reduce((a, b) => a + b, 0);
-    const order = rawShares
-      .map((r, i) => ({ i, frac: r.raw - floors[i] }))
-      .sort((a, b) => b.frac - a.frac);
-    const amounts = [...floors];
-    for (let r = 0; r < remainder && r < order.length; r++) {
-      amounts[order[r].i] += 1;
-    }
-
-    for (let i = 0; i < eligible.length; i++) {
-      const amount = amounts[i];
-      if (amount < MIN_PAYOUT_CENTS) continue;
-
-      await db.createDocument(DATABASE_ID, COL.PAYOUTS, ID.unique(), {
-        pool_id: pool.$id,
-        contributor_id: eligible[i].contributor.$id,
-        amount_cents: amount,
-        score_snapshot: eligible[i].contributor.total_score || 0,
-        status: 'pending',
-      });
-      totalDistributed += amount;
-      totalPayouts++;
-    }
-  }
-
-  await db.createDocument(DATABASE_ID, COL.WEEKLY_DISTRIBUTIONS, ID.unique(), {
-    pool_id: pool.$id,
-    week_start: weekStart.toISOString().slice(0, 10),
-    week_end: weekEnd.toISOString().slice(0, 10),
-    budget_cents: budget,
-    distributed_cents: totalDistributed,
-    payouts_created: totalPayouts,
-  });
-
-  return {
-    pool_id: pool.$id,
-    distributed_cents: totalDistributed,
-    payouts_created: totalPayouts,
+    score,
+    factors: { f1, f2, f3, f4, f5, f6, mergeRatioPenalty },
   };
 }
 
@@ -657,7 +415,9 @@ function daysSince(dateLike) {
 
 async function fetchContributorsSnapshot(fullName, ghHeaders, log) {
   const all = [];
-  for (let page = 1; page <= 3; page++) {
+  // Up to 10 pages x 100 per page = 1,000 contributors. Covers all practical OSS repos
+  // without abusing GitHub rate limits. Loop exits early once a page returns < 100 rows.
+  for (let page = 1; page <= 10; page++) {
     const res = await fetch(
       `https://api.github.com/repos/${fullName}/contributors?per_page=100&page=${page}`,
       { headers: ghHeaders },
@@ -789,17 +549,194 @@ function initClient() {
     .setKey(process.env.APPWRITE_API_KEY);
 }
 
+/**
+ * Fire-and-forget async self-invocation so long-running work (per-repo contributor sync)
+ * can continue past the caller's response without blocking the HTTP reply.
+ */
+async function triggerSelfAsync(client, payload, log) {
+  const functionId = process.env.APPWRITE_FUNCTION_ID || 'openget-api';
+  try {
+    const fnClient = new Functions(client);
+    await fnClient.createExecution(
+      functionId,
+      JSON.stringify(payload),
+      true,
+      '/',
+      ExecutionMethod.POST,
+      { 'content-type': 'application/json' },
+    );
+  } catch (e) {
+    log(`triggerSelfAsync(${payload?.action || 'unknown'}): ${e.message}`);
+  }
+}
+
+const LISTED_BY_INDUSTRY = 'industry-curated';
+
+/**
+ * Shared path for listing a public GitHub repo: DB row + optional lister link + async fetch-contributors.
+ */
+async function ingestPublicGitHubRepo({ db, client, users, log, githubUrl, listedBy, linkLister, userId }) {
+  const match = githubUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (!match) return { type: 'error', status: 400, error: 'Invalid GitHub URL' };
+  const [, owner, repoName] = match;
+  const fullName = `${owner}/${repoName.replace(/\.git$/, '')}`;
+
+  const existing = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.equal('full_name', fullName), Query.limit(1)]);
+  if (existing.documents.length > 0) return { type: 'exists' };
+
+  const ghToken = process.env.GITHUB_TOKEN || '';
+  const ghHeaders = { 'User-Agent': 'OpenGet', Accept: 'application/vnd.github.v3+json' };
+  if (ghToken) ghHeaders.Authorization = `token ${ghToken}`;
+
+  const ghRes = await fetch(`https://api.github.com/repos/${fullName}`, { headers: ghHeaders });
+  if (!ghRes.ok) return { type: 'error', status: 404, error: 'GitHub repo not found' };
+  const gh = await ghRes.json();
+
+  const hasSecurityMd = await fetch(
+    `https://api.github.com/repos/${fullName}/contents/SECURITY.md`,
+    { headers: ghHeaders },
+  )
+    .then((r) => r.status === 200)
+    .catch(() => false);
+  const eligibleTypes = computeEligiblePoolTypes({
+    stars: gh.stargazers_count || 0,
+    forks: gh.forks_count || 0,
+    criticality_score: 0.5,
+    bus_factor: 3,
+    open_issues: gh.open_issues_count || 0,
+    days_since_push: daysSince(gh.pushed_at),
+    has_security_md: hasSecurityMd,
+  });
+
+  const doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), {
+    github_url: gh.html_url,
+    owner: gh.owner.login,
+    repo_name: gh.name,
+    full_name: gh.full_name,
+    description: gh.description || null,
+    language: gh.language || null,
+    stars: gh.stargazers_count || 0,
+    forks: gh.forks_count || 0,
+    repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
+    criticality_score: 0.5,
+    bus_factor: 3,
+    has_security_md: hasSecurityMd,
+    license: gh.license?.spdx_id || null,
+    eligible_pool_types: JSON.stringify(eligibleTypes),
+    listed_by: listedBy,
+    contributor_count: 0,
+  });
+  let seededContributorCount = 0;
+
+  try {
+    const snapshot = await fetchContributorsSnapshot(fullName, ghHeaders, log);
+    seededContributorCount = Array.isArray(snapshot) ? snapshot.length : 0;
+    await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, {
+      contributor_count: seededContributorCount,
+      contributors_fetched_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    log(`ingest: initial contributor count failed: ${e.message}`);
+  }
+
+  let contributorCount = 0;
+  if (linkLister && userId) {
+    try {
+      const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+        Query.equal('user_id', userId), Query.limit(1),
+      ]);
+      if (contribs.documents.length > 0) {
+        const contrib = contribs.documents[0];
+        await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), {
+          contributor_id: contrib.$id,
+          repo_id: doc.$id,
+          repo_full_name: gh.full_name,
+          commits: 0, prs_merged: 0, lines_added: 0, lines_removed: 0,
+          reviews: 0, issues_closed: 0, score: 0,
+          last_contribution_at: new Date().toISOString(),
+        });
+        const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+          Query.equal('contributor_id', contrib.$id), Query.limit(1),
+        ]);
+        await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contrib.$id, {
+          repo_count: rcCount.total,
+        });
+        contributorCount = await reconcileRepoContributorCount(db, doc.$id);
+      }
+    } catch (e) {
+      log(`ingest: linking lister as contributor: ${e.message}`);
+    }
+  }
+
+  await triggerSelfAsync(
+    client,
+    { action: 'fetch-contributors', repoId: doc.$id, offset: 0 },
+    log,
+  );
+
+  return {
+    type: 'created',
+    response: {
+      id: doc.$id,
+      ...doc,
+      contributor_count: Math.max(seededContributorCount, contributorCount),
+    },
+  };
+}
+
+/**
+ * Resolve router action. Prefer JSON body — Appwrite executions often omit or flatten `req.query`
+ * even when the client sends `/?action=...` on the execution path.
+ */
+function resolveRouterAction(req, body) {
+  const b = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const fromBody = b.action;
+  if (fromBody != null && String(fromBody).trim() !== '') return String(fromBody).trim();
+
+  const q = req?.query;
+  if (q && typeof q === 'object') {
+    const fromQuery = q.action;
+    if (fromQuery != null && String(fromQuery).trim() !== '') return String(fromQuery).trim();
+  }
+
+  const url = typeof req?.url === 'string' ? req.url : '';
+  if (url.includes('action=')) {
+    try {
+      const idx = url.indexOf('?');
+      const sp = idx >= 0 ? new URLSearchParams(url.slice(idx + 1)) : null;
+      const a = sp?.get('action');
+      if (a && a.trim() !== '') return a.trim();
+    } catch { /* ignore */ }
+  }
+
+  const pathOnly = typeof req?.path === 'string' ? req.path.replace(/^\//, '').trim() : '';
+  if (pathOnly && pathOnly !== '') return pathOnly;
+
+  return '';
+}
+
+function parseRequestBody(raw) {
+  if (raw == null) return {};
+  try {
+    if (typeof raw === 'string') return JSON.parse(raw || '{}');
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
+      return JSON.parse(raw.toString('utf8') || '{}');
+    }
+    if (typeof raw === 'object' && !Array.isArray(raw)) return { ...raw };
+  } catch {
+    return {};
+  }
+  return {};
+}
+
 export default async ({ req, res, log, error }) => {
   const client = initClient();
   const db = new Databases(client);
   const users = new Users(client);
 
-  let body = {};
-  if (req.body) {
-    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {}
-  }
+  const body = parseRequestBody(req.body);
 
-  const action = req.query?.action || body.action || req.path?.replace(/^\//, '') || '';
+  const action = resolveRouterAction(req, body);
   const userId = req.headers?.['x-appwrite-user-id'] || null;
   const method = req.method || 'GET';
 
@@ -807,6 +744,43 @@ export default async ({ req, res, log, error }) => {
 
   try {
     switch (action) {
+      case 'health':
+      case 'ping': {
+        let database_schema = null;
+        try {
+          const meta = await db.listDocuments(DATABASE_ID, 'app_meta', [Query.limit(1)]);
+          const doc = meta.documents[0];
+          if (doc && doc.schema_version != null) database_schema = doc.schema_version;
+        } catch {
+          /* optional: collection not created yet */
+        }
+        return res.json({
+          ok: true,
+          service: 'openget-api',
+          time: new Date().toISOString(),
+          database_schema,
+        });
+      }
+
+      case 'version': {
+        return res.json({
+          service: 'openget-api',
+          api: 2,
+          runtime: process.version,
+          actions: [
+            'health',
+            'version',
+            'list-repo',
+            'delist-repo',
+            'get-my-repos',
+            'get-repo-contributors',
+            'register-contributor',
+            'fetch-contributors',
+            'audit-dependencies',
+            'import-industry-repos',
+          ],
+        });
+      }
 
       // ---- LIST REPO ----
       case 'list-repo': {
@@ -814,100 +788,81 @@ export default async ({ req, res, log, error }) => {
         const { github_url } = body;
         if (!github_url) return res.json({ error: 'github_url is required' }, 400);
 
-        const match = github_url.match(/github\.com\/([^/]+)\/([^/]+)/);
-        if (!match) return res.json({ error: 'Invalid GitHub URL' }, 400);
-        const [, owner, repoName] = match;
-        const fullName = `${owner}/${repoName.replace(/\.git$/, '')}`;
-
-        const existing = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.equal('full_name', fullName), Query.limit(1)]);
-        if (existing.documents.length > 0) return res.json({ error: 'Repo already listed' }, 409);
-
-        const ghToken = process.env.GITHUB_TOKEN || '';
-        const ghHeaders = { 'User-Agent': 'OpenGet', Accept: 'application/vnd.github.v3+json' };
-        if (ghToken) ghHeaders.Authorization = `token ${ghToken}`;
-
-        const ghRes = await fetch(`https://api.github.com/repos/${fullName}`, { headers: ghHeaders });
-        if (!ghRes.ok) return res.json({ error: 'GitHub repo not found' }, 404);
-        const gh = await ghRes.json();
-
-        const hasSecurityMd = await fetch(
-          `https://api.github.com/repos/${fullName}/contents/SECURITY.md`,
-          { headers: ghHeaders },
-        )
-          .then((r) => r.status === 200)
-          .catch(() => false);
-        const eligibleTypes = computeEligiblePoolTypes({
-          stars: gh.stargazers_count || 0,
-          forks: gh.forks_count || 0,
-          criticality_score: 0.5,
-          bus_factor: 3,
-          open_issues: gh.open_issues_count || 0,
-          days_since_push: daysSince(gh.pushed_at),
-          has_security_md: hasSecurityMd,
+        const result = await ingestPublicGitHubRepo({
+          db,
+          client,
+          users,
+          log,
+          githubUrl: String(github_url).trim(),
+          listedBy: userId,
+          linkLister: true,
+          userId,
         });
+        if (result.type === 'error') return res.json({ error: result.error }, result.status);
+        if (result.type === 'exists') return res.json({ error: 'Repo already listed' }, 409);
+        return res.json(result.response);
+      }
 
-        const doc = await db.createDocument(DATABASE_ID, COL.REPOS, ID.unique(), {
-          github_url: gh.html_url,
-          owner: gh.owner.login,
-          repo_name: gh.name,
-          full_name: gh.full_name,
-          description: gh.description || null,
-          language: gh.language || null,
-          stars: gh.stargazers_count || 0,
-          forks: gh.forks_count || 0,
-          repo_score: (gh.stargazers_count || 0) + (gh.forks_count || 0),
-          criticality_score: 0.5,
-          bus_factor: 3,
-          has_security_md: hasSecurityMd,
-          license: gh.license?.spdx_id || null,
-          eligible_pool_types: JSON.stringify(eligibleTypes),
-          listed_by: userId,
-          contributor_count: 0,
-        });
-        let seededContributorCount = 0;
-
-        try {
-          const snapshot = await fetchContributorsSnapshot(fullName, ghHeaders, log);
-          seededContributorCount = Array.isArray(snapshot) ? snapshot.length : 0;
-          await db.updateDocument(DATABASE_ID, COL.REPOS, doc.$id, {
-            contributor_count: seededContributorCount,
-            contributors_fetched_at: new Date().toISOString(),
-          });
-        } catch (e) {
-          log(`list-repo: initial contributor count failed: ${e.message}`);
+      // ---- Import industry reference repos (operator; self-chains in batches) ----
+      case 'import-industry-repos': {
+        const expected = process.env.OPENGET_INDUSTRY_IMPORT_SECRET;
+        if (!expected) {
+          return res.json({ error: 'OPENGET_INDUSTRY_IMPORT_SECRET is not set on this function' }, 501);
         }
-
-        // Link the lister as initial contributor so repo_count updates immediately
-        let contributorCount = 0;
-        try {
-          const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
-            Query.equal('user_id', userId), Query.limit(1),
-          ]);
-          if (contribs.documents.length > 0) {
-            const contrib = contribs.documents[0];
-            await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), {
-              contributor_id: contrib.$id,
-              repo_id: doc.$id,
-              repo_full_name: gh.full_name,
-              commits: 0, prs_merged: 0, lines_added: 0, lines_removed: 0,
-              reviews: 0, issues_closed: 0, score: 0,
-              last_contribution_at: new Date().toISOString(),
+        if (String(body.secret || '') !== String(expected)) {
+          return res.json({ error: 'Unauthorized' }, 401);
+        }
+        const offset = Math.max(0, Number(body.offset) || 0);
+        const batch = Math.max(1, Math.min(INDUSTRY_IMPORT_BATCH, Number(body.batch_size) || INDUSTRY_IMPORT_BATCH));
+        const slice = INDUSTRY_FULL_NAMES.slice(offset, offset + batch);
+        const results = [];
+        for (const fullName of slice) {
+          const url = `https://github.com/${fullName}`;
+          try {
+            const r = await ingestPublicGitHubRepo({
+              db,
+              client,
+              users,
+              log,
+              githubUrl: url,
+              listedBy: LISTED_BY_INDUSTRY,
+              linkLister: false,
+              userId: null,
             });
-            const rcCount = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-              Query.equal('contributor_id', contrib.$id), Query.limit(1),
-            ]);
-            await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contrib.$id, {
-              repo_count: rcCount.total,
-            });
-            contributorCount = await reconcileRepoContributorCount(db, doc.$id);
+            if (r.type === 'exists') {
+              results.push({ full_name: fullName, status: 'already_listed' });
+            } else if (r.type === 'error') {
+              results.push({ full_name: fullName, status: 'error', error: r.error });
+            } else {
+              results.push({ full_name: fullName, status: 'imported', repo_id: r.response.id });
+            }
+          } catch (e) {
+            log(`import-industry-repos ${fullName}: ${e.message}`);
+            results.push({ full_name: fullName, status: 'error', error: e.message });
           }
-        } catch (e) {
-          log(`list-repo: linking lister as contributor: ${e.message}`);
         }
-
-        // Full contributor sync is handled by the nightly fetch-contributors job.
-        // Running it synchronously here causes timeouts for repos with many contributors.
-        return res.json({ id: doc.$id, ...doc, contributor_count: Math.max(seededContributorCount, contributorCount) });
+        const nextOffset = offset + slice.length;
+        const done = nextOffset >= INDUSTRY_FULL_NAMES.length;
+        if (!done) {
+          await triggerSelfAsync(
+            client,
+            {
+              action: 'import-industry-repos',
+              secret: String(body.secret),
+              offset: nextOffset,
+            },
+            log,
+          );
+        }
+        return res.json({
+          ok: true,
+          industry_total: INDUSTRY_FULL_NAMES.length,
+          offset,
+          next_offset: nextOffset,
+          done,
+          batch: slice.length,
+          results,
+        });
       }
 
       // ---- GET MY REPOS ----
@@ -1134,376 +1089,6 @@ export default async ({ req, res, log, error }) => {
         return res.json({ ...contribDoc, is_registered: true });
       }
 
-      // ---- CREATE CHECKOUT ----
-      case 'create-checkout': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
-
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(stripeKey);
-
-        const {
-          amount_cents,
-          currency = 'usd',
-          message = '',
-          success_url,
-          cancel_url,
-          pool_type: requestedPoolType = DEFAULT_CHECKOUT_POOL_TYPE,
-        } = body;
-        if (!amount_cents || !success_url || !cancel_url) return res.json({ error: 'Missing required fields' }, 400);
-
-        const collectingAll = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        let poolDoc = resolveCollectingPoolForType(collectingAll.documents, String(requestedPoolType || ''));
-        if (!poolDoc) {
-          const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-            Query.equal('status', 'active'),
-            Query.limit(100),
-          ]);
-          poolDoc = resolveCollectingPoolForType(active.documents, String(requestedPoolType || ''));
-        }
-        if (!poolDoc) return res.json({ error: 'No pool available for donations' }, 404);
-        const poolId = poolDoc.$id;
-        const poolLabel = poolDoc.pool_type
-          ? String(poolDoc.pool_type)
-          : DEFAULT_CHECKOUT_POOL_TYPE;
-        const productName = `OpenGet (${poolLabel})`;
-
-        const donation = await db.createDocument(DATABASE_ID, COL.DONATIONS, ID.unique(), {
-          pool_id: poolId,
-          donor_id: userId,
-          amount_cents,
-          message: message || null,
-          status: 'pending',
-        });
-
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
-          line_items: [
-            {
-              price_data: {
-                currency,
-                product_data: {
-                  name: productName.slice(0, 120),
-                  description: (POOL_TYPE_DESCRIPTIONS[poolLabel] || 'Open source contributor pool').slice(0, 120),
-                },
-                unit_amount: amount_cents,
-              },
-              quantity: 1,
-            },
-          ],
-          mode: 'payment',
-          success_url,
-          cancel_url,
-          metadata: {
-            donation_id: donation.$id,
-            pool_id: poolId,
-            pool_type: poolLabel,
-          },
-        });
-
-        await db.updateDocument(DATABASE_ID, COL.DONATIONS, donation.$id, { stripe_session_id: session.id });
-        return res.json({ checkout_url: session.url, session_id: session.id });
-      }
-
-      // ---- STRIPE WEBHOOK ----
-      case 'stripe-webhook': {
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
-
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(stripeKey);
-
-        let event;
-        const sig = req.headers?.['stripe-signature'];
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-        if (sig && webhookSecret) {
-          try { event = stripe.webhooks.constructEvent(req.bodyRaw || req.body, sig, webhookSecret); }
-          catch (e) { return res.json({ error: 'Invalid signature' }, 400); }
-        } else {
-          event = body;
-        }
-
-        if (event.type === 'checkout.session.completed') {
-          const session = event.data.object;
-          const donationId = session.metadata?.donation_id;
-          const poolId = session.metadata?.pool_id;
-          if (donationId && poolId) {
-            const donation = await db.getDocument(DATABASE_ID, COL.DONATIONS, donationId);
-            const amountCents = donation.amount_cents;
-            const pool = await db.getDocument(DATABASE_ID, COL.POOLS, poolId);
-            const feeCents = calculatePlatformFeeCents(amountCents, pool.total_amount_cents || 0);
-            const distributable = amountCents - feeCents;
-
-            await db.updateDocument(DATABASE_ID, COL.DONATIONS, donationId, { status: 'confirmed' });
-            await db.updateDocument(DATABASE_ID, COL.POOLS, poolId, {
-              total_amount_cents: (pool.total_amount_cents || 0) + amountCents,
-              platform_fee_cents: (pool.platform_fee_cents || 0) + feeCents,
-              distributable_amount_cents: (pool.distributable_amount_cents || 0) + distributable,
-              donor_count: (pool.donor_count || 0) + 1,
-            });
-
-            await db.createDocument(DATABASE_ID, COL.PLATFORM_FEES, ID.unique(), {
-              pool_id: poolId,
-              amount_cents: feeCents,
-              source_donation_id: donationId,
-            });
-          }
-        }
-        return res.json({ received: true });
-      }
-
-      // ---- STRIPE CONNECT ----
-      case 'stripe-connect': {
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) return res.json({ error: 'Stripe not configured' }, 500);
-
-        const { default: Stripe } = await import('stripe');
-        const stripe = new Stripe(stripeKey);
-        const { user_id, email } = body;
-
-        let accountId;
-        try {
-          const usersDocs = await db.listDocuments(DATABASE_ID, COL.USERS, [Query.equal('github_id', user_id || ''), Query.limit(1)]);
-          if (usersDocs.documents.length > 0 && usersDocs.documents[0].stripe_connect_account_id) {
-            accountId = usersDocs.documents[0].stripe_connect_account_id;
-          }
-        } catch {}
-
-        if (!accountId) {
-          const account = await stripe.accounts.create({ type: 'express', email: email || undefined });
-          accountId = account.id;
-        }
-
-        const link = await stripe.accountLinks.create({
-          account: accountId,
-          refresh_url: process.env.STRIPE_CONNECT_REFRESH_URL || 'https://openget.app/dashboard',
-          return_url: process.env.STRIPE_CONNECT_RETURN_URL || 'https://openget.app/dashboard',
-          type: 'account_onboarding',
-        });
-        return res.json({ account_id: accountId, onboarding_url: link.url });
-      }
-
-      // ---- UPI PAYMENT (stub) ----
-      case 'upi-payment': {
-        // POST with qr_id only: status poll (Appwrite executions use POST + JSON body)
-        if (method === 'POST' && body.qr_id != null && body.amount_paisa == null) {
-          const qrId = body.qr_id;
-          return res.json({ qr_id: qrId || 'unknown', status: 'pending', paid: false, payments_count: 0 });
-        }
-        if (method === 'POST') {
-          const { amount_paisa, message: msg } = body;
-          const qrId = `upi_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-          return res.json({ qr_id: qrId, image_url: `https://placeholder.co/256x256?text=UPI+QR`, amount_paisa, status: 'pending' });
-        }
-        const qrId = req.query?.qr_id || body.qr_id;
-        return res.json({ qr_id: qrId || 'unknown', status: 'pending', paid: false, payments_count: 0 });
-      }
-
-      // ---- GET EARNINGS ----
-      case 'get-earnings': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-        const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [Query.equal('user_id', userId), Query.limit(1)]);
-        if (contribs.documents.length === 0) {
-          return res.json({ contributor_id: '00000000-0000-0000-0000-000000000000', total_earned_cents: 0, pending_cents: 0, payouts: [] });
-        }
-        const contributor = contribs.documents[0];
-        const payoutDocs = await db.listDocuments(DATABASE_ID, COL.PAYOUTS, [
-          Query.equal('contributor_id', contributor.$id), Query.orderDesc('$createdAt'), Query.limit(50),
-        ]);
-        const payouts = payoutDocs.documents.map(p => ({
-          id: p.$id, pool_id: p.pool_id, contributor_id: p.contributor_id,
-          amount_cents: p.amount_cents, score_snapshot: p.score_snapshot || 0,
-          status: p.status, stripe_transfer_id: p.stripe_transfer_id || null,
-          created_at: p.$createdAt, completed_at: p.completed_at || null,
-        }));
-        const totalEarned = payouts.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount_cents, 0);
-        const pending = payouts.filter(p => p.status === 'pending' || p.status === 'processing').reduce((s, p) => s + p.amount_cents, 0);
-        return res.json({ contributor_id: contributor.$id, total_earned_cents: totalEarned, pending_cents: pending, payouts });
-      }
-
-      // ---- DISTRIBUTE POOL (weekly) — mirrors functions/distribute-pool/src/main.js ----
-      case 'distribute-pool': {
-        const mode =
-          req.query?.mode ||
-          body.mode ||
-          req.query?.distribution_action ||
-          body.distribution_action ||
-          'weekly';
-
-        if (mode === 'ensure-collecting') {
-          const pools = await ensureCollectingPools(db);
-          return res.json({
-            pools: pools.map((p) => ({
-              pool_id: p.$id,
-              pool_type: p.pool_type || null,
-              status: p.status,
-            })),
-          });
-        }
-
-        if (mode === 'activate') {
-          const activated = await activateAllCollectingForCurrentMonth(db);
-          if (activated.length === 0) {
-            const fallback = await ensureActivePools(db);
-            if (fallback.length === 0) {
-              return res.json({ error: 'No pool to activate' }, 404);
-            }
-            return res.json({
-              pools: fallback.map((p) => ({
-                pool_id: p.$id,
-                pool_type: p.pool_type || null,
-                status: p.status,
-              })),
-            });
-          }
-          return res.json({
-            pools: activated.map((p) => ({
-              pool_id: p.$id,
-              pool_type: p.pool_type || null,
-              status: p.status,
-            })),
-          });
-        }
-
-        if (mode === 'finalize-month') {
-          const { isLastDay } = getActiveMonthInfo();
-          if (!isLastDay && !body.force) {
-            return res.json({
-              message: 'Not the last day of the month. Pass force=true to override.',
-            });
-          }
-
-          const pools = await ensureActivePools(db);
-          if (pools.length === 0) {
-            return res.json({ message: 'No active pool to finalize' });
-          }
-
-          const results = [];
-          for (const pool of pools) {
-            const remaining = pool.remaining_cents || 0;
-            if (remaining <= 0) {
-              await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-                status: 'completed',
-              });
-              results.push({
-                pool_id: pool.$id,
-                distributed_cents: 0,
-                payouts_created: 0,
-                message: 'No remaining funds',
-              });
-              continue;
-            }
-            const result = await distributeWeekly(db, pool, remaining);
-            await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-              status: 'completed',
-              remaining_cents: 0,
-            });
-            results.push(result);
-          }
-
-          await ensureCollectingPools(db);
-          return res.json({ message: 'Month finalized', results });
-        }
-
-        const pools = await ensureActivePools(db);
-        if (pools.length === 0) return res.json({ error: 'No active pool found' }, 404);
-
-        const batchResults = [];
-        let totalDistributed = 0;
-        let totalPayouts = 0;
-
-        for (const pool of pools) {
-          const weeklyBudget = (pool.daily_budget_cents || 0) * 7;
-          const budget = Math.min(weeklyBudget, pool.remaining_cents || 0);
-          if (budget <= 0) continue;
-          const result = await distributeWeekly(db, pool, budget);
-
-          await db.updateDocument(DATABASE_ID, COL.POOLS, pool.$id, {
-            remaining_cents: Math.max(0, (pool.remaining_cents || 0) - result.distributed_cents),
-          });
-
-          batchResults.push({
-            pool_id: pool.$id,
-            pool_type: pool.pool_type || null,
-            ...result,
-          });
-          totalDistributed += result.distributed_cents;
-          totalPayouts += result.payouts_created;
-        }
-
-        if (batchResults.length === 0) {
-          return res.json({ error: 'No budget remaining for this week across active pools' }, 400);
-        }
-
-        return res.json({
-          distributed_cents: totalDistributed,
-          payouts_created: totalPayouts,
-          pools: batchResults,
-        });
-      }
-
-      // ---- GET COLLECTING POOL ----
-      case 'get-collecting-pool': {
-        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        if (collecting.documents.length === 0) return res.json({ pool: null });
-        return res.json({ pool: collecting.documents[0] });
-      }
-
-      case 'list-collecting-pools': {
-        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        return res.json({
-          pools: collecting.documents.map((p) => ({
-            id: p.$id,
-            pool_type: p.pool_type || null,
-            name: p.name,
-            description: p.description,
-            round_start: p.round_start,
-            round_end: p.round_end,
-            total_amount_cents: p.total_amount_cents || 0,
-            donor_count: p.donor_count || 0,
-          })),
-        });
-      }
-
-      case 'get-pool-impact': {
-        const collecting = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'collecting'),
-          Query.limit(100),
-        ]);
-        const active = await db.listDocuments(DATABASE_ID, COL.POOLS, [
-          Query.equal('status', 'active'),
-          Query.limit(100),
-        ]);
-        const repoCount = await db.listDocuments(DATABASE_ID, COL.REPOS, [Query.limit(1)]);
-        return res.json({
-          collecting: collecting.documents.map((p) => ({
-            id: p.$id,
-            pool_type: p.pool_type || null,
-            round_start: p.round_start,
-            total_amount_cents: p.total_amount_cents || 0,
-            donor_count: p.donor_count || 0,
-          })),
-          active: active.documents.map((p) => ({
-            id: p.$id,
-            pool_type: p.pool_type || null,
-            round_start: p.round_start,
-            remaining_cents: p.remaining_cents || 0,
-            distributable_amount_cents: p.distributable_amount_cents || 0,
-          })),
-          listed_repos: repoCount.total,
-        });
-      }
-
       // ---- FETCH CONTRIBUTORS (background) ----
       case 'fetch-contributors': {
         const ghToken = process.env.GITHUB_TOKEN;
@@ -1559,7 +1144,15 @@ export default async ({ req, res, log, error }) => {
               repoDoc.license = repoLicense;
             }
 
-            const stats = await fetchStatsContributorsWithHeaders(owner, repoName, ghHeaders);
+            const rawStats = await fetchStatsContributorsWithHeaders(owner, repoName, ghHeaders, log);
+            const statsUnavailable = rawStats === null;
+            const stats = Array.isArray(rawStats) ? rawStats : [];
+            if (statsUnavailable) {
+              summary.errors.push({
+                repo: full,
+                warning: 'stats/contributors unavailable; falling back to contributor snapshot without commit/line counts',
+              });
+            }
             const canonicalLogins = [];
             const snapshotByLogin = new Map();
             const byLogin = new Map();
@@ -1775,16 +1368,39 @@ export default async ({ req, res, log, error }) => {
 
             if (body.repoId) {
               const nextOffset = offset + chunkLogins.length;
-              return res.json({
+              const hasMore = nextOffset < canonicalLogins.length;
+
+              // Self-chain the next chunk so the sync keeps running without an external
+              // driver (e.g. when triggered from list-repo). External drivers such as
+              // scripts/run-openget-action.js key off `done` so their loop still works.
+              if (hasMore) {
+                await triggerSelfAsync(
+                  client,
+                  {
+                    action: 'fetch-contributors',
+                    repoId: body.repoId,
+                    offset: nextOffset,
+                    batchSize,
+                  },
+                  log,
+                );
+              }
+
+              const successPayload = {
                 ...summary,
                 repo_id: repoDoc.$id,
                 repo_full_name: full,
                 processed_in_chunk: chunkLogins.length,
                 total_contributors: canonicalLogins.length,
                 contributor_count: reconciledCount,
-                next_offset: nextOffset < canonicalLogins.length ? nextOffset : null,
-                done: nextOffset >= canonicalLogins.length,
-              });
+                next_offset: hasMore ? nextOffset : null,
+                done: !hasMore,
+              };
+              // Appwrite async executions do not store response bodies, so also
+              // emit the payload to stdout with a sentinel so external drivers
+              // (scripts/run-openget-action.js) can recover it from execution.logs.
+              log(`__OPENGET_SUMMARY__${JSON.stringify(successPayload)}`);
+              return res.json(successPayload);
             }
           } catch (e) {
             if (repoDoc?.$id) {
@@ -1796,19 +1412,253 @@ export default async ({ req, res, log, error }) => {
             }
             error(`${full}: ${e.message}`);
             summary.errors.push({ repo: full, error: e.message });
+
+            // In per-repo mode return a well-formed response so external drivers
+            // (e.g. scripts/run-openget-action.js) can advance to the next repo
+            // instead of misinterpreting the missing next_offset/done fields as
+            // "invalid chunk progress".
+            if (body.repoId) {
+              const failurePayload = {
+                ...summary,
+                repo_id: repoDoc.$id,
+                repo_full_name: full,
+                processed_in_chunk: 0,
+                total_contributors: 0,
+                next_offset: null,
+                done: true,
+                failed: true,
+                error: e.message,
+              };
+              log(`__OPENGET_SUMMARY__${JSON.stringify(failurePayload)}`);
+              return res.json(failurePayload);
+            }
           }
         }
 
         return res.json(summary);
       }
 
-      default:
-        return res.json({ error: `Unknown action: ${action}`, available: [
-          'list-repo', 'delist-repo', 'get-my-repos', 'get-repo-contributors', 'register-contributor',
-          'create-checkout', 'stripe-webhook', 'stripe-connect', 'upi-payment',
-          'get-earnings', 'distribute-pool', 'get-collecting-pool', 'list-collecting-pools', 'get-pool-impact',
-          'fetch-contributors',
-        ]}, 400);
+      // ---- B2B: dependency audit (npm → GitHub → OpenGet index) ----
+      case 'audit-dependencies': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+
+        const MAX_PACKAGES = 50;
+        const NPM_DELAY_MS = 80;
+
+        let names = [];
+        const includeDev = body.include_dev !== false;
+        const includePeer = body.include_peer === true;
+        const includeOptional = body.include_optional === true;
+
+        if (typeof body.package_json === 'string' && body.package_json.trim() !== '') {
+          try {
+            names = listDependencyNamesFromPackageJson(body.package_json.trim(), {
+              includeDev,
+              includePeer,
+              includeOptional,
+            });
+          } catch (e) {
+            return res.json(
+              { error: `Invalid package.json: ${e.message || 'parse error'}` },
+              400,
+            );
+          }
+        } else if (body.dependencies && typeof body.dependencies === 'object' && !Array.isArray(body.dependencies)) {
+          names = listDependencyNamesFromObject(body.dependencies);
+        } else {
+          return res.json(
+            {
+              error:
+                'Send { package_json: "<contents>" } and optional include_dev, or { dependencies: { ... } }.',
+            },
+            400,
+          );
+        }
+
+        if (names.length === 0) {
+          return res.json({ error: 'No dependencies to audit.' }, 400);
+        }
+
+        const totalNames = names.length;
+        if (names.length > MAX_PACKAGES) {
+          names = names.slice(0, MAX_PACKAGES);
+        }
+
+        const items = [];
+        let resolvedGithub = 0;
+        let inIndex = 0;
+
+        for (const pkg of names) {
+          await auditSleep(NPM_DELAY_MS);
+          const meta = await fetchNpmLatest(pkg);
+          if (meta.error) {
+            items.push({
+              package: pkg,
+              npm: { error: meta.error, status: meta.status },
+              github: null,
+              openget: { status: 'npm_error' },
+            });
+            continue;
+          }
+          const gh = githubFullNameFromNpmRepository(meta.repository);
+          const licenseVal =
+            meta.license == null
+              ? null
+              : typeof meta.license === 'string'
+                ? meta.license
+                : Array.isArray(meta.license) && meta.license[0]?.type
+                  ? String(meta.license[0].type)
+                  : null;
+
+          if (!gh) {
+            items.push({
+              package: pkg,
+              npm: {
+                name: meta.name,
+                version: meta.version,
+                license: licenseVal,
+              },
+              github: null,
+              openget: { status: 'no_github', reason: 'no_repository_url_in_npm' },
+            });
+            continue;
+          }
+          resolvedGithub += 1;
+          const fullName = gh.full_name;
+
+          let repoDoc = null;
+          try {
+            const listed = await db.listDocuments(DATABASE_ID, COL.REPOS, [
+              Query.equal('full_name', fullName),
+              Query.limit(1),
+            ]);
+            repoDoc = listed.documents[0] || null;
+          } catch (e) {
+            log(`audit: repo lookup ${fullName}: ${e.message}`);
+          }
+
+          if (!repoDoc) {
+            items.push({
+              package: pkg,
+              npm: {
+                name: meta.name,
+                version: meta.version,
+                license: licenseVal,
+              },
+              github: { full_name: fullName, url: `https://github.com/${fullName}` },
+              openget: {
+                status: 'not_listed',
+                message:
+                  'Not in the OpenGet index. List the repo under “List a repository” to see stewardship scores.',
+              },
+            });
+            continue;
+          }
+
+          inIndex += 1;
+          const repoId = repoDoc.$id;
+          const rcs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+            Query.equal('repo_id', repoId),
+            Query.limit(2000),
+          ]);
+          const sorted = [...rcs.documents].sort((a, b) => (b.score || 0) - (a.score || 0));
+          const top = sorted.slice(0, 8);
+          const top_maintainers = [];
+          for (const rc of top) {
+            let contributor = {};
+            try {
+              contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
+            } catch {
+              /* */
+            }
+            top_maintainers.push({
+              contributor_id: rc.contributor_id,
+              github_username: contributor.github_username || 'unknown',
+              is_registered: !!(contributor.user_id),
+              contribution_score: rc.score != null ? Number(rc.score) : 0,
+              prs_merged: rc.prs_merged || 0,
+              reviews: rc.reviews || 0,
+              openget_total_score:
+                contributor.total_score != null ? Number(contributor.total_score) : null,
+            });
+          }
+
+          items.push({
+            package: pkg,
+            npm: {
+              name: meta.name,
+              version: meta.version,
+              license: licenseVal,
+            },
+            github: { full_name: fullName, url: `https://github.com/${fullName}` },
+            openget: {
+              status: 'listed',
+              repo_id: repoId,
+              full_name: fullName,
+              repo_score: repoDoc.repo_score != null ? Number(repoDoc.repo_score) : null,
+              bus_factor: repoDoc.bus_factor != null ? Number(repoDoc.bus_factor) : null,
+              criticality_score:
+                repoDoc.criticality_score != null ? Number(repoDoc.criticality_score) : null,
+              has_security_md: repoDoc.has_security_md === true,
+              stars: repoDoc.stars != null ? Number(repoDoc.stars) : null,
+              forks: repoDoc.forks != null ? Number(repoDoc.forks) : null,
+              top_maintainers,
+            },
+          });
+        }
+
+        return res.json({
+          version: 2,
+          summary: {
+            packages_requested: names.length,
+            packages_total_in_manifest: totalNames,
+            truncated: totalNames > MAX_PACKAGES,
+            max_packages: MAX_PACKAGES,
+            resolved_to_github: resolvedGithub,
+            in_openget_index: inIndex,
+          },
+          items,
+        });
+      }
+
+      default: {
+        if (!action) {
+          return res.json(
+            {
+              service: 'openget-api',
+              message: 'Pass ?action=... in the query string or { "action": "..." } in the JSON body.',
+              discover: [
+                'health',
+                'version',
+                'list-repo',
+                'fetch-contributors',
+                'register-contributor',
+                'audit-dependencies',
+                'import-industry-repos',
+              ],
+            },
+            200,
+          );
+        }
+        return res.json(
+          {
+            error: `Unknown action: ${action}`,
+            available: [
+              'health',
+              'version',
+              'list-repo',
+              'delist-repo',
+              'get-my-repos',
+              'get-repo-contributors',
+              'register-contributor',
+              'fetch-contributors',
+              'audit-dependencies',
+              'import-industry-repos',
+            ],
+        },
+        400,
+        );
+      }
     }
   } catch (e) {
     error(`Error in ${action}: ${e.message}`);

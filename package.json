@@ -4,10 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "mobile:test": "node scripts/mobile-sim-test.mjs",
+    "mobile:codegen": "playwright codegen",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:sync": "npm ci --prefix scripts --no-audit --no-fund && npm run db:sync --prefix scripts"
+    "db:sync": "npm ci --prefix scripts --no-audit --no-fund && npm run db:sync --prefix scripts",
+    "deploy:api": "npm ci --prefix scripts --no-audit --no-fund && node scripts/deploy-functions.js --openget-api-only",
+    "backfill:contributors": "npm ci --prefix scripts --no-audit --no-fund && node scripts/backfill-repo-contributors.js",
+    "seed:industry": "npm ci --prefix scripts --no-audit --no-fund && node scripts/seed-industry-repos.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -19,7 +24,6 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
-    "@stripe/stripe-js": "^9.0.0",
     "appwrite": "^16.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -37,6 +41,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.21",
+    "playwright": "^1.49.1",
     "postcss": "^8.4.49",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.17",

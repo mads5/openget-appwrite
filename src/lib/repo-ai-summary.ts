@@ -14,7 +14,7 @@ export function buildFallbackSummary(r: RepoSummaryInput): string {
   const pools = (r.eligible_pool_types ?? []).filter(Boolean);
   const poolNote =
     pools.length > 0
-      ? ` It is included in OpenGet funding lanes: ${pools.join(", ")}.`
+      ? ` OpenGet work-area tags: ${pools.join(", ")}.`
       : "";
   const desc = r.description?.trim();
   const base = desc
@@ -48,11 +48,11 @@ export async function fetchOpenAiSummary(r: RepoSummaryInput): Promise<string | 
         {
           role: "system",
           content:
-            "You write concise blurbs about open-source repositories for a maintainer-funding platform. Be factual; do not invent people, companies, or unverifiable claims. If the GitHub description is empty, infer cautiously from the repository name and language only.",
+            "You write concise blurbs about open-source repositories for a human-verification and supply-chain insights product. Be factual; do not invent people, companies, or unverifiable claims. If the GitHub description is empty, infer cautiously from the repository name and language only.",
         },
         {
           role: "user",
-          content: `Write 2–4 sentences describing this repository for potential sponsors and contributors.
+          content: `Write 2–4 sentences describing this repository for maintainers and technical readers.
 
 full_name: ${r.full_name}
 GitHub description: ${r.description?.trim() || "(none)"}
@@ -61,7 +61,7 @@ stars: ${r.stars}
 forks: ${r.forks}
 criticality (0–1 heuristic): ${r.criticality_score ?? "unknown"}
 bus_factor estimate: ${r.bus_factor ?? "unknown"}
-eligible_pool_types (funding lanes): ${(r.eligible_pool_types ?? []).join(", ") || "none"}
+work_area_tags: ${(r.eligible_pool_types ?? []).join(", ") || "none"}
 has_security_md: ${r.has_security_md ?? "unknown"}`,
         },
       ],

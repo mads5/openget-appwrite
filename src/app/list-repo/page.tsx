@@ -7,6 +7,7 @@ import { getMyGithubRepos, listRepo, delistRepo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/site/page-header";
 import type { GitHubRepoInfo } from "@/types";
 import type { Models } from "appwrite";
 
@@ -90,14 +91,18 @@ export default function ListRepoPage() {
 
   if (!user) {
     return (
-      <div className="container py-20 text-center">
-        <h2 className="text-2xl font-bold mb-4">Sign in to list your repo</h2>
+      <div>
+        <PageHeader
+          title="List a repository"
+          description="Connect GitHub so we can show repos you can add to the OpenGet index."
+        />
+        <div className="container py-12 text-center max-w-md mx-auto">
         <p className="text-muted-foreground mb-6">
-          Connect your GitHub account so we can see your repos and list them
-          on OpenGet.
+          Sign in to load repositories you have access to and trigger contributor discovery.
         </p>
         <Button
           type="button"
+          size="lg"
           onClick={(e) => {
             e.preventDefault();
             startGithubOAuthSession(account, "/list-repo", "/list-repo?auth_error=true");
@@ -105,19 +110,18 @@ export default function ListRepoPage() {
         >
           Sign in with GitHub
         </Button>
+        </div>
       </div>
     );
   }
 
   return (
+    <div>
+      <PageHeader
+        title="List a repository"
+        description="Add a repo to the OpenGet index. Nightly scoring discovers contributors and runs the 6-factor model."
+      />
     <div className="container py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">List Your Repo</h1>
-        <p className="text-muted-foreground mt-1">
-          Your GitHub repos sorted by stars. Click &quot;List&quot; to add one to
-          OpenGet. We&apos;ll discover all contributors automatically.
-        </p>
-      </div>
 
       {message && (
         <div className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 text-sm">
@@ -128,9 +132,9 @@ export default function ListRepoPage() {
       <div className="space-y-3">
         {repos.map((repo) => (
           <Card key={repo.html_url}>
-            <CardContent className="flex items-center justify-between py-4">
+            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <span className="font-medium truncate">{repo.full_name}</span>
                   {repo.language && (
                     <Badge variant="secondary" className="text-xs shrink-0">
@@ -143,12 +147,12 @@ export default function ListRepoPage() {
                     {repo.description}
                   </p>
                 )}
-                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-xs text-muted-foreground">
                   <span>&#9733; {repo.stargazers_count.toLocaleString()}</span>
                   <span>{repo.forks_count.toLocaleString()} forks</span>
                 </div>
               </div>
-              <div className="ml-4 shrink-0 flex items-center gap-2">
+              <div className="shrink-0 flex w-full items-center justify-end gap-2 sm:ml-4 sm:w-auto">
                 {repo.already_listed ? (
                   <>
                     <Badge variant="secondary" className="bg-green-500/10 text-green-400 border-green-500/20">
@@ -156,7 +160,6 @@ export default function ListRepoPage() {
                     </Badge>
                     {repo.listed_by_me && (
                       <Button
-                        size="sm"
                         variant="outline"
                         className="text-red-400 border-red-500/30 hover:bg-red-500/10"
                         onClick={() => handleDelist(repo)}
@@ -168,7 +171,7 @@ export default function ListRepoPage() {
                   </>
                 ) : (
                   <Button
-                    size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => handleList(repo.html_url)}
                     disabled={listing === repo.html_url}
                   >
@@ -185,6 +188,7 @@ export default function ListRepoPage() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

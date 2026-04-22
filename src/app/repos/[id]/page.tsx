@@ -78,8 +78,8 @@ export default function RepoDetailPage() {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-3xl font-bold">{repo.full_name}</h1>
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          <h1 className="text-2xl font-bold break-all sm:text-3xl">{repo.full_name}</h1>
           {repo.language && (
             <Badge variant="secondary">{repo.language}</Badge>
           )}
@@ -129,7 +129,7 @@ export default function RepoDetailPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Stars", value: formatNumber(repo.stars) },
           { label: "Forks", value: formatNumber(repo.forks) },
@@ -171,8 +171,8 @@ export default function RepoDetailPage() {
         Contributors ({contributors.length})
       </h2>
       {contributors.length > 0 ? (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-muted/50">
               <tr>
                 <th className="text-left px-4 py-3 text-sm font-medium">
@@ -202,19 +202,19 @@ export default function RepoDetailPage() {
                   className="hover:bg-muted/30 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       {c.avatar_url ? (
                         <img
                           src={c.avatar_url}
                           alt={c.github_username}
-                          className="h-7 w-7 rounded-full"
+                          className="h-7 w-7 shrink-0 rounded-full"
                         />
                       ) : (
-                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                        <div className="h-7 w-7 shrink-0 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
                           {(c.github_username || "?")[0].toUpperCase()}
                         </div>
                       )}
-                      <span className="font-medium text-sm">
+                      <span className="min-w-0 truncate font-medium text-sm">
                         {c.github_username}
                       </span>
                     </div>

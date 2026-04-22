@@ -4,32 +4,67 @@
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 20% 92%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 20% 92%;
-    --primary: 25 95% 53%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 50% 16%;
+    --background: 230 32% 5%;
+    --foreground: 210 25% 96%;
+    --card: 230 30% 8%;
+    --card-foreground: 210 25% 96%;
+    --primary: 172 66% 48%;
+    --primary-foreground: 222 47% 5%;
+    --secondary: 230 25% 14%;
     --secondary-foreground: 210 20% 92%;
-    --muted: 215 40% 14%;
-    --muted-foreground: 215 15% 55%;
-    --accent: 215 50% 16%;
-    --accent-foreground: 210 20% 92%;
+    --muted: 230 20% 12%;
+    --muted-foreground: 215 16% 58%;
+    --accent: 187 60% 18%;
+    --accent-foreground: 185 80% 92%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 30% 16%;
-    --input: 215 30% 16%;
-    --ring: 25 95% 53%;
-    --radius: 0.5rem;
+    --border: 230 22% 16%;
+    --input: 230 22% 16%;
+    --ring: 172 66% 48%;
+    --radius: 0.75rem;
   }
 }
 
 @layer base {
+  html {
+    overflow-x: clip;
+  }
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
+  .font-display {
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+  .font-mono-og {
+    font-family: var(--font-mono), ui-monospace, monospace;
+  }
+  img,
+  video,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Ambient background (no extra deps) */
+.og-mesh {
+  background-color: hsl(230 32% 5%);
+  background-image:
+    radial-gradient(ellipse 100% 80% at 50% -30%, hsl(172 50% 18% / 0.45), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, hsl(250 40% 22% / 0.2), transparent 45%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, hsl(190 50% 16% / 0.2), transparent 45%);
+}
+
+.og-grid {
+  background-size: 48px 48px;
+  background-image: linear-gradient(hsl(230 22% 14% / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(230 22% 14% / 0.35) 1px, transparent 1px);
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+}
+
+.og-glass {
+  @apply border border-border/50 bg-card/50 backdrop-blur-md shadow-sm;
 }

@@ -4,9 +4,7 @@ import type {
   Repo,
   Contributor,
   ContributorDetail,
-  Pool,
-  CollectingPoolSummary,
-  Payout,
+  DependencyAuditResult,
   GitHubRepoInfo,
   RepoContribution,
 } from "@/types";
@@ -33,11 +31,13 @@ async function getGithubAccessTokenFromSession(): Promise<string | null> {
 
 async function executeFunction<T>(action: string, body?: Record<string, unknown>): Promise<T> {
   try {
+    // Appwrite sometimes omits JSON body fields on the function `req`; always pass action in the path query.
+    const path = `/?action=${encodeURIComponent(action)}`;
     const execution = await functions.createExecution(
       FUNCTION_ID,
       JSON.stringify(body != null ? { action, ...body } : { action }),
       false,
-      undefined,
+      path,
       ExecutionMethod.POST,
       { "content-type": "application/json" },
     );
@@ -160,6 +160,13 @@ function mapContributor(doc: Models.Document): Contributor {
     total_contributions: Number(d.total_contributions ?? 0),
     is_registered: userId != null && userId !== "",
     created_at: (d.created_at as string) || doc.$createdAt,
+    score_f1: d.score_f1 != null ? Number(d.score_f1) : undefined,
+    score_f2: d.score_f2 != null ? Number(d.score_f2) : undefined,
+    score_f3: d.score_f3 != null ? Number(d.score_f3) : undefined,
+    score_f4: d.score_f4 != null ? Number(d.score_f4) : undefined,
+    score_f5: d.score_f5 != null ? Number(d.score_f5) : undefined,
+    score_f6: d.score_f6 != null ? Number(d.score_f6) : undefined,
+    percentile_global: d.percentile_global != null ? Number(d.percentile_global) : undefined,
   };
 }
 
@@ -177,29 +184,14 @@ function mapContributorFromFunctionPayload(data: Record<string, unknown>): Contr
     total_contributions: Number(data.total_contributions ?? 0),
     is_registered: Boolean(data.is_registered) || (userId != null && userId !== ""),
     created_at: String(data.$createdAt ?? data.created_at ?? ""),
-  };
-}
-
-function mapPool(doc: Models.Document): Pool {
-  const d = docAttrs(doc);
-  const total = Number(d.total_amount_cents ?? 0);
-  const fee = Number(d.platform_fee_cents ?? 0);
-  const dist = d.distributable_amount_cents != null ? Number(d.distributable_amount_cents) : Math.max(0, total - fee);
-  return {
-    id: doc.$id,
-    name: String(d.name ?? ""),
-    description: (d.description as string | null) ?? null,
-    total_amount_cents: total,
-    platform_fee_cents: fee,
-    distributable_amount_cents: dist,
-    daily_budget_cents: Number(d.daily_budget_cents ?? 0),
-    remaining_cents: Number(d.remaining_cents ?? 0),
-    donor_count: Number(d.donor_count ?? 0),
-    status: (d.status as Pool["status"]) || "active",
-    round_start: String(d.round_start ?? ""),
-    round_end: String(d.round_end ?? ""),
-    pool_type: (d.pool_type as string | null | undefined) ?? null,
-    created_at: (d.created_at as string) || doc.$createdAt,
+    score_f1: data.score_f1 != null ? Number(data.score_f1) : undefined,
+    score_f2: data.score_f2 != null ? Number(data.score_f2) : undefined,
+    score_f3: data.score_f3 != null ? Number(data.score_f3) : undefined,
+    score_f4: data.score_f4 != null ? Number(data.score_f4) : undefined,
+    score_f5: data.score_f5 != null ? Number(data.score_f5) : undefined,
+    score_f6: data.score_f6 != null ? Number(data.score_f6) : undefined,
+    percentile_global:
+      data.percentile_global != null ? Number(data.percentile_global) : undefined,
   };
 }
 
@@ -385,228 +377,37 @@ export async function registerContributor(): Promise<Contributor> {
   return mapContributorFromFunctionPayload(data);
 }
 
-// ---- Pool ----
-
-export async function getActivePool(): Promise<Pool | null> {
-  try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
-      Query.equal("status", "active"),
-      Query.orderDesc("$createdAt"),
-      Query.limit(1),
-    ]);
-    if (result.documents.length > 0) return mapPool(result.documents[0]);
-  } catch {
-    // fall through
-  }
-  return null;
-}
-
-export async function getCollectingPool(): Promise<Pool | null> {
-  try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
-      Query.equal("status", "collecting"),
-      Query.orderDesc("$createdAt"),
-      Query.limit(1),
-    ]);
-    if (result.documents.length > 0) return mapPool(result.documents[0]);
-  } catch {
-    // fall through
-  }
-  return null;
-}
-
-function mapCollectingDocToSummary(doc: Models.Document): CollectingPoolSummary {
-  const d = doc as unknown as Record<string, unknown>;
-  return {
-    id: doc.$id,
-    pool_type: (d.pool_type as string | null | undefined) ?? null,
-    name: String(d.name ?? ""),
-    description: (d.description as string | null) ?? null,
-    round_start: String(d.round_start ?? ""),
-    round_end: String(d.round_end ?? ""),
-    total_amount_cents: Number(d.total_amount_cents ?? 0),
-    donor_count: Number(d.donor_count ?? 0),
-  };
-}
-
 /**
- * Lists collecting pools. Prefers the openget-api action; falls back to direct DB reads so
- * anonymous sessions (e.g. /enterprise) work when Functions execution is restricted.
+ * Supply-chain Human-Risk audit: npm → GitHub → OpenGet repo + top maintainers.
+ * Requires a signed-in user (sends session to Appwrite execution).
  */
-export async function listCollectingPools(): Promise<CollectingPoolSummary[]> {
-  try {
-    const { pools } = await executeFunction<{ pools: CollectingPoolSummary[] }>(
-      "list-collecting-pools",
-    );
-    if (pools && pools.length > 0) return pools;
-  } catch {
-    /* fall through */
-  }
-  try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
-      Query.equal("status", "collecting"),
-      Query.limit(100),
-    ]);
-    return result.documents.map(mapCollectingDocToSummary);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Public impact snapshot for dashboards / enterprise page. Uses the Database API so guests
- * do not need Functions execute permission (unlike `get-pool-impact` via Functions alone).
- */
-export async function getPoolImpact(): Promise<{
-  collecting: Array<{
-    id: string;
-    pool_type: string | null;
-    round_start: string;
-    total_amount_cents: number;
-    donor_count: number;
-  }>;
-  active: Array<{
-    id: string;
-    pool_type: string | null;
-    round_start: string;
-    remaining_cents: number;
-    distributable_amount_cents: number;
-  }>;
-  listed_repos: number;
-}> {
-  try {
-    const [collecting, active, repoList] = await Promise.all([
-      databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
-        Query.equal("status", "collecting"),
-        Query.limit(100),
-      ]),
-      databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
-        Query.equal("status", "active"),
-        Query.limit(100),
-      ]),
-      databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(1)]),
-    ]);
-
-    return {
-      collecting: collecting.documents.map((doc) => {
-        const d = doc as unknown as Record<string, unknown>;
-        return {
-          id: doc.$id,
-          pool_type: (d.pool_type as string | null | undefined) ?? null,
-          round_start: String(d.round_start ?? ""),
-          total_amount_cents: Number(d.total_amount_cents ?? 0),
-          donor_count: Number(d.donor_count ?? 0),
-        };
-      }),
-      active: active.documents.map((doc) => {
-        const d = doc as unknown as Record<string, unknown>;
-        return {
-          id: doc.$id,
-          pool_type: (d.pool_type as string | null | undefined) ?? null,
-          round_start: String(d.round_start ?? ""),
-          remaining_cents: Number(d.remaining_cents ?? 0),
-          distributable_amount_cents: Number(d.distributable_amount_cents ?? 0),
-        };
-      }),
-      listed_repos: repoList.total,
-    };
-  } catch {
-    return {
-      collecting: [],
-      active: [],
-      listed_repos: 0,
-    };
-  }
-}
-
-export async function createCheckoutSession(
-  amountCents: number,
-  message?: string,
-  currency?: string,
-  poolType?: string,
-): Promise<{ checkout_url: string; session_id: string }> {
-  return executeFunction<{ checkout_url: string; session_id: string }>("create-checkout", {
-    amount_cents: amountCents,
-    currency: currency || "usd",
-    message: message ?? "",
-    pool_type: poolType,
-    success_url: `${window.location.origin}/donate/success`,
-    cancel_url: `${window.location.origin}/donate`,
-  });
-}
-
-export async function createUpiQr(
-  amountPaisa: number,
-  message?: string,
-): Promise<{ qr_id: string; image_url: string; amount_paisa: number; status: string }> {
-  return executeFunction("upi-payment", { amount_paisa: amountPaisa, message: message ?? "" });
-}
-
-export async function checkUpiQrStatus(
-  qrId: string,
-): Promise<{ qr_id: string; status: string; paid: boolean; payments_count: number }> {
-  return executeFunction("upi-payment", { qr_id: qrId });
-}
-
-export async function donate(
-  amountCents: number,
-  message?: string,
-): Promise<{ checkout_url: string; session_id: string }> {
-  return executeFunction("create-checkout", {
-    amount_cents: amountCents,
-    message: message ?? "",
-    success_url: `${window.location.origin}/donate/success`,
-    cancel_url: `${window.location.origin}/donate`,
-  });
-}
-
-// ---- Payouts ----
-
-export async function getEarnings() {
-  return executeFunction<{
-    contributor_id: string;
-    total_earned_cents: number;
-    pending_cents: number;
-    payouts: Payout[];
-  }>("get-earnings");
-}
-
-export async function onboardStripeConnect(userId: string, email: string) {
-  return executeFunction<{ account_id: string; onboarding_url: string }>("stripe-connect", {
-    user_id: userId,
-    email,
+export async function runDependencyAudit(body: {
+  package_json: string;
+  include_dev?: boolean;
+  include_peer?: boolean;
+  include_optional?: boolean;
+}): Promise<DependencyAuditResult> {
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunctionWithRetry<DependencyAuditResult>("audit-dependencies", {
+    ...body,
+    ...(token ? { github_access_token: token } : {}),
   });
 }
 
 // ---- Stats (for homepage) ----
 
-export async function getStats(): Promise<{ repos: number; contributors: number; poolCents: number; donors: number }> {
+export async function getStats(): Promise<{ repos: number; contributors: number }> {
   try {
-    const [reposResult, contribResult, activePoolsResult] = await Promise.all([
+    const [reposResult, contribResult] = await Promise.all([
       databases.listDocuments(DATABASE_ID, COLLECTION.REPOS, [Query.limit(1)]),
       databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [Query.limit(1)]),
-      databases.listDocuments(DATABASE_ID, COLLECTION.POOLS, [
-        Query.equal("status", "active"),
-        Query.limit(100),
-      ]),
     ]);
-
-    const poolCents = activePoolsResult.documents.reduce(
-      (s, d) => s + Number((d as { total_amount_cents?: number }).total_amount_cents ?? 0),
-      0,
-    );
-    const donors = activePoolsResult.documents.reduce(
-      (s, d) => s + Number((d as { donor_count?: number }).donor_count ?? 0),
-      0,
-    );
 
     return {
       repos: reposResult.total,
       contributors: contribResult.total,
-      poolCents,
-      donors,
     };
   } catch {
-    return { repos: 0, contributors: 0, poolCents: 0, donors: 0 };
+    return { repos: 0, contributors: 0 };
   }
 }

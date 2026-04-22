@@ -1,8 +1,10 @@
+# Disabled: OpenGet v5 no longer runs in-app fund distribution. Scoring is nightly only.
+# Re-enable only if a future fiscal-host-only pipeline exists outside the app.
 name: OpenGet weekly distribution
 
 on:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 31 2 *' # never (Feb 31); retained so workflow file can stay in repo
   workflow_dispatch:
     inputs:
       mode:
@@ -20,6 +22,7 @@ concurrency:
 
 jobs:
   run:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

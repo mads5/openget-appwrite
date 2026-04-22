@@ -1,9 +1,11 @@
+import './load-env.mjs';
 import {
   AppwriteException,
   Client,
   Databases,
   ID,
   Permission,
+  Query,
   Role,
 } from 'node-appwrite';
 
@@ -234,6 +236,13 @@ async function setupContributors() {
   await addFloatAttribute(id, 'total_score', false, 0);
   await addIntegerAttribute(id, 'repo_count', false, 0);
   await addIntegerAttribute(id, 'total_contributions', false, 0);
+  await addFloatAttribute(id, 'score_f1', false, 0);
+  await addFloatAttribute(id, 'score_f2', false, 0);
+  await addFloatAttribute(id, 'score_f3', false, 0);
+  await addFloatAttribute(id, 'score_f4', false, 0);
+  await addFloatAttribute(id, 'score_f5', false, 0);
+  await addFloatAttribute(id, 'score_f6', false, 0);
+  await addFloatAttribute(id, 'percentile_global', false, 0);
 }
 
 async function setupRepoContributions() {
@@ -292,6 +301,7 @@ async function setupPayouts() {
   await addStringAttribute(id, 'status', 20, true);
   await addStringAttribute(id, 'stripe_transfer_id', 200, false);
   await addStringAttribute(id, 'completed_at', 50, false);
+  await addStringAttribute(id, 'failure_reason', 200, false);
 }
 
 async function setupPlatformFees() {
@@ -323,6 +333,30 @@ async function setupWeeklyDistributions() {
   await addIntegerAttribute(id, 'payouts_created', false, 0);
 }
 
+async function setupAppMeta() {
+  const id = 'app_meta';
+  await ensureCollection(id, 'App metadata');
+  await addIntegerAttribute(id, 'schema_version', false, 2);
+}
+
+/**
+ * Ensures a singleton row exists so workers and migrations can read the active schema generation.
+ */
+async function seedAppMeta() {
+  const id = 'app_meta';
+  try {
+    const r = await databases.listDocuments(DATABASE_ID, id, [Query.limit(1)]);
+    if (r.total > 0) {
+      console.log('[skip] app_meta already seeded');
+      return;
+    }
+    await databases.createDocument(DATABASE_ID, id, ID.unique(), { schema_version: 2 });
+    console.log('[ok] Seeded app_meta (schema_version=2)');
+  } catch (e) {
+    console.log('[warn] app_meta seed:', /** @type {Error} */ (e).message);
+  }
+}
+
 async function setupUsers() {
   const id = 'users';
   await ensureCollection(id, 'Users');
@@ -332,6 +366,9 @@ async function setupUsers() {
   await addStringAttribute(id, 'display_name', 200, false);
   await addStringAttribute(id, 'email', 200, false);
   await addStringAttribute(id, 'stripe_connect_account_id', 100, false);
+  await addBooleanAttribute(id, 'stripe_charges_enabled', false, false);
+  await addBooleanAttribute(id, 'stripe_payouts_enabled', false, false);
+  await addStringAttribute(id, 'payout_pin_hash', 256, false);
   await addStringAttribute(id, 'github_access_token', 2000, false);
 }
 
@@ -348,6 +385,7 @@ async function main() {
   await ensureDatabase();
 
   const steps = [
+    ['app_meta', setupAppMeta],
     ['repos', setupRepos],
     ['contributors', setupContributors],
     ['repo_contributions', setupRepoContributions],
@@ -364,6 +402,9 @@ async function main() {
     console.log(`\n--- ${name} ---`);
     await fn();
   }
+
+  console.log('\n--- seed ---');
+  await seedAppMeta();
 
   console.log('\n[done] All collections and attributes processed.');
 }

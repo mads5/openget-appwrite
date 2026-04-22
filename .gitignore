@@ -5,6 +5,7 @@
 
 # testing
 /coverage
+/mobile-sim-output/
 
 # next.js
 /.next/

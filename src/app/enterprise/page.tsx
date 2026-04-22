@@ -2,121 +2,101 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getPoolImpact } from "@/lib/api";
-import { PoolTypesGuide } from "@/components/enterprise/pool-types-guide";
+import { getStats } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/site/page-header";
 
 export default function EnterprisePage() {
-  const [impact, setImpact] = useState<Awaited<ReturnType<typeof getPoolImpact>> | null>(null);
-  const [loadingImpact, setLoadingImpact] = useState(true);
+  const [stats, setStats] = useState({ repos: 0, contributors: 0, loading: true, error: false });
 
   useEffect(() => {
-    getPoolImpact()
-      .then(setImpact)
-      .finally(() => setLoadingImpact(false));
+    getStats()
+      .then((s) => setStats({ ...s, loading: false, error: false }))
+      .catch(() => setStats({ repos: 0, contributors: 0, loading: false, error: true }));
   }, []);
 
   return (
+    <div>
+      <PageHeader
+        title="For enterprises"
+        description={
+          <>
+            Surface the <strong className="text-foreground/90">people</strong> behind dependencies—merges, reviews, and
+            triage—for OSPO and security teams. Open the{" "}
+            <Link href="/enterprise/audit" className="text-primary hover:underline">
+              audit experience
+            </Link>{" "}
+            and plan integrations around verification APIs.
+          </>
+        }
+      />
     <div className="container py-10 max-w-3xl mx-auto space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">For enterprises</h1>
-        <p className="text-muted-foreground mt-3 leading-relaxed">
-          OpenGet helps fund the open-source projects you depend on. Instead of trying to sponsor
-          people one by one, you donate into a pool and OpenGet shares that money using clear rules.
-        </p>
-      </div>
-
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Why fund through OpenGet</h2>
+        <h2 className="text-xl font-semibold">What you get</h2>
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
-            <span className="text-foreground">Faster reviews</span>: When projects are funded, maintainers can spend
-            more time reviewing patches, fixing bugs, and helping releases move faster.
+            <span className="text-foreground">Stewardship signal</span>: a 6-factor view of who actually merges, reviews, and
+            triages on the repos you care about.
           </li>
           <li>
-            <span className="text-foreground">Healthier dependencies</span>: If an important library is ignored for
-            too long, everyone who depends on it is affected. OpenGet helps keep those projects active.
+            <span className="text-foreground">Map risk to people</span>: connect packages and maintainers for governance and
+            incident planning (roadmap: richer dependency → maintainer join).
           </li>
           <li>
-            <span className="text-foreground">Simple funding</span>: You can support a whole area of open source in
-            one step instead of managing lots of separate sponsorships.
-          </li>
-          <li>
-            <span className="text-foreground">Clear records</span>: OpenGet keeps simple records of donations,
-            pools, and payouts so teams can track what happened.
-          </li>
-          <li>
-            <span className="text-foreground">Fair sharing</span>: Donors do not pick one PR or one person to pay.
-            The platform uses public rules so the money is shared more fairly.
-          </li>
-          <li>
-            <span className="text-foreground">Useful reports</span>: OpenGet can show where donations went and which
-            repos were included in each pool.
+            <span className="text-foreground">Integrations</span>: public JSON verification and SVG badges for dashboards and
+            internal tools.
           </li>
         </ul>
       </section>
 
-      <PoolTypesGuide />
-
-      <Card>
+      <Card className="og-glass border-border/50">
         <CardHeader>
-          <CardTitle className="text-lg">Live snapshot</CardTitle>
+          <CardTitle className="text-lg">Platform snapshot</CardTitle>
           <p className="text-sm text-muted-foreground font-normal">
-            A quick view of what OpenGet is tracking right now.
+            Live counts from the OpenGet index.
           </p>
         </CardHeader>
         <CardContent>
-          {loadingImpact && (
+          {stats.loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              Loading pool data…
+              Loading…
             </div>
-          )}
-          {!loadingImpact && impact && (
-            <div className="space-y-4 text-sm">
+          ) : stats.error ? (
+            <p className="text-sm text-destructive">Could not load index counts. Check connectivity and try again.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
               <div>
                 <div className="text-muted-foreground">Listed repositories</div>
-                <div className="text-2xl font-semibold tabular-nums">{impact.listed_repos}</div>
+                <div className="text-2xl font-semibold tabular-nums">{stats.repos}</div>
               </div>
               <div>
-                <div className="text-muted-foreground mb-1">Collecting pools (next round)</div>
-                <ul className="space-y-1">
-                  {impact.collecting.length === 0 && (
-                    <li className="text-muted-foreground">None</li>
-                  )}
-                  {impact.collecting.map((p) => (
-                    <li key={p.id} className="flex justify-between gap-4 border-b border-border/40 pb-1">
-                      <span className="font-mono text-xs">{p.pool_type || "—"}</span>
-                      <span className="tabular-nums">${(p.total_amount_cents / 100).toFixed(2)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1">Active pools (current round)</div>
-                <ul className="space-y-1">
-                  {impact.active.length === 0 && (
-                    <li className="text-muted-foreground">None</li>
-                  )}
-                  {impact.active.map((p) => (
-                    <li key={p.id} className="flex justify-between gap-4 border-b border-border/40 pb-1">
-                      <span className="font-mono text-xs">{p.pool_type || "—"}</span>
-                      <span className="tabular-nums">
-                        remaining ${(p.remaining_cents / 100).toFixed(2)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="text-muted-foreground">Contributors indexed</div>
+                <div className="text-2xl font-semibold tabular-nums">{stats.contributors}</div>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Public verification API</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          JSON verification and SVG badges for integrations. Server routes need{" "}
+          <code className="text-xs font-mono text-foreground/90">APPWRITE_API_KEY</code> on the Next.js host (see
+          project README). Optional keyed access: <code className="text-xs font-mono">OPENGET_VERIFY_API_KEYS</code>.
+        </p>
+        <pre className="overflow-x-auto rounded-xl border border-border/50 bg-background/50 p-4 text-left text-xs font-mono leading-relaxed text-muted-foreground">
+          <code className="text-primary/90">GET</code> /api/verify?user=octocat
+          <br />
+          <code className="text-primary/90">GET</code> /api/badge/octocat
+        </pre>
+      </section>
+
       <div className="flex flex-wrap gap-3">
         <Button asChild>
-          <Link href="/donate">Donate to a pool</Link>
+          <Link href="/enterprise/audit">Open audit</Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/">Back home</Link>
@@ -124,8 +104,9 @@ export default function EnterprisePage() {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        This page explains how OpenGet works. It is not legal or tax advice.
+        Orientation only — not legal, security, or compliance advice.
       </p>
+    </div>
     </div>
   );
 }

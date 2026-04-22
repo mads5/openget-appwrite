@@ -1,0 +1,11 @@
+---
+description: OpenGet — Human Verification / Trust-as-a-Service
+globs: "**/*"
+---
+
+# OpenGet
+
+- **Product:** reputation and supply-chain–oriented **Human Verification** — 6-factor scores, public profiles, **SVG badges**, **/api/verify** JSON, and **enterprise risk / audit** surfaces. Emphasize **F3, F5, F6** in UX (merge, review, triage).
+- **Never** add LOC to the 6-factor merit score. `lines_*` in DB are analytics only.
+- Prefer **serverless** Appwrite functions + on-demand work; keep **low COGS**.
+- See root **CONTEXT.md** for product context.
