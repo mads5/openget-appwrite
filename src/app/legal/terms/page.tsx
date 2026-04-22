@@ -103,7 +103,8 @@ export default function TermsOfServicePage() {
         </p>
         <p>
           <strong className="text-foreground">OpenGet Shield</strong> (if offered) is an{" "}
-          <strong className="text-foreground">optional</strong> timed exercise with automated solution checks plus{" "}
+          <strong className="text-foreground">optional</strong> timed exercise (typically up to about 30 minutes as
+          configured) with automated solution checks plus{" "}
           <strong className="text-foreground">lightweight session rules</strong> (for example: no paste in the answer
           field, optional fullscreen — including prompts if fullscreen ends, for example with the Escape key — optional
           in-browser camera/microphone preview that stays on your device and is{" "}

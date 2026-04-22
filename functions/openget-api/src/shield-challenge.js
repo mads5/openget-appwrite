@@ -1,13 +1,10 @@
 import vm from 'node:vm';
 
-/** Time-box for one Shield attempt (ms). */
+/** Time-box for one Shield attempt (ms) — aligns with “up to 30 minutes” product copy. */
 export const SHIELD_SESSION_TTL_MS = 30 * 60 * 1000;
 
 /** Tab / document-hidden violations before the session is voided server-side. */
 export const MAX_INTEGRITY_STRIKES = 3;
-
-/** Formulas used for AI-generated challenges (expected values computed server-side only). */
-export const AI_FORMULA_KEYS = ['square_plus_n', 'triple_minus_one', 'n_squared', 'abs_times_two'];
 
 const FORBIDDEN = /(\brequire\b|\bimport\b|\beval\b|Function\s*\(|fetch\s*\(|process\.|Deno|WebAssembly)/i;
 
@@ -22,11 +19,44 @@ function vmThrownMessage(e) {
   }
 }
 
+/**
+ * Pure integer formulas: grading uses these only (never model-supplied outputs).
+ * Keys must stay in sync with `parseShieldChallengeMeta` and the static pool.
+ */
 export const FORMULA_IMPL = {
   square_plus_n: (n) => n * n + n,
   triple_minus_one: (n) => 3 * n - 1,
   n_squared: (n) => n * n,
   abs_times_two: (n) => Math.abs(n) * 2,
+  cube_minus_n: (n) => n * n * n - n,
+  double_square: (n) => 2 * n * n,
+  sum_three_consecutive: (n) => n + (n + 1) + (n + 2),
+  abs_plus_ten: (n) => Math.abs(n) + 10,
+  diff_prev_square: (n) => n * n - (n - 1) * (n - 1),
+};
+
+export const AI_FORMULA_KEYS = Object.keys(FORMULA_IMPL);
+
+/** Natural-language spec for OpenAI prompts (no algebraic “answer key” in one line). */
+export const FORMULA_ENGLISH = {
+  square_plus_n:
+    'For any integer n, return n plus (n squared). Example: shieldFix(3) should be 12; shieldFix(-2) should be 2.',
+  triple_minus_one:
+    'For any integer n, return (three times n) minus one. Example: shieldFix(4) should be 11.',
+  n_squared:
+    'For any integer n, return n squared (n times n). Example: shieldFix(-4) should be 16.',
+  abs_times_two:
+    'For any integer n, return two times the absolute value of n. Example: shieldFix(-5) should be 10; shieldFix(0) should be 0.',
+  cube_minus_n:
+    'For any integer n, return (n cubed) minus n. Example: shieldFix(2) should be 6; shieldFix(-1) should be 0.',
+  double_square:
+    'For any integer n, return two times (n squared). Example: shieldFix(3) should be 18.',
+  sum_three_consecutive:
+    'For any integer n, return the sum of three consecutive integers starting at n: n + (n+1) + (n+2). Example: shieldFix(10) should be 33.',
+  abs_plus_ten:
+    'For any integer n, return the absolute value of n, plus ten. Example: shieldFix(-4) should be 14; shieldFix(0) should be 10.',
+  diff_prev_square:
+    'For any integer n, return (n squared) minus ((n minus one) squared). Example: shieldFix(5) should be 9; shieldFix(0) should be -1.',
 };
 
 /**
@@ -36,7 +66,7 @@ export const FORMULA_IMPL = {
 function numericTestPairs(formulaKey) {
   const impl = FORMULA_IMPL[formulaKey];
   if (!impl) return [];
-  const ns = [-8, -3, -2, -1, 0, 1, 2, 5, 7, 11, 15];
+  const ns = [-500, -17, -8, -3, -2, -1, 0, 1, 2, 4, 7, 11, 15, 42, 99];
   return ns.map((n) => [n, impl(n)]);
 }
 
@@ -51,7 +81,7 @@ export function parseShieldChallengeMeta(raw) {
   try {
     const o = JSON.parse(String(raw));
     const k = typeof o.formulaKey === 'string' ? o.formulaKey : '';
-    if (k === 'square_plus_n' || k === 'triple_minus_one' || k === 'n_squared' || k === 'abs_times_two') {
+    if (k in FORMULA_IMPL) {
       return { formulaKey: k, fnName: 'shieldFix' };
     }
   } catch {
@@ -61,7 +91,7 @@ export function parseShieldChallengeMeta(raw) {
 }
 
 /**
- * v1 fallback: single parity challenge when OpenAI is unavailable.
+ * Last-resort challenge when OpenAI and the static pool are both unavailable.
  * @returns { { slug: string, title: string, instructions: string, starter_code: string } }
  */
 export function getParityChallenge() {
@@ -71,7 +101,7 @@ export function getParityChallenge() {
     instructions:
       'Define a function named isEven that returns true for even integers and false for odd integers. ' +
       'The starter code is wrong. Submit JavaScript containing a single top-level `function isEven(n) { ... }`. ' +
-      'No import, require, fetch, eval, or Function constructor.',
+      'No import, require, fetch, eval, or Function constructor. You may use up to 30 minutes (see server timer).',
     starter_code: `function isEven(n) {\n  return n % 2 === 1;\n}\n`,
   };
 }
@@ -135,7 +165,7 @@ function validateNumericFormula(sourceRaw, formulaKey) {
     'true;';
 
   try {
-    vm.runInNewContext(wrapped, { Math }, { timeout: 2000 });
+    vm.runInNewContext(wrapped, { Math }, { timeout: 3000 });
     return { ok: true };
   } catch (e) {
     const msg = vmThrownMessage(e);

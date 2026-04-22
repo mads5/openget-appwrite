@@ -441,10 +441,10 @@ export default function ShieldPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">{session.challenge.title}</CardTitle>
-            {session.challenge_source === "openai" && (
+            {(session.challenge_source === "openai" || session.challenge_source === "static_pool") && (
               <p className="text-xs text-muted-foreground">
-                This prompt is generated for your session only. Passing is checked against hidden server tests, not a
-                single shared answer key.
+                This task is unique to your session (or drawn from a large rotating pool). Passing is checked against
+                hidden server tests, not a single public answer key.
               </p>
             )}
             <div

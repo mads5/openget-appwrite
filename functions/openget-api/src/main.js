@@ -20,6 +20,7 @@ import {
   validateShieldSolution,
 } from './shield-challenge.js';
 import { generateShieldChallenge } from './shield-ai.js';
+import { pickStaticShieldChallenge } from './shield-static-fallback.js';
 
 const DATABASE_ID = 'openget-db';
 
@@ -1191,7 +1192,7 @@ export default async ({ req, res, log, error }) => {
         const parityMeta = JSON.stringify({ formulaKey: 'parity_is_even', fnName: 'isEven' });
         let challenge;
         let challengeMeta = parityMeta;
-        let challengeSource = 'static';
+        let challengeSource = 'parity';
 
         const ai = await generateShieldChallenge(log);
         if (ai) {
@@ -1204,7 +1205,22 @@ export default async ({ req, res, log, error }) => {
           challengeMeta = JSON.stringify({ formulaKey: ai.formulaKey, fnName: 'shieldFix' });
           challengeSource = 'openai';
         } else {
-          challenge = getParityChallenge();
+          try {
+            const stat = pickStaticShieldChallenge();
+            challenge = {
+              slug: `static-${stat.formulaKey}-${ID.unique().slice(0, 12)}`,
+              title: stat.title,
+              instructions: stat.instructions,
+              starter_code: stat.starter_code,
+            };
+            challengeMeta = JSON.stringify({ formulaKey: stat.formulaKey, fnName: 'shieldFix' });
+            challengeSource = 'static_pool';
+          } catch (e) {
+            log(`shield-start static pool: ${e.message}`);
+            challenge = getParityChallenge();
+            challengeMeta = parityMeta;
+            challengeSource = 'parity';
+          }
         }
 
         const expiresAt = new Date(now + SHIELD_SESSION_TTL_MS).toISOString();

@@ -4,20 +4,9 @@
  */
 
 import crypto from 'node:crypto';
-import { AI_FORMULA_KEYS, validateShieldSolution } from './shield-challenge.js';
+import { AI_FORMULA_KEYS, FORMULA_ENGLISH, validateShieldSolution } from './shield-challenge.js';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-
-const FORMULA_ENGLISH = {
-  square_plus_n:
-    'For any integer n, return n plus (n times n). Equivalently: n squared plus n. Example: shieldFix(3) should be 12.',
-  triple_minus_one:
-    'For any integer n, return three times n, minus one. Example: shieldFix(4) should be 11.',
-  n_squared:
-    'For any integer n, return n times n (n squared). Example: shieldFix(-3) should be 9.',
-  abs_times_two:
-    'For any integer n, return two times the absolute value of n. Example: shieldFix(-5) should be 10 and shieldFix(0) should be 0.',
-};
 
 /**
  * @param {(msg: string) => void} [log]
@@ -33,18 +22,24 @@ export async function generateShieldChallenge(log) {
 
   const system = `You output only valid JSON objects with keys: title (string), instructions (string), starter_code (string).
 The starter_code must contain exactly one top-level function named shieldFix with one parameter n, implementing JavaScript that runs in strict mode.
-The code must be subtly wrong relative to the described behavior but syntactically valid. No import, require, fetch, eval, Function constructor, process, Deno, or WebAssembly.`;
 
-  const user = `Write a tiny debugging exercise.
+Difficulty: this is a serious debugging exercise (candidates may spend many minutes, up to ~30). The starter must be MULTI-STEP wrong code (at least 6 non-empty lines inside the function body, not a one-line typo). Use misleading variable names, redundant branches, wrong edge cases for n===0 or n<0, off-by-one loops, or confused operator precedence — but keep it readable JavaScript.
 
-Correct behavior: ${behavior}
+The code must be wrong for the described behavior yet syntactically valid. No import, require, fetch, eval, Function constructor, process, Deno, or WebAssembly.`;
+
+  const user = `Write a debugging exercise for experienced developers.
+
+Correct behavior for shieldFix(n) with integer n:
+${behavior}
 
 Return JSON like:
 {"title":"...","instructions":"...","starter_code":"function shieldFix(n) {\\n  ...\\n}\\n"}
 
-instructions should tell the candidate to fix shieldFix to match the behavior (without giving the algebraic answer away in a single formula line — use words and examples only).`;
+instructions: Set expectations, mention negatives and zero, and say they may use up to 30 minutes (server enforces a deadline). Do not print the closed-form answer as a single formula line — use words and numeric examples only.
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+starter_code: Must be subtly broken; must NOT be trivially fixable by flipping one obvious operator in a one-liner.`;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
       const res = await fetch(OPENAI_URL, {
         method: 'POST',
@@ -54,7 +49,8 @@ instructions should tell the candidate to fix shieldFix to match the behavior (w
         },
         body: JSON.stringify({
           model,
-          temperature: 0.85,
+          temperature: 0.88,
+          max_tokens: 2200,
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: system },
@@ -81,10 +77,12 @@ instructions should tell the candidate to fix shieldFix to match the behavior (w
         continue;
       }
       const title = String(parsed.title || '').trim().slice(0, 120);
-      const instructions = String(parsed.instructions || '').trim().slice(0, 2000);
+      const instructions = String(parsed.instructions || '').trim().slice(0, 4000);
       let starter_code = String(parsed.starter_code || '').trim();
-      if (!title || !instructions || starter_code.length < 20 || starter_code.length > 6000) continue;
+      if (!title || !instructions || starter_code.length < 80 || starter_code.length > 8000) continue;
       if (!/\bfunction\s+shieldFix\s*\(\s*n\s*\)/.test(starter_code)) continue;
+      const bodyLines = starter_code.split('\n').filter((l) => String(l).trim() !== '');
+      if (bodyLines.length < 8) continue;
 
       const meta = { formulaKey, fnName: 'shieldFix' };
       const check = validateShieldSolution(starter_code, meta);
