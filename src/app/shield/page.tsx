@@ -34,6 +34,15 @@ export default function ShieldPage() {
   const sessionIdRef = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const lastHiddenAtRef = useRef(0);
+  /** True after this page’s shell successfully entered fullscreen (so Esc → exit is detected). */
+  const shieldFullscreenActiveRef = useRef(false);
+  /** Skip the next `fullscreenchange` (we exited programmatically on cancel/submit). */
+  const ignoreNextFullscreenChangeRef = useRef(false);
+  const localMediaStreamRef = useRef<MediaStream | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
+
+  const [fullscreenLeft, setFullscreenLeft] = useState(false);
+  const [devicePreview, setDevicePreview] = useState<"off" | "pending" | "live" | "denied" | "unsupported">("off");
 
   useEffect(() => {
     account
@@ -58,6 +67,89 @@ export default function ShieldPage() {
 
   useEffect(() => {
     sessionIdRef.current = session?.session_id ?? null;
+    if (!session?.session_id) {
+      shieldFullscreenActiveRef.current = false;
+      setFullscreenLeft(false);
+      setDevicePreview("off");
+      localMediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      localMediaStreamRef.current = null;
+      const v = videoPreviewRef.current;
+      if (v) v.srcObject = null;
+    }
+  }, [session?.session_id]);
+
+  /** Optional local camera/mic preview during a session (browser only — not uploaded; see Terms). */
+  useEffect(() => {
+    if (!session?.session_id) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setDevicePreview("unsupported");
+      return;
+    }
+    let cancelled = false;
+    setDevicePreview("pending");
+    void navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "user" }, audio: true })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        localMediaStreamRef.current = stream;
+        setDevicePreview("live");
+        const v = videoPreviewRef.current;
+        if (v) {
+          v.srcObject = stream;
+          void v.play().catch(() => {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDevicePreview("denied");
+      });
+    return () => {
+      cancelled = true;
+      localMediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      localMediaStreamRef.current = null;
+      const v = videoPreviewRef.current;
+      if (v) v.srcObject = null;
+    };
+  }, [session?.session_id]);
+
+  /** Attach stream once the preview `<video>` is mounted (handles Strict Mode / timing). */
+  useEffect(() => {
+    if (devicePreview !== "live") return;
+    const stream = localMediaStreamRef.current;
+    const v = videoPreviewRef.current;
+    if (!stream || !v) return;
+    if (v.srcObject !== stream) {
+      v.srcObject = stream;
+      void v.play().catch(() => {});
+    }
+  }, [devicePreview]);
+
+  /** Esc (and F11) exit fullscreen in all browsers — we cannot block that; we warn and offer re-entry. */
+  useEffect(() => {
+    if (!session?.session_id) return;
+    const onFullscreenChange = () => {
+      const shell = shellRef.current;
+      const fs = document.fullscreenElement;
+      if (fs === shell) {
+        shieldFullscreenActiveRef.current = true;
+        setFullscreenLeft(false);
+        return;
+      }
+      if (ignoreNextFullscreenChangeRef.current) {
+        ignoreNextFullscreenChangeRef.current = false;
+        shieldFullscreenActiveRef.current = false;
+        setFullscreenLeft(false);
+        return;
+      }
+      if (sessionIdRef.current && shieldFullscreenActiveRef.current && !fs) {
+        shieldFullscreenActiveRef.current = false;
+        setFullscreenLeft(true);
+      }
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, [session?.session_id]);
 
   /** Countdown until server expiry. */
@@ -130,8 +222,11 @@ export default function ShieldPage() {
 
   const exitFullscreenSafe = useCallback(() => {
     if (document.fullscreenElement) {
+      ignoreNextFullscreenChangeRef.current = true;
       void document.exitFullscreen().catch(() => {});
     }
+    shieldFullscreenActiveRef.current = false;
+    setFullscreenLeft(false);
   }, []);
 
   const handleStart = async () => {
@@ -144,12 +239,20 @@ export default function ShieldPage() {
       const s = await shieldStart();
       setSession(s);
       setCode(s.challenge.starter_code);
+      shieldFullscreenActiveRef.current = false;
+      setFullscreenLeft(false);
       queueMicrotask(() => {
         const el = shellRef.current;
         if (el?.requestFullscreen) {
-          void el.requestFullscreen().catch(() => {
-            /* user denied or unsupported */
-          });
+          void el
+            .requestFullscreen()
+            .then(() => {
+              shieldFullscreenActiveRef.current = true;
+              setFullscreenLeft(false);
+            })
+            .catch(() => {
+              shieldFullscreenActiveRef.current = false;
+            });
         }
       });
     } catch (e) {
@@ -159,6 +262,24 @@ export default function ShieldPage() {
       setBusy(false);
     }
   };
+
+  const reenterFullscreen = useCallback(() => {
+    const el = shellRef.current;
+    if (!el?.requestFullscreen) {
+      setError("Fullscreen is not supported in this browser.");
+      return;
+    }
+    void el
+      .requestFullscreen()
+      .then(() => {
+        shieldFullscreenActiveRef.current = true;
+        setFullscreenLeft(false);
+        setError(null);
+      })
+      .catch(() => {
+        setError("Could not re-enter fullscreen. Try clicking the button again, or use the browser’s fullscreen menu.");
+      });
+  }, []);
 
   const cancelSession = () => {
     exitFullscreenSafe();
@@ -234,10 +355,13 @@ export default function ShieldPage() {
         description={
           <>
             Timed, <strong className="text-foreground">focused-session</strong> check: keep this tab visible, type your
-            fix (paste disabled), and stay in fullscreen if your browser allows it. Leaving the page too many times{" "}
-            <strong className="text-foreground">voids</strong> the session server-side. This is{" "}
-            <strong className="text-foreground">not</strong> webcam identity proctoring and cannot prove code was never
-            assisted — it raises the bar for casual copy-paste from another window. See{" "}
+            fix (paste disabled), and stay in fullscreen if your browser allows it.{" "}
+            <strong className="text-foreground">Escape</strong> always exits browser fullscreen (we cannot block that);
+            you will see a prompt to return. A small <strong className="text-foreground">local</strong> camera/mic
+            preview may start so you can confirm devices — nothing is recorded or uploaded. Leaving the tab hidden too
+            many times <strong className="text-foreground">voids</strong> the session server-side. This is{" "}
+            <strong className="text-foreground">not</strong> certified identity proctoring and cannot prove code was
+            never assisted. See{" "}
             <Link href="/legal/terms" className="text-primary underline underline-offset-2">
               Terms
             </Link>
@@ -293,6 +417,21 @@ export default function ShieldPage() {
                 </strong>{" "}
                 — at max, the session is voided and you must restart.
               </p>
+              {fullscreenLeft && (
+                <div
+                  className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-amber-100"
+                  role="alert"
+                >
+                  <p className="font-medium text-foreground">Fullscreen ended</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Browsers always allow Escape to exit fullscreen. Return to fullscreen to keep the intended focused
+                    layout, or continue in windowed mode at your own risk.
+                  </p>
+                  <Button type="button" size="sm" className="mt-2" onClick={reenterFullscreen}>
+                    Re-enter fullscreen
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -319,6 +458,22 @@ export default function ShieldPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {devicePreview === "denied" && (
+              <p className="text-xs text-amber-200/90 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5">
+                Camera or microphone permission was denied. The session continues; only your typed answer is sent to
+                the server.
+              </p>
+            )}
+            {devicePreview === "unsupported" && (
+              <p className="text-xs text-muted-foreground">
+                This browser does not expose camera/mic for a local preview; the session still runs.
+              </p>
+            )}
+            {(devicePreview === "live" || devicePreview === "pending") && (
+              <p className="text-xs text-muted-foreground">
+                Local preview only — stream stays in your browser; OpenGet does not record or store video or audio.
+              </p>
+            )}
             <p className="text-xs text-amber-200/90">
               Paste is turned off in the editor. Do not rely on another tab or tool for the solution while the clock is
               running.
@@ -361,10 +516,25 @@ export default function ShieldPage() {
       )}
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Lightweight session rules: fullscreen (if permitted), no paste in the answer box, live timer, and server
-        strikes when the document is hidden. This does not include camera or screen recording and cannot detect all
-        offline or second-device assistance.
+        Session rules: optional fullscreen (Esc exits in every browser — use Re-enter fullscreen if you leave by
+        mistake), optional local-only camera/mic preview, no paste in the answer box, live timer, and server strikes when
+        the document is hidden. There is no cloud recording of your camera, mic, or screen.
       </p>
+
+      {session && (devicePreview === "live" || devicePreview === "pending") && (
+        <div className="fixed bottom-4 right-4 z-[100] w-40 sm:w-48 rounded-lg border border-border/80 bg-background/95 p-1 shadow-lg backdrop-blur-sm">
+          <p className="text-[10px] text-muted-foreground px-1 pb-0.5 truncate" title="Local preview — not uploaded">
+            Local preview · not uploaded
+          </p>
+          <video
+            ref={videoPreviewRef}
+            className="aspect-video w-full rounded-md bg-black object-cover"
+            muted
+            playsInline
+            autoPlay
+          />
+        </div>
+      )}
 
       <Button variant="ghost" asChild>
         <Link href="/dashboard">Back to dashboard</Link>

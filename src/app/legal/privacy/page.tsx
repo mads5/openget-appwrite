@@ -75,6 +75,11 @@ export default function PrivacyPolicyPage() {
             lists, activity metrics) as permitted by GitHub&apos;s terms and APIs.
           </li>
           <li>
+            <strong className="text-foreground">OpenGet Shield (if you use it):</strong> Your browser may request camera
+            and microphone access for a <strong className="text-foreground">local preview only</strong>. We do not
+            record, upload, or store that audio or video on our servers.
+          </li>
+          <li>
             <strong className="text-foreground">Server-side and API use:</strong> If you or your organization use server
             routes, Appwrite, a verification key (for example, <code className="text-xs">APPWRITE_API_KEY</code> in
             deployment, or <code className="text-xs">OPENGET_VERIFY_API_KEYS</code> for keyed public verification), or
