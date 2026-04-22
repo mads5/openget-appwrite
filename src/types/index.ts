@@ -78,6 +78,10 @@ export interface Contributor {
   percentile_global: number;
   /** GPS: factor buckets and path-to-next-tier (no raw score). */
   gps: ContributorGps;
+  /** OpenGet Shield: optional timed check (orthogonal to Kinetic tier). */
+  shield_status: "none" | "passed";
+  shield_passed_at: string | null;
+  shield_challenge_slug: string | null;
 }
 
 export interface ContributorDetail extends Contributor {

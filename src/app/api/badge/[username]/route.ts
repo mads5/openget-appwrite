@@ -38,10 +38,11 @@ export async function GET(
         },
       });
     }
-    const d = doc as { kinetic_tier?: string; percentile_global?: number };
+    const d = doc as { kinetic_tier?: string; percentile_global?: number; shield_status?: string };
     const tier = parseTier(d.kinetic_tier);
     const pct = d.percentile_global != null ? Math.round(Number(d.percentile_global)) : 0;
-    const label = `${tier} · P${pct}`;
+    const shield = String(d.shield_status || "").toLowerCase() === "passed";
+    const label = `${tier} · P${pct}${shield ? " · Shield" : ""}`;
     const body = svgBadge("OpenGet", label, "#3b82f6");
     return new NextResponse(body, {
       status: 200,

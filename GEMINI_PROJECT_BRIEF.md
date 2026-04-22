@@ -6,7 +6,8 @@ Use this document as a high-context handoff so Gemini can reason about the codeb
 
 OpenGet is a Next.js + Appwrite **Trust-as-a-Service / Reputation Oracle** platform for:
 - indexing open source repositories,
-- **7-factor** Kinetic tier + percentile (raw scores in `internal_reputation` vault only; UI sees tier + GPS buckets),
+- **7-factor** Kinetic tier + percentile (raw scores in `internal_reputation` vault only; public surfaces see tier + percentile + **GPS** coarse buckets, 1–5 per factor),
+- **Kinetic tier names (lowest → highest):** Spark, Current, Kinetic, Reactor, Fusion, Singularity (percentile cut rules in `docs/REPUTATION_ORACLE.md`),
 - `openget.json` Guardian ingest (`ingest-openget-json`) and `repo_guardians` attestation,
 - B2B `GET /api/enterprise/talent` and verification APIs without raw float leakage.
 
@@ -52,6 +53,7 @@ Main pages:
 - `/contributors/[id]` -> `src/app/contributors/[id]/page.tsx`
 - `/list-repo` -> `src/app/list-repo/page.tsx`
 - `/dashboard` -> `src/app/dashboard/page.tsx`
+- `/shield` -> `src/app/shield/page.tsx`
 - `/enterprise` -> `src/app/enterprise/page.tsx`
 - `/legal/terms` -> `src/app/legal/terms/page.tsx`
 - `/legal/privacy` -> `src/app/legal/privacy/page.tsx`
@@ -74,6 +76,7 @@ Notable actions include:
 - `get-my-repos`
 - `get-repo-contributors`
 - `register-contributor`
+- `shield-start` / `shield-submit` (OpenGet Shield — optional timed check; updates `contributors.shield_*`)
 - `fetch-contributors` (scoring/enrichment; ends with `recompute-percentiles` when a batch completes)
 - `recompute-percentiles`
 - `ingest-openget-json` (stewardship graph)
@@ -134,8 +137,7 @@ Important methods:
   - `listContributors`, `getContributor`, `getMyContributor`, `registerContributor`
 - User GitHub repos:
   - `getMyGithubRepos`
-- Enterprise:
-  - `runDependencyAudit`
+- B2B talent listing is not a `api.ts` method; it is `GET /api/enterprise/talent` (`src/app/api/enterprise/talent/route.ts`, keyed).
 - Stats:
   - `getStats`
 
@@ -204,6 +206,9 @@ Operational scripts (`scripts/`):
 - If API action errors with unknown action, backend function deployment can be stale.
 - Verify/badge endpoints depend on server-side `APPWRITE_API_KEY` availability.
 - Payment-related Stripe-named functions are currently deprecated stubs.
+- **No manual human-in-the-loop "technical audit" product** (e.g. employer-run in-app audit rounds, package-manifest wizards, or other manual scoring flows that were de-scoped). Value is **automated, continuously updated** reputation from public OSS signals via scoring + scheduled/ingest pipelines.
+- **B2B** = verification JSON, SVG badges, and `GET /api/enterprise/talent` (keyed)—not a separate manual-audit workflow.
+- The former **npm → maintainer "dependency audit"** map (`audit-dependencies`, `/enterprise/audit`) was **removed**; do not reintroduce it without an explicit product decision and implementation.
 
 ## 14) Practical mental model for Gemini
 
@@ -216,6 +221,7 @@ When answering questions or proposing changes, Gemini should:
    - frontend (Next.js/Appwrite Sites),
    - backend functions (`openget-api` deploy),
    - database schema sync.
+6. **GPS and "Path to Mastery" (UX contract):** **GPS** is not decorative copy—contributor-facing experiences should read as a **Path to Mastery**: use **F1–F7** and coarse GPS buckets in `gps_json` to show **which factors to improve** to move toward the **next Kinetic tier**, without surfacing raw vault floats on public UIs. Align UI and future work with *directional* guidance (weakest factors / gap to the next band), consistent with the scoring engine and public projection model.
 
 ## 15) Prompt you can paste into Gemini
 
@@ -233,6 +239,8 @@ Behavior notes:
 - Sensitive backend actions require user context; owner checks exist for delist.
 - AI repo summaries are optional/cached.
 - Nightly contributor refresh exists via workflow.
+- Reputation is **automated** from GitHub-derived signals; do not propose **manual** technical-audit or package-manifest-audit product features. B2B = verify/badge/talent API as documented.
+- **Kinetic tiers** (low → high): Spark, Current, Kinetic, Reactor, Fusion, Singularity. **GPS** = Path to Mastery: steer UI toward **F1–F7** factor improvement to reach the **next tier** (no raw scores on public surfaces).
 
 When proposing fixes:
 1) identify exact files and symbols,

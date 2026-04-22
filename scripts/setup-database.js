@@ -270,6 +270,20 @@ async function setupContributors() {
   await addFloatAttribute(id, 'percentile_global', false, 0);
   await addStringAttribute(id, 'kinetic_tier', 32, false, 'Spark');
   await addStringAttribute(id, 'gps_json', 4000, false, '{}');
+  await addStringAttribute(id, 'shield_status', 32, false, 'none');
+  await addStringAttribute(id, 'shield_passed_at', 50, false);
+  await addStringAttribute(id, 'shield_challenge_slug', 64, false);
+}
+
+async function setupShieldSessions() {
+  const id = 'shield_sessions';
+  await ensureVaultCollection(id, 'Shield sessions (server-only)');
+  await addStringAttribute(id, 'user_id', 100, true);
+  await addStringAttribute(id, 'contributor_id', 100, true);
+  await addStringAttribute(id, 'challenge_slug', 64, true);
+  await addStringAttribute(id, 'status', 32, true, 'active');
+  await addStringAttribute(id, 'started_at', 50, true);
+  await addStringAttribute(id, 'expires_at', 50, true);
 }
 
 async function setupRepoContributions() {
@@ -440,6 +454,7 @@ async function main() {
     ['repo_guardians', setupRepoGuardians],
     ['repos', setupRepos],
     ['contributors', setupContributors],
+    ['shield_sessions', setupShieldSessions],
     ['repo_contributions', setupRepoContributions],
     ['pools', setupPools],
     ['donations', setupDonations],

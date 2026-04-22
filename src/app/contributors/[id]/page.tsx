@@ -79,6 +79,11 @@ export default function ContributorDetailPage() {
             <Badge variant="default" className="text-sm">
               {tierLabel(contributor.kinetic_tier)}
             </Badge>
+            {contributor.shield_status === "passed" && (
+              <Badge variant="outline" className="text-sm border-emerald-500/40 text-emerald-400">
+                Shield
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-muted-foreground">
             <span>

@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
           kinetic_tier: null,
           percentile: null,
           contributor_id: null,
+          shield_passed: false,
         },
         { status: 404 },
       );
@@ -57,6 +58,7 @@ export async function GET(req: NextRequest) {
     const d = doc as unknown as Record<string, unknown>;
     const tier = parseTier(d.kinetic_tier);
     const pct = d.percentile_global != null ? Number(d.percentile_global) : 0;
+    const shieldPassed = String(d.shield_status || "").toLowerCase() === "passed";
     return NextResponse.json({
       verified: true,
       contributor_id: doc.$id,
@@ -65,6 +67,7 @@ export async function GET(req: NextRequest) {
       percentile: Math.round(pct),
       repo_count: Number(d.repo_count ?? 0),
       is_registered: d.user_id != null && String(d.user_id) !== "",
+      shield_passed: shieldPassed,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "error";

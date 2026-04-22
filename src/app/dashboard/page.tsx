@@ -155,13 +155,23 @@ export default function DashboardPage() {
                     · Percentile:{" "}
                     <strong className="text-foreground tabular-nums">{myContributor.percentile_global.toFixed(0)}</strong>
                   </p>
-                  {myContributor.is_registered && (
-                    <Badge className="mt-2" variant="secondary">
-                      Claimed
-                    </Badge>
-                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {myContributor.is_registered && (
+                      <Badge variant="secondary">
+                        Claimed
+                      </Badge>
+                    )}
+                    {myContributor.shield_status === "passed" && (
+                      <Badge variant="outline">
+                        Shield verified
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href="/shield">OpenGet Shield</Link>
+                  </Button>
                   <Button asChild variant="default" size="sm">
                     <Link href={`/contributors/${myContributor.id}`}>View public profile</Link>
                   </Button>

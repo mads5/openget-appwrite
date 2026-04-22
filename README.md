@@ -181,6 +181,7 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 | `/contributors/[id]` | Contributor detail + per-repo contributions | No |
 | `/list-repo` | GitHub repo picker — one-click listing | Yes |
 | `/dashboard` | Steward profile, registration, and stats | Yes |
+| `/shield` | OpenGet Shield — optional timed check (via `openget-api`) | Yes |
 | `/enterprise` | Enterprise messaging | No |
 | `/legal/terms`, `/legal/privacy` | Legal pages | No |
 

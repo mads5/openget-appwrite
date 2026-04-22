@@ -101,6 +101,13 @@ export default function TermsOfServicePage() {
             interview.</strong> You must not treat those signals as a complete or sufficient evaluation of a candidate,
           and you must comply with applicable employment and anti-discrimination laws in your jurisdiction.
         </p>
+        <p>
+          <strong className="text-foreground">OpenGet Shield</strong> (if offered) is an{" "}
+          <strong className="text-foreground">optional</strong> timed exercise with automated checks. It is{" "}
+          <strong className="text-foreground">not</strong> proctored certification, not a guarantee against misuse of
+          assistive tools, and <strong className="text-foreground">not</strong> a substitute for your own interviews.
+          Shield results are separate from Kinetic tier and percentile.
+        </p>
       </Section>
 
       <Section id="accounts" title="4. Accounts and acceptable use">

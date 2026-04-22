@@ -69,6 +69,7 @@ export function Header() {
     ...(user
       ? [
           { href: "/list-repo", label: "List a Repo" },
+          { href: "/shield", label: "Shield" },
           { href: "/dashboard", label: "Dashboard" },
         ]
       : []),

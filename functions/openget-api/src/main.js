@@ -12,6 +12,11 @@ import {
   tierFromPercentile,
 } from './scoring-engine.js';
 import { computeF7Entropy } from './f7-entropy.js';
+import {
+  getParityChallenge,
+  SHIELD_SESSION_TTL_MS,
+  validateShieldSolution,
+} from './shield-challenge.js';
 
 const DATABASE_ID = 'openget-db';
 
@@ -21,6 +26,7 @@ const COL = {
   REPO_CONTRIBUTIONS: 'repo_contributions',
   INTERNAL_REPUTATION: 'internal_reputation',
   REPO_GUARDIANS: 'repo_guardians',
+  SHIELD_SESSIONS: 'shield_sessions',
   POOLS: 'pools',
   DONATIONS: 'donations',
   PAYOUTS: 'payouts',
@@ -789,6 +795,8 @@ export default async ({ req, res, log, error }) => {
             'register-contributor',
             'fetch-contributors',
             'recompute-percentiles',
+            'shield-start',
+            'shield-submit',
             'ingest-openget-json',
             'import-industry-repos',
           ],
@@ -1077,6 +1085,7 @@ export default async ({ req, res, log, error }) => {
             repo_count: 0,
             total_contributions: 0,
             kinetic_tier: 'spark',
+            shield_status: 'none',
             gps_json: JSON.stringify(
               buildGpsJson(
                 { f1: 0, f2: 0, f3: 0, f4: 0, f5: 0, f6: 0, f7: 0.5 },
@@ -1137,6 +1146,130 @@ export default async ({ req, res, log, error }) => {
               : 0,
           gps_json: contribDoc.gps_json || null,
           is_registered: true,
+          shield_status: contribDoc.shield_status != null ? String(contribDoc.shield_status) : 'none',
+          shield_passed_at: contribDoc.shield_passed_at != null ? String(contribDoc.shield_passed_at) : null,
+          shield_challenge_slug:
+            contribDoc.shield_challenge_slug != null ? String(contribDoc.shield_challenge_slug) : null,
+        });
+      }
+
+      // ---- OpenGet Shield (optional timed coding check; orthogonal to Kinetic tier) ----
+      case 'shield-start': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const contribs = await db.listDocuments(DATABASE_ID, COL.CONTRIBUTORS, [
+          Query.equal('user_id', userId),
+          Query.limit(1),
+        ]);
+        if (contribs.total === 0 || !contribs.documents[0]) {
+          return res.json(
+            {
+              error:
+                'Register your contributor profile first (Dashboard → link GitHub contributor profile).',
+            },
+            403,
+          );
+        }
+        const c = contribs.documents[0];
+        const contributorId = c.$id;
+        const now = Date.now();
+        const activeOld = await db.listDocuments(DATABASE_ID, COL.SHIELD_SESSIONS, [
+          Query.equal('user_id', userId),
+          Query.equal('status', 'active'),
+          Query.limit(50),
+        ]);
+        for (const doc of activeOld.documents) {
+          try {
+            await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, doc.$id, { status: 'expired' });
+          } catch (e) {
+            log(`shield-start expire old: ${e.message}`);
+          }
+        }
+        const challenge = getParityChallenge();
+        const expiresAt = new Date(now + SHIELD_SESSION_TTL_MS).toISOString();
+        const session = await db.createDocument(DATABASE_ID, COL.SHIELD_SESSIONS, ID.unique(), {
+          user_id: userId,
+          contributor_id: contributorId,
+          challenge_slug: challenge.slug,
+          status: 'active',
+          started_at: new Date(now).toISOString(),
+          expires_at: expiresAt,
+        });
+        return res.json({
+          session_id: session.$id,
+          expires_at: expiresAt,
+          ttl_ms: SHIELD_SESSION_TTL_MS,
+          challenge: {
+            slug: challenge.slug,
+            title: challenge.title,
+            instructions: challenge.instructions,
+            starter_code: challenge.starter_code,
+          },
+        });
+      }
+
+      case 'shield-submit': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const sessionId = body.session_id || body.sessionId;
+        const solution = body.solution;
+        if (!sessionId || typeof solution !== 'string' || solution.trim() === '') {
+          return res.json({ error: 'session_id and solution (string) are required' }, 400);
+        }
+        let session;
+        try {
+          session = await db.getDocument(DATABASE_ID, COL.SHIELD_SESSIONS, String(sessionId));
+        } catch {
+          return res.json({ error: 'Session not found' }, 404);
+        }
+        if (session.user_id !== userId) {
+          return res.json({ error: 'Forbidden' }, 403);
+        }
+        if (session.status !== 'active') {
+          return res.json({ error: `Session is ${session.status}` }, 400);
+        }
+        if (Date.now() > new Date(session.expires_at).getTime()) {
+          try {
+            await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, session.$id, {
+              status: 'expired',
+            });
+          } catch {
+            /* */
+          }
+          return res.json({ error: 'Session expired' }, 400);
+        }
+        const v = validateShieldSolution(solution);
+        if (!v.ok) {
+          try {
+            await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, session.$id, { status: 'failed' });
+          } catch {
+            /* */
+          }
+          return res.json({ passed: false, error: v.error });
+        }
+        try {
+          await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, session.$id, { status: 'passed' });
+        } catch {
+          /* */
+        }
+        const passedAt = new Date().toISOString();
+        const slug = String(session.challenge_slug || 'parity-v1');
+        try {
+          await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, session.contributor_id, {
+            shield_status: 'passed',
+            shield_passed_at: passedAt,
+            shield_challenge_slug: slug,
+          });
+        } catch (e) {
+          log(`shield-submit contributor patch: ${e.message}`);
+          return res.json({
+            passed: true,
+            warning: 'Validation passed but profile could not be updated (schema migration needed?).',
+          });
+        }
+        return res.json({
+          passed: true,
+          shield_status: 'passed',
+          shield_passed_at: passedAt,
+          challenge_slug: slug,
         });
       }
 
@@ -1583,6 +1716,8 @@ export default async ({ req, res, log, error }) => {
                 'fetch-contributors',
                 'recompute-percentiles',
                 'register-contributor',
+                'shield-start',
+                'shield-submit',
                 'ingest-openget-json',
                 'import-industry-repos',
               ],
@@ -1603,6 +1738,8 @@ export default async ({ req, res, log, error }) => {
               'register-contributor',
               'fetch-contributors',
               'recompute-percentiles',
+              'shield-start',
+              'shield-submit',
               'ingest-openget-json',
               'import-industry-repos',
             ],

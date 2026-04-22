@@ -148,6 +148,10 @@ export function mapRepo(doc: Models.Document): Repo {
   };
 }
 
+function parseShieldStatus(s: unknown): "none" | "passed" {
+  return s === "passed" ? "passed" : "none";
+}
+
 function parseKineticTier(s: string | undefined | null): KineticTierId {
   const t = (s || "spark").toLowerCase();
   return (TIER_ORDER.includes(t as KineticTierId) ? t : "spark") as KineticTierId;
@@ -207,6 +211,15 @@ function mapContributor(doc: Models.Document): Contributor {
     kinetic_tier: tier,
     percentile_global: pct,
     gps: parseGps((d.gps_json as string) ?? null, tier, pct),
+    shield_status: parseShieldStatus(d.shield_status),
+    shield_passed_at:
+      d.shield_passed_at != null && String(d.shield_passed_at).trim() !== ""
+        ? String(d.shield_passed_at)
+        : null,
+    shield_challenge_slug:
+      d.shield_challenge_slug != null && String(d.shield_challenge_slug).trim() !== ""
+        ? String(d.shield_challenge_slug)
+        : null,
   };
 }
 
@@ -232,6 +245,15 @@ function mapContributorFromFunctionPayload(data: Record<string, unknown>): Contr
       tier,
       pct,
     ),
+    shield_status: parseShieldStatus(data.shield_status),
+    shield_passed_at:
+      data.shield_passed_at != null && String(data.shield_passed_at).trim() !== ""
+        ? String(data.shield_passed_at)
+        : null,
+    shield_challenge_slug:
+      data.shield_challenge_slug != null && String(data.shield_challenge_slug).trim() !== ""
+        ? String(data.shield_challenge_slug)
+        : null,
   };
 }
 
@@ -417,6 +439,41 @@ export async function registerContributor(): Promise<Contributor> {
     token ? { github_access_token: token } : undefined,
   );
   return mapContributorFromFunctionPayload(data);
+}
+
+export type ShieldChallengePayload = {
+  slug: string;
+  title: string;
+  instructions: string;
+  starter_code: string;
+};
+
+export type ShieldStartResult = {
+  session_id: string;
+  expires_at: string;
+  ttl_ms: number;
+  challenge: ShieldChallengePayload;
+};
+
+export async function shieldStart(): Promise<ShieldStartResult> {
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunctionWithRetry<ShieldStartResult>(
+    "shield-start",
+    token ? { github_access_token: token } : undefined,
+  );
+}
+
+export type ShieldSubmitResult =
+  | { passed: true; shield_status?: string; shield_passed_at?: string; challenge_slug?: string; warning?: string }
+  | { passed: false; error?: string };
+
+export async function shieldSubmit(sessionId: string, solution: string): Promise<ShieldSubmitResult> {
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunctionWithRetry<ShieldSubmitResult>("shield-submit", {
+    session_id: sessionId,
+    solution,
+    ...(token ? { github_access_token: token } : {}),
+  });
 }
 
 // ---- Stats (for homepage) ----
