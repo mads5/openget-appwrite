@@ -8,6 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import type { ContributorDetail } from "@/types";
+import { tierLabel } from "@/lib/kinetic-tier";
+
+const FACTOR_LABELS: { id: "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7"; label: string }[] = [
+  { id: "f1", label: "F1 Activity volume" },
+  { id: "f2", label: "F2 PRs opened" },
+  { id: "f3", label: "F3 Merged work" },
+  { id: "f4", label: "F4 Repo breadth" },
+  { id: "f5", label: "F5 Review" },
+  { id: "f6", label: "F6 Triage & releases" },
+  { id: "f7", label: "F7 Human rhythm" },
+];
 
 export default function ContributorDetailPage() {
   const params = useParams();
@@ -40,17 +51,8 @@ export default function ContributorDetailPage() {
     );
   }
 
-  const maxScore = Math.max(...(contributor.repos?.map((r) => r.score) || [1]));
-
-  const factors: { label: string; key: keyof typeof contributor; w: string }[] = [
-    { label: "F1 Activity", key: "score_f1", w: "15%" },
-    { label: "F2 PRs opened", key: "score_f2", w: "10%" },
-    { label: "F3 PRs merged", key: "score_f3", w: "40%" },
-    { label: "F4 Repo breadth", key: "score_f4", w: "10%" },
-    { label: "F5 Review", key: "score_f5", w: "15%" },
-    { label: "F6 Triage", key: "score_f6", w: "10%" },
-  ];
-  const hasFactorData = factors.some((f) => typeof contributor[f.key] === "number");
+  const gps = contributor.gps;
+  const maxAct = Math.max(1, ...(contributor.repos?.map((r) => r.activity_index) || [1]));
 
   return (
     <div className="container py-8">
@@ -74,53 +76,69 @@ export default function ContributorDetailPage() {
                 Registered
               </Badge>
             )}
+            <Badge variant="default" className="text-sm">
+              {tierLabel(contributor.kinetic_tier)}
+            </Badge>
+            {contributor.shield_status === "passed" && (
+              <Badge variant="outline" className="text-sm border-emerald-500/40 text-emerald-400">
+                Shield
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-muted-foreground">
-            <span>Score: <strong className="text-foreground">{contributor.total_score.toFixed(3)}</strong></span>
-            {typeof contributor.percentile_global === "number" && (
-              <span>Percentile: <strong className="text-foreground">{contributor.percentile_global.toFixed(0)}th</strong></span>
-            )}
-            <span>{contributor.repo_count} repos</span>
+            <span>
+              Global percentile:{" "}
+              <strong className="text-foreground tabular-nums">{contributor.percentile_global.toFixed(0)}</strong>{" "}
+              <span className="text-xs">(0–100, higher = stronger signal)</span>
+            </span>
+            <span>{contributor.repo_count} repos in index</span>
             <a
               href={`https://github.com/${contributor.github_username}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline text-sm"
             >
-              GitHub Profile
+              GitHub profile
             </a>
           </div>
+          <p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">{gps.path_message}</p>
         </div>
       </div>
 
-      {hasFactorData && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-lg">6-factor proof of work</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Normalized factor strengths (0–1) — merged PRs, review, and triage are the highest-weight human signals.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {factors.map((f) => {
-                const v = contributor[f.key];
-                const n = typeof v === "number" ? v : null;
-                return (
-                  <div key={f.key} className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2 text-sm">
-                    <span>
-                      {f.label} <span className="text-muted-foreground">({f.w} weight)</span>
-                    </span>
-                    <span className="font-mono text-foreground">{n != null ? n.toFixed(3) : "—"}</span>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-lg">Path to mastery (GPS)</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Coarse 1–5 factor buckets (not raw weights). Strengthen the lowest bars to reach the next Kinetic
+            tier.
+            {gps.next_tier_label ? (
+              <>
+                {" "}
+                Next: <span className="text-foreground font-medium">{gps.next_tier_label}</span>
+              </>
+            ) : null}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {FACTOR_LABELS.map(({ id, label }) => {
+              const v = Number(gps[id] ?? 1);
+              const pct = Math.min(100, Math.max(0, ((v - 1) / 4) * 100));
+              return (
+                <div key={id} className="space-y-1.5 rounded-md border border-border/60 px-3 py-2">
+                  <div className="flex justify-between text-sm">
+                    <span>{label}</span>
+                    <span className="text-muted-foreground font-mono text-xs">bucket {v}/5</span>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  <Progress value={pct} className="h-2" />
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
-      <h2 className="text-xl font-bold mb-4">Contributions by repo</h2>
+      <h2 className="text-xl font-bold mb-4">Activity by repository</h2>
       <div className="space-y-4">
         {contributor.repos?.map((rc) => (
           <Card key={rc.repo_id}>
@@ -132,12 +150,14 @@ export default function ContributorDetailPage() {
                 >
                   {rc.repo_full_name}
                 </Link>
-                <Badge variant="default" className="shrink-0">{rc.score.toFixed(3)} pts</Badge>
+                <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                  activity {rc.activity_index}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="mb-3">
-                <Progress value={(rc.score / maxScore) * 100} className="h-2" />
+                <Progress value={(rc.activity_index / maxAct) * 100} className="h-2" />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-center text-xs">
                 <div>
@@ -146,11 +166,11 @@ export default function ContributorDetailPage() {
                 </div>
                 <div>
                   <div className="font-bold text-foreground">{rc.prs_merged}</div>
-                  <div className="text-muted-foreground">PRs Merged</div>
+                  <div className="text-muted-foreground">PRs merged</div>
                 </div>
                 <div>
                   <div className="font-bold text-foreground">{(rc.lines_added + rc.lines_removed).toLocaleString()}</div>
-                  <div className="text-muted-foreground">Lines Changed</div>
+                  <div className="text-muted-foreground">Lines changed</div>
                 </div>
                 <div>
                   <div className="font-bold text-foreground">{rc.reviews}</div>
@@ -158,7 +178,7 @@ export default function ContributorDetailPage() {
                 </div>
                 <div>
                   <div className="font-bold text-foreground">{rc.issues_closed}</div>
-                  <div className="text-muted-foreground">Issues Closed</div>
+                  <div className="text-muted-foreground">Issues closed</div>
                 </div>
                 <div>
                   <div className="font-bold text-foreground">
@@ -166,7 +186,7 @@ export default function ContributorDetailPage() {
                       ? new Date(rc.last_contribution_at).toLocaleDateString()
                       : "—"}
                   </div>
-                  <div className="text-muted-foreground">Last Active</div>
+                  <div className="text-muted-foreground">Last active</div>
                 </div>
               </div>
             </CardContent>

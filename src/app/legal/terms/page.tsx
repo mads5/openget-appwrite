@@ -4,7 +4,8 @@ import { getLegalInfo } from "@/lib/legal-info";
 
 export const metadata: Metadata = {
   title: "Terms of Service | OpenGet",
-  description: "Terms of Service for OpenGet — Human Verification and supply-chain risk software.",
+  description:
+    "Terms of Service for OpenGet — Human Verification, stewardship signals, and B2B verification APIs (not a substitute for your own interview process).",
 };
 
 function Section({
@@ -43,11 +44,11 @@ export default function TermsOfServicePage() {
     <div className="container py-10 max-w-3xl mx-auto space-y-10">
       <div className="space-y-3">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Terms of Service</h1>
-        <p className="text-sm text-muted-foreground">Last updated: April 22, 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: April 23, 2026</p>
         <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground leading-relaxed">
           OpenGet provides <strong className="text-foreground">software and data services</strong> for Human Verification
-          and supply-chain–oriented signals: contributor reputation scores, public profiles, verification and badge
-          APIs, and tools for understanding dependency and maintainer risk. These Terms are not legal or tax advice.
+          and open-source stewardship signals: Kinetic tier, percentiles, public profiles, verification and badge APIs,
+          optional B2B talent endpoints, and Guardian attestation. These Terms are not legal or tax advice.
         </div>
       </div>
 
@@ -86,7 +87,37 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="accounts" title="3. Accounts and acceptable use">
+      <Section id="recruiting" title="3. Recruiting, interviews, and technical assessment">
+        <p>
+          If you use the Platform to discover or shortlist people (for example, via talent listings or B2B APIs), you
+          remain solely responsible for your hiring and interview process. OpenGet signals are{" "}
+          <strong className="text-foreground">heuristic and informational</strong> — not an employment test, job
+          offer, or certification of a candidate’s overall suitability.
+        </p>
+        <p>
+          <strong className="text-foreground">If you source a candidate for an interview through OpenGet, you will
+            assess that candidate in your own interview process on <em>logic and problem-solving skills only</em> —
+            not on OpenGet tier, percentile, or any other Platform output as a substitute for a proper technical
+            interview.</strong> You must not treat those signals as a complete or sufficient evaluation of a candidate,
+          and you must comply with applicable employment and anti-discrimination laws in your jurisdiction.
+        </p>
+        <p>
+          <strong className="text-foreground">OpenGet Shield</strong> (if offered) is an{" "}
+          <strong className="text-foreground">optional</strong> timed exercise (typically up to about 30 minutes as
+          configured) with automated solution checks plus{" "}
+          <strong className="text-foreground">strict session rules</strong> (for example: the exercise text may be
+          withheld until fullscreen; no paste in the answer field; leaving fullscreen <strong className="text-foreground">once</strong>{" "}
+          or hiding the document <strong className="text-foreground">once</strong> typically voids the run server-side
+          with no additional “strikes”; optional in-browser camera/microphone preview that stays on your device and is{" "}
+          <strong className="text-foreground">not</strong> recorded or uploaded by us). It is <strong className="text-foreground">not</strong> certified webcam or
+          identity proctoring, does not record your screen to our servers, and{" "}
+          <strong className="text-foreground">cannot</strong> guarantee that no assistive tools or separate devices were
+          used. It is <strong className="text-foreground">not</strong> a substitute for your own interviews. Shield
+          results are separate from Kinetic tier and percentile.
+        </p>
+      </Section>
+
+      <Section id="accounts" title="4. Accounts and acceptable use">
         <p>
           You may authenticate via third parties (for example, GitHub through Appwrite). You are responsible for
           account security and for activity under your account. You must not abuse the Platform, misrepresent
@@ -94,7 +125,7 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="ip" title="4. Third-party data and IP">
+      <Section id="ip" title="5. Third-party data and IP">
         <p>
           Open-source projects remain under their licenses. We process GitHub and similar data under their terms and
           public APIs. Our branding, UI, and generated reports are owned by Operator or its licensors, subject to any
@@ -102,7 +133,7 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="third-parties" title="5. Subprocessors">
+      <Section id="third-parties" title="6. Subprocessors">
         <p>
           The Platform uses infrastructure and identity providers (for example, <strong>Appwrite</strong> and{" "}
           <strong>GitHub</strong>). Their terms and privacy policies apply to those services. Our hosting and database
@@ -110,7 +141,7 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="disclaimers" title="6. Disclaimers">
+      <Section id="disclaimers" title="7. Disclaimers">
         <p>
           THE PLATFORM IS PROVIDED <strong className="text-foreground">&quot;AS IS&quot;</strong> AND{" "}
           <strong className="text-foreground">&quot;AS AVAILABLE.&quot;</strong> WE DISCLAIM WARRANTIES TO THE MAXIMUM
@@ -120,7 +151,7 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="liability" title="7. Limitation of liability">
+      <Section id="liability" title="8. Limitation of liability">
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY LAW, OPERATOR AND ITS AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, SPECIAL,
           CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA, OR GOODWILL. OUR AGGREGATE LIABILITY FOR
@@ -130,7 +161,7 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="indemnity" title="8. Indemnity">
+      <Section id="indemnity" title="9. Indemnity">
         <p>
           You will defend and indemnify Operator against claims arising from your misuse of the Platform, your content,
           or your violation of these Terms or third-party rights, except to the extent caused by our gross negligence
@@ -138,14 +169,14 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="changes" title="9. Changes">
+      <Section id="changes" title="10. Changes">
         <p>
           We may update these Terms by posting a new &quot;Last updated&quot; date. Continued use may constitute
           acceptance where permitted by law.
         </p>
       </Section>
 
-      <Section id="law" title="10. Governing law">
+      <Section id="law" title="11. Governing law">
         <p>
           These Terms are governed by the laws of <strong className="text-foreground">{legal.governingLaw}</strong>,
           subject to non-waivable rights. Courts in <strong>India</strong> shall have non-exclusive jurisdiction where
@@ -153,7 +184,7 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
 
-      <Section id="contact" title="11. Contact">
+      <Section id="contact" title="12. Contact">
         <p>{contactLine}</p>
         <p>
           <Link href="/legal/privacy" className="text-primary underline underline-offset-2">

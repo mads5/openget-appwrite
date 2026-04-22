@@ -4,10 +4,12 @@ import type {
   Repo,
   Contributor,
   ContributorDetail,
-  DependencyAuditResult,
+  ContributorGps,
+  KineticTierId,
   GitHubRepoInfo,
   RepoContribution,
 } from "@/types";
+import { TIER_ORDER } from "@/lib/kinetic-tier";
 
 const functions = new Functions(client);
 
@@ -146,57 +148,118 @@ export function mapRepo(doc: Models.Document): Repo {
   };
 }
 
+function parseShieldStatus(s: unknown): "none" | "passed" {
+  return s === "passed" ? "passed" : "none";
+}
+
+function parseKineticTier(s: string | undefined | null): KineticTierId {
+  const t = (s || "spark").toLowerCase();
+  return (TIER_ORDER.includes(t as KineticTierId) ? t : "spark") as KineticTierId;
+}
+
+function parseGps(gpsJson: string | null | undefined, tier: KineticTierId, percentile: number): ContributorGps {
+  try {
+    if (gpsJson && typeof gpsJson === "string" && gpsJson.trim() !== "") {
+      const p = JSON.parse(gpsJson) as Record<string, unknown>;
+      return {
+        f1: Number(p.f1 ?? 1),
+        f2: Number(p.f2 ?? 1),
+        f3: Number(p.f3 ?? 1),
+        f4: Number(p.f4 ?? 1),
+        f5: Number(p.f5 ?? 1),
+        f6: Number(p.f6 ?? 1),
+        f7: Number(p.f7 ?? 1),
+        tier: parseKineticTier(p.tier as string),
+        percentile: p.percentile != null ? Number(p.percentile) : percentile,
+        next_tier: (p.next_tier as string) ?? null,
+        next_tier_label: (p.next_tier_label as string) ?? null,
+        path_message: String(p.path_message ?? "Keep building verified stewardship in listed repositories."),
+      };
+    }
+  } catch {
+    /* fall through */
+  }
+  return {
+    f1: 1,
+    f2: 1,
+    f3: 1,
+    f4: 1,
+    f5: 1,
+    f6: 1,
+    f7: 1,
+    tier,
+    percentile,
+    path_message: "Keep building verified stewardship in listed repositories.",
+  };
+}
+
 function mapContributor(doc: Models.Document): Contributor {
   const d = docAttrs(doc);
   const userId = (d.user_id as string | null) ?? null;
+  const tier = parseKineticTier((d.kinetic_tier as string) ?? "spark");
+  const pct = d.percentile_global != null ? Number(d.percentile_global) : 0;
   return {
     id: doc.$id,
     github_username: String(d.github_username ?? ""),
     github_id: (d.github_id as string | null) ?? null,
     avatar_url: (d.avatar_url as string | null) ?? null,
     user_id: userId,
-    total_score: Number(d.total_score ?? 0),
     repo_count: Number(d.repo_count ?? 0),
     total_contributions: Number(d.total_contributions ?? 0),
     is_registered: userId != null && userId !== "",
     created_at: (d.created_at as string) || doc.$createdAt,
-    score_f1: d.score_f1 != null ? Number(d.score_f1) : undefined,
-    score_f2: d.score_f2 != null ? Number(d.score_f2) : undefined,
-    score_f3: d.score_f3 != null ? Number(d.score_f3) : undefined,
-    score_f4: d.score_f4 != null ? Number(d.score_f4) : undefined,
-    score_f5: d.score_f5 != null ? Number(d.score_f5) : undefined,
-    score_f6: d.score_f6 != null ? Number(d.score_f6) : undefined,
-    percentile_global: d.percentile_global != null ? Number(d.percentile_global) : undefined,
+    kinetic_tier: tier,
+    percentile_global: pct,
+    gps: parseGps((d.gps_json as string) ?? null, tier, pct),
+    shield_status: parseShieldStatus(d.shield_status),
+    shield_passed_at:
+      d.shield_passed_at != null && String(d.shield_passed_at).trim() !== ""
+        ? String(d.shield_passed_at)
+        : null,
+    shield_challenge_slug:
+      d.shield_challenge_slug != null && String(d.shield_challenge_slug).trim() !== ""
+        ? String(d.shield_challenge_slug)
+        : null,
   };
 }
 
 function mapContributorFromFunctionPayload(data: Record<string, unknown>): Contributor {
   const id = String(data.$id ?? data.id ?? "");
   const userId = (data.user_id as string | null) ?? null;
+  const tier = parseKineticTier((data.kinetic_tier as string) ?? "spark");
+  const pct = data.percentile_global != null ? Number(data.percentile_global) : 0;
   return {
     id,
     github_username: String(data.github_username ?? ""),
     github_id: (data.github_id as string | null) ?? null,
     avatar_url: (data.avatar_url as string | null) ?? null,
     user_id: userId,
-    total_score: Number(data.total_score ?? 0),
     repo_count: Number(data.repo_count ?? 0),
     total_contributions: Number(data.total_contributions ?? 0),
     is_registered: Boolean(data.is_registered) || (userId != null && userId !== ""),
     created_at: String(data.$createdAt ?? data.created_at ?? ""),
-    score_f1: data.score_f1 != null ? Number(data.score_f1) : undefined,
-    score_f2: data.score_f2 != null ? Number(data.score_f2) : undefined,
-    score_f3: data.score_f3 != null ? Number(data.score_f3) : undefined,
-    score_f4: data.score_f4 != null ? Number(data.score_f4) : undefined,
-    score_f5: data.score_f5 != null ? Number(data.score_f5) : undefined,
-    score_f6: data.score_f6 != null ? Number(data.score_f6) : undefined,
-    percentile_global:
-      data.percentile_global != null ? Number(data.percentile_global) : undefined,
+    kinetic_tier: tier,
+    percentile_global: pct,
+    gps: parseGps(
+      (data.gps_json as string) ?? null,
+      tier,
+      pct,
+    ),
+    shield_status: parseShieldStatus(data.shield_status),
+    shield_passed_at:
+      data.shield_passed_at != null && String(data.shield_passed_at).trim() !== ""
+        ? String(data.shield_passed_at)
+        : null,
+    shield_challenge_slug:
+      data.shield_challenge_slug != null && String(data.shield_challenge_slug).trim() !== ""
+        ? String(data.shield_challenge_slug)
+        : null,
   };
 }
 
 function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
   const d = docAttrs(doc);
+  const s = Number(d.score ?? 0);
   return {
     repo_id: String(d.repo_id ?? ""),
     repo_full_name: String(d.repo_full_name ?? ""),
@@ -208,7 +271,8 @@ function mapRepoContributionDoc(doc: Models.Document): RepoContribution {
     issues_closed: Number(d.issues_closed ?? 0),
     review_comments: Number(d.review_comments ?? 0),
     releases_count: Number(d.releases_count ?? 0),
-    score: Number(d.score ?? 0),
+    score: s,
+    activity_index: Math.min(99, Math.round(Math.log1p(s))),
     last_contribution_at: (d.last_contribution_at as string | null) ?? null,
   };
 }
@@ -333,7 +397,7 @@ export async function delistRepo(repoId: string): Promise<void> {
 export async function listContributors(page = 1, perPage = 50): Promise<{ contributors: Contributor[]; total: number }> {
   try {
     const result = await databases.listDocuments(DATABASE_ID, COLLECTION.CONTRIBUTORS, [
-      Query.orderDesc("total_score"),
+      Query.orderDesc("percentile_global"),
       Query.limit(perPage),
       Query.offset((page - 1) * perPage),
     ]);
@@ -377,19 +441,54 @@ export async function registerContributor(): Promise<Contributor> {
   return mapContributorFromFunctionPayload(data);
 }
 
-/**
- * Supply-chain Human-Risk audit: npm → GitHub → OpenGet repo + top maintainers.
- * Requires a signed-in user (sends session to Appwrite execution).
- */
-export async function runDependencyAudit(body: {
-  package_json: string;
-  include_dev?: boolean;
-  include_peer?: boolean;
-  include_optional?: boolean;
-}): Promise<DependencyAuditResult> {
+export type ShieldChallengePayload = {
+  slug: string;
+  title: string;
+  instructions: string;
+  starter_code: string;
+};
+
+export type ShieldStartResult = {
+  session_id: string;
+  expires_at: string;
+  ttl_ms: number;
+  /** `openai` = model-authored; `static_pool` = rotating server challenges; `parity` = last-resort isEven. */
+  challenge_source?: "openai" | "static_pool" | "parity";
+  challenge: ShieldChallengePayload;
+};
+
+export async function shieldStart(): Promise<ShieldStartResult> {
   const token = await getGithubAccessTokenFromSession();
-  return executeFunctionWithRetry<DependencyAuditResult>("audit-dependencies", {
-    ...body,
+  return executeFunctionWithRetry<ShieldStartResult>(
+    "shield-start",
+    token ? { github_access_token: token } : undefined,
+  );
+}
+
+export type ShieldSubmitResult =
+  | { passed: true; shield_status?: string; shield_passed_at?: string; challenge_slug?: string; warning?: string }
+  | { passed: false; error?: string };
+
+export type ShieldIntegrityResult = {
+  strikes: number;
+  max_strikes: number;
+  voided: boolean;
+  ignored?: boolean;
+};
+
+export async function shieldReportIntegrity(sessionId: string): Promise<ShieldIntegrityResult> {
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunctionWithRetry<ShieldIntegrityResult>("shield-integrity", {
+    session_id: sessionId,
+    ...(token ? { github_access_token: token } : {}),
+  });
+}
+
+export async function shieldSubmit(sessionId: string, solution: string): Promise<ShieldSubmitResult> {
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunctionWithRetry<ShieldSubmitResult>("shield-submit", {
+    session_id: sessionId,
+    solution,
     ...(token ? { github_access_token: token } : {}),
   });
 }

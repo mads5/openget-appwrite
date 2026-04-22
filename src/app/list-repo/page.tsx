@@ -119,7 +119,7 @@ export default function ListRepoPage() {
     <div>
       <PageHeader
         title="List a repository"
-        description="Add a repo to the OpenGet index. Nightly scoring discovers contributors and runs the 6-factor model."
+        description="Add a repo to the OpenGet index. Nightly scoring discovers contributors and runs the 7-factor model."
       />
     <div className="container py-8">
 

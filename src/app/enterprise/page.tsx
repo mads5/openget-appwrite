@@ -23,11 +23,8 @@ export default function EnterprisePage() {
         description={
           <>
             Surface the <strong className="text-foreground/90">people</strong> behind dependencies—merges, reviews, and
-            triage—for OSPO and security teams. Open the{" "}
-            <Link href="/enterprise/audit" className="text-primary hover:underline">
-              audit experience
-            </Link>{" "}
-            and plan integrations around verification APIs.
+            triage—for OSPOs, security, and talent teams. Use public verification, badges, and the B2B talent API; see
+            this page and the project README for integration details.
           </>
         }
       />
@@ -36,7 +33,7 @@ export default function EnterprisePage() {
         <h2 className="text-xl font-semibold">What you get</h2>
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
-            <span className="text-foreground">Stewardship signal</span>: a 6-factor view of who actually merges, reviews, and
+            <span className="text-foreground">Stewardship signal</span>: a 7-factor view of who actually merges, reviews, and
             triages on the repos you care about.
           </li>
           <li>
@@ -96,7 +93,7 @@ export default function EnterprisePage() {
 
       <div className="flex flex-wrap gap-3">
         <Button asChild>
-          <Link href="/enterprise/audit">Open audit</Link>
+          <Link href="/contributors">Browse contributors</Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/">Back home</Link>

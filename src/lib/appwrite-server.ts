@@ -6,7 +6,7 @@ type AppwriteDoc = { $id: string; [k: string]: unknown };
 /**
  * List documents via Appwrite REST (server API key). Browser `Client` has no `setKey` in this SDK version.
  */
-async function listDocumentsRest(
+export async function listDocumentsRest(
   collectionId: string,
   queries: string[],
 ): Promise<{ documents: AppwriteDoc[]; total: number }> {
@@ -53,6 +53,51 @@ export async function getContributorByGithubUsername(username: string) {
   const all = await listDocumentsRest(COLLECTION.CONTRIBUTORS, [Query.limit(5000)]);
   const low = u.toLowerCase();
   return all.documents.find((d) => String(d.github_username || "").toLowerCase() === low) ?? null;
+}
+
+/**
+ * Single contributor document by Appwrite document `$id` (server key only).
+ */
+export async function getContributorDocumentById(contributorId: string): Promise<AppwriteDoc | null> {
+  const id = String(contributorId || "").trim();
+  if (!id) return null;
+  const key = process.env.APPWRITE_API_KEY;
+  if (!key) {
+    throw new Error("APPWRITE_API_KEY is not set (required for server routes)");
+  }
+  const base = APPWRITE_ENDPOINT.replace(/\/$/, "");
+  const res = await fetch(
+    `${base}/databases/${DATABASE_ID}/collections/${COLLECTION.CONTRIBUTORS}/documents/${encodeURIComponent(id)}`,
+    {
+      headers: {
+        "X-Appwrite-Project": APPWRITE_PROJECT_ID,
+        "X-Appwrite-Key": key,
+      },
+      cache: "no-store",
+    },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Appwrite getDocument contributors failed: ${res.status} ${t.slice(0, 200)}`);
+  }
+  const json = (await res.json()) as Record<string, unknown>;
+  if (typeof json.$id !== "string") return null;
+  return json as AppwriteDoc;
+}
+
+/**
+ * Vault row for engine accountability (raw + noisy vault + factor floats).
+ */
+export async function getInternalReputationForContributor(contributorId: string): Promise<AppwriteDoc | null> {
+  const id = String(contributorId || "").trim();
+  if (!id) return null;
+  const { documents, total } = await listDocumentsRest(COLLECTION.INTERNAL_REPUTATION, [
+    Query.equal("contributor_id", id),
+    Query.limit(1),
+  ]);
+  if (total < 1 || !documents[0]) return null;
+  return documents[0];
 }
 
 /**

@@ -1,0 +1,7 @@
+{
+  "version": "1",
+  "guardians": [
+    { "github_username": "octocat", "role": "guardian" },
+    "other-maintainer"
+  ]
+}

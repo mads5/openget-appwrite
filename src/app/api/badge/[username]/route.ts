@@ -4,8 +4,18 @@ import { getContributorByGithubUsername } from "@/lib/appwrite-server";
 export const runtime = "nodejs";
 export const revalidate = 300;
 
+function parseTier(s: unknown): string {
+  const t = String(s || "spark").toLowerCase();
+  if (
+    ["spark", "current", "kinetic", "reactor", "fusion", "singularity"].includes(t)
+  ) {
+    return t;
+  }
+  return "spark";
+}
+
 /**
- * Dynamic SVG badge for GitHub READMEs: OpenGet score for a public contributor.
+ * Dynamic SVG badge: Kinetic tier + percentile (no raw score).
  */
 export async function GET(
   _request: Request,
@@ -28,8 +38,11 @@ export async function GET(
         },
       });
     }
-    const score = Number((doc as { total_score?: number }).total_score ?? 0);
-    const label = `score ${score.toFixed(2)}`;
+    const d = doc as { kinetic_tier?: string; percentile_global?: number; shield_status?: string };
+    const tier = parseTier(d.kinetic_tier);
+    const pct = d.percentile_global != null ? Math.round(Number(d.percentile_global)) : 0;
+    const shield = String(d.shield_status || "").toLowerCase() === "passed";
+    const label = `${tier} · P${pct}${shield ? " · Shield" : ""}`;
     const body = svgBadge("OpenGet", label, "#3b82f6");
     return new NextResponse(body, {
       status: 200,
@@ -68,7 +81,7 @@ function svgBadge(left: string, right: string, rightColor: string) {
       .replace(/"/g, "&quot;");
 
   const lw = Math.min(12 + left.length * 7, 200);
-  const rw = Math.min(12 + right.length * 6.5, 220);
+  const rw = Math.min(12 + right.length * 6.5, 260);
   const total = lw + rw;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="20" role="img" aria-label="${esc(left + ": " + right)}">

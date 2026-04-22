@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { PageHeader } from "@/components/site/page-header";
 import { README_ENV_SECTION_URL } from "@/lib/site";
+import { tierLabel } from "@/lib/kinetic-tier";
 import type { Models } from "appwrite";
 
 export default function DashboardPage() {
@@ -57,7 +58,9 @@ export default function DashboardPage() {
     try {
       const c = await registerContributor();
       setMyContributor(c);
-      setSuccessNotice("Your GitHub handle is now linked. Your OpenGet score and badges reflect verified stewardship.");
+      setSuccessNotice(
+        "Your GitHub handle is now linked. Your Kinetic tier, verification routes, and badges reflect verified stewardship.",
+      );
     } catch (err) {
       setErrorNotice(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -106,7 +109,7 @@ export default function DashboardPage() {
         title="Dashboard"
         description={
           <>
-            Human verification for your public record — scores emphasize merge, review, and triage. See{" "}
+            Human verification for your public record — the 7-factor model emphasizes merge, review, and triage. See{" "}
             <Link href="/" className="text-primary hover:underline">
               how it works
             </Link>
@@ -121,7 +124,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Your profile</CardTitle>
-          <CardDescription>Link your GitHub account so we can show your 6-factor proof-of-work to others.</CardDescription>
+          <CardDescription>Link your GitHub account so we can show your Kinetic tier and GPS roadmap to others.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {myContributor ? (
@@ -146,15 +149,29 @@ export default function DashboardPage() {
                 <div>
                   <p className="font-medium">{myContributor.github_username}</p>
                   <p className="text-sm text-muted-foreground">
-                    OpenGet score: <strong className="text-foreground">{myContributor.total_score.toFixed(3)}</strong>
+                    <span className="mr-2">
+                      Tier: <strong className="text-foreground">{tierLabel(myContributor.kinetic_tier)}</strong>
+                    </span>
+                    · Percentile:{" "}
+                    <strong className="text-foreground tabular-nums">{myContributor.percentile_global.toFixed(0)}</strong>
                   </p>
-                  {myContributor.is_registered && (
-                    <Badge className="mt-2" variant="secondary">
-                      Claimed
-                    </Badge>
-                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {myContributor.is_registered && (
+                      <Badge variant="secondary">
+                        Claimed
+                      </Badge>
+                    )}
+                    {myContributor.shield_status === "passed" && (
+                      <Badge variant="outline">
+                        Shield verified
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href="/shield">OpenGet Shield</Link>
+                  </Button>
                   <Button asChild variant="default" size="sm">
                     <Link href={`/contributors/${myContributor.id}`}>View public profile</Link>
                   </Button>
@@ -183,7 +200,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <pre className="flex-1 overflow-x-auto rounded-md border border-border/60 bg-background/50 p-2 text-xs font-mono text-muted-foreground">
                       {origin
-                        ? `![OpenGet score](${origin}/api/badge/${encodeURIComponent(myContributor.github_username)})`
+                        ? `![OpenGet tier](${origin}/api/badge/${encodeURIComponent(myContributor.github_username)})`
                         : "…"}
                     </pre>
                     <Button
@@ -195,7 +212,7 @@ export default function DashboardPage() {
                       onClick={() => {
                         const u = myContributor.github_username;
                         if (!u || !origin) return;
-                        const md = `![OpenGet score](${origin}/api/badge/${encodeURIComponent(u)})`;
+                        const md = `![OpenGet tier](${origin}/api/badge/${encodeURIComponent(u)})`;
                         void navigator.clipboard.writeText(md).then(() => {
                           setCopiedBadge(true);
                           window.setTimeout(() => setCopiedBadge(false), 2000);
@@ -219,11 +236,11 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>For enterprises</CardTitle>
-          <CardDescription>Dependency Human-Risk reports (MVP) — same scoring engine, B2B packaging next.</CardDescription>
+          <CardDescription>Verification, badges, and B2B talent API — see enterprise overview and README.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline">
-            <Link href="/enterprise/audit">Open supply-chain audit (preview)</Link>
+            <Link href="/enterprise">Enterprise overview</Link>
           </Button>
         </CardContent>
       </Card>

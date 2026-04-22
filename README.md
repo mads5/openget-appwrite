@@ -13,8 +13,8 @@
 <h3 align="center">The Human Verification Layer for the AI-Code Era</h3>
 
 <p align="center">
-  <strong>Trust-as-a-Service:</strong> 6-factor steward scores, public proof-of-work profiles, SVG badges, and
-  (roadmap) enterprise dependency Human-Risk reports. See <code>CONTEXT.md</code> for product context.
+  <strong>Trust-as-a-Service:</strong> 7-factor <strong>Kinetic</strong> tiers, percentile rank, GPS-style factor guidance, SVG badges, and
+  optional B2B talent and verification APIs. Internals in <code>internal_reputation</code> (vault). See <code>CONTEXT.md</code> and <code>docs/REPUTATION_ORACLE.md</code>.
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@ When AI can generate code at near-zero cost, the scarce signal is **human** judg
 
 ## The solution
 
-OpenGet is a **reputation and supply-chain risk** data platform. The **6-factor model** (merged PRs, reviews, triage) powers **public leaderboards**, **embeddable badges** (`/api/badge/{username}`), a **verification JSON API** (`/api/verify`), and a **Human-Risk audit** at **`/enterprise/audit`**: paste **`package.json`**, resolve each dependency via the **npm registry** → **GitHub** from the `repository` field, then join **listed repos** and **top maintainers** from the OpenGet index (`openget-api` action **`audit-dependencies`**; sign-in required).
+OpenGet is a **reputation and open-source stewardship** data platform. The **7-factor engine** (plus **F7** human-rhythm entropy) with **repo criticality weighting** powers **Kinetic tier + percentile** on **public leaderboards** (raw scores stay server-side), **embeddable badges** (`/api/badge/{username}`) showing tier and percentile, **verification JSON** (`/api/verify` returns tier/percentile, not raw floats), **B2B talent** (`GET /api/enterprise/talent` with API key), and **Guardian attestation** via `openget.json` ingest. See **`docs/REPUTATION_ORACLE.md`** for tier cut rules and engine v2.
 
 **Web UI (v2):** **Outfit** + **JetBrains Mono** (see `src/lib/fonts.ts`), teal-forward theme (`globals.css`), shared `PageHeader` layout, and `/api/health` for the Next app. The **`openget-api`** function exposes `?action=health` / `?action=version` and reads optional **`app_meta.schema_version`** after `db:sync`.
 
@@ -44,29 +44,30 @@ OpenGet is a **reputation and supply-chain risk** data platform. The **6-factor 
 
 | Step | What happens |
 |------|----------------|
-| **1. List** | Sign in with GitHub, pick a repo. OpenGet discovers contributors and runs the **6-factor** score nightly. |
-| **2. Claim** | Register your handle so the leaderboard and **badge** reflect verified stewardship. |
-| **3. Prove** | Use **/api/badge/`{github}`** (SVG) and **/api/verify?user=`** (JSON; optional `OPENGET_VERIFY_API_KEYS`) for integrations. |
-| **4. Enterprise** | **/enterprise/audit** — npm → GitHub → OpenGet index (listed repos + maintainer scores); lockfile graph and export on roadmap. |
+| **1. List** | Sign in with GitHub, pick a repo. OpenGet discovers contributors and runs the **7-factor** + vault pipeline (nightly `fetch-contributors`). |
+| **2. Claim** | Register your handle so the leaderboard and **badge** reflect verified stewardship (Kinetic tier + percentile). |
+| **3. Prove** | **/api/badge/`{github}`** (SVG), **/api/verify?user=`** (JSON), optional `OPENGET_VERIFY_API_KEYS` / `OPENGET_RECRUITMENT_API_KEY` for B2B. |
+| **4. Enterprise** | **/enterprise** — product overview; **/api/enterprise/talent** — filtered contributor list (API key). |
 
 ---
 
-## Scoring Formula
+## Scoring Formula (engine v2)
 
-Contributors are scored using a **6-factor model** designed to reward real work and reduce gaming:
+Contributors are evaluated with a **7-factor** model; **raw linear combinations** and vault scores live in **`internal_reputation`** only. The UI and public APIs receive **Kinetic tier** (Spark → Singularity), **global percentile (0–100)**, and **GPS** coarse factor buckets (1–5) — see `functions/openget-api/src/scoring-engine.js` and `docs/REPUTATION_ORACLE.md`.
 
 ```
-Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + (F5 * 0.15) + (F6 * 0.10)
+Score = (F1*0.10) + (F2*0.05*merge_penalty) + (F3*0.35) + (F4*0.10) + (F5*0.15) + (F6*0.20) + (F7*0.05)
 ```
 
-| Factor | Weight | Formula | What It Measures |
-|--------|:------:|---------|-----------------|
-| **F1** Total Contributions | 15% | `log2(total + 1) / log2(1001)` | General contribution activity |
-| **F2** PRs Raised | 10% | `min(raised, 100) / 100` | PRs opened this month |
-| **F3** PRs Merged | **40%** | `min(merged, 80) / 80` | PRs actually merged |
-| **F4** Qualified Repos | 10% | `log2(min(repos, 20) + 1) / log2(21)` | Real repos helped outside your own |
-| **F5** Review Activity | 15% | `log2(min(reviews, 200) + 1) / log2(201)` | Reviews and review comments |
-| **F6** Release & Triage | 10% | `log2(min(releases, 30) + 1) / log2(31)` | Release work and issue handling |
+| Factor | Weight | Role |
+|--------|:------:|------|
+| **F1** Activity | 10% | Normalized total contribution signal (criticality-weighted aggregation) |
+| **F2** PRs raised | 5% (× penalty) | Merge-ratio penalty on spammy open/merge patterns |
+| **F3** Merged work | **35%** | Primary merged PR signal |
+| **F4** Repo breadth | 10% | Qualified repo spread |
+| **F5** Review | 15% | Reviews and review comments |
+| **F6** Triage / releases | 20% | Releases and triage |
+| **F7** Entropy | 5% | Human rhythm from recent commits (`f7-entropy.js`) |
 
 ### Anti-Fraud Safeguards
 
@@ -80,7 +81,7 @@ Score = (F1 * 0.15) + (F2 * 0.10 * merge_penalty) + (F3 * 0.40) + (F4 * 0.10) + 
 
 ## For enterprises
 
-OSPOs and platform teams can use **Human-Risk**–style views to connect **dependencies** to **verified maintainers**. Product copy and the audit shell live at **`/enterprise`** and **`/enterprise/audit`**.
+OSPOs, security, and talent teams can use **Kinetic** stewardship signals, verification APIs, and optional B2B talent endpoints. Overview and copy live at **`/enterprise`**.
 
 ---
 
@@ -102,6 +103,9 @@ cp .env.example .env.local
 
 # 4. Set up database (one-time, idempotent)
 APPWRITE_API_KEY=your_key npm run db:sync
+
+# If full `db:sync` fails (e.g. Appwrite attribute limit on `internal_reputation`), apply Shield schema only:
+# APPWRITE_API_KEY=your_key npm run db:sync:shield
 
 # 5. Run
 npm run dev
@@ -180,8 +184,8 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 | `/contributors/[id]` | Contributor detail + per-repo contributions | No |
 | `/list-repo` | GitHub repo picker — one-click listing | Yes |
 | `/dashboard` | Steward profile, registration, and stats | Yes |
+| `/shield` | OpenGet Shield — timed check, paste off, fullscreen-gated prompt, single tab-hide or fullscreen-exit voids session (`shield-*` actions) | Yes |
 | `/enterprise` | Enterprise messaging | No |
-| `/enterprise/audit` | Human-Risk audit: `package.json` → npm → GitHub → OpenGet (auth) | Yes |
 | `/legal/terms`, `/legal/privacy` | Legal pages | No |
 
 ---
@@ -246,6 +250,8 @@ openget-appwrite/
 | `NEXT_PUBLIC_CURRENCY` | No | `usd` | Display currency. Supports: `usd`, `eur`, `gbp`, `inr`, `jpy`, `cad`, `aud`, `sgd`, `brl` |
 | `APPWRITE_API_KEY` | For server routes / `db:sync` | — | **Server only.** Used by Next.js API routes (`/api/verify`, `/api/badge/...`) and `npm run db:sync`. Never expose to the client. |
 | `OPENGET_VERIFY_API_KEYS` | No | — | Comma-separated keys for optional keyed access to verification JSON (if enforced in your deployment). |
+| `OPENGET_ADMIN_API_KEYS` | No | — | **Server only.** If set, enables `GET /api/admin/reputation?user=` or `?contributor_id=` with `?key=` or `Authorization: Bearer` — returns **vault** `raw_score`, `vault_score`, and factor floats next to public **tier / percentile** for operator accountability. Never expose these keys in the browser. |
+| `OPENGET_RECRUITMENT_API_KEY` | No | — | If set, required for `GET /api/enterprise/talent` (otherwise verify keys are accepted). |
 
 > Appwrite endpoint and project ID are set in `src/lib/appwrite.ts`. Change them there if using a different project.
 
@@ -256,13 +262,23 @@ openget-appwrite/
 <details>
 <summary><strong>Backend</strong> (Appwrite Function env vars)</summary>
 
+**Where to set them:** [Appwrite Console](https://cloud.appwrite.io) → your project → **Functions** → **`openget-api`** → **Settings** → **Variables** (environment variables). Save, then **redeploy** `openget-api` so a new deployment picks up changes. For local runs of the function bundle, use a root `.env` or your process manager — never commit keys.
+
 | Variable | Required | Default | Description |
 |:---------|:--------:|:-------:|:------------|
 | `APPWRITE_API_KEY` | **Yes** | — | Server API key (database + users perms) |
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
 | `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
+| `GEMINI_API_KEY` | No | — | **Preferred for Shield** when set on **`openget-api`**: Google [Gemini API](https://ai.google.dev/) key (create one in [Google AI Studio](https://aistudio.google.com/apikey)). Used to author unique `shieldFix` challenges; grading is still **server-side** only. Subject to Google’s quotas and terms (free tiers exist but can change). |
+| `GEMINI_SHIELD_MODEL` | No | `gemini-2.0-flash` | Gemini model id for Shield (must support JSON `responseMimeType`, e.g. **Gemini 1.5/2** Flash). |
+| `OPENAI_API_KEY` | No | — | **Fallback** if Gemini is unset or fails: OpenAI for Shield challenge text only. Same validation rules as Gemini. |
+| `OPENAI_SHIELD_MODEL` | No | `gpt-4o-mini` | OpenAI chat model when Shield uses OpenAI. |
 | `OPENGET_INDUSTRY_IMPORT_SECRET` | For bulk seed | — | Shared secret to authorize **`import-industry-repos`**: add the same value to the function env, then set it locally in `.env.local` and run **`npm run seed:industry`** to ingest 20 public benchmark repos (`listed_by`: `industry-curated`). Chains in batches; re-run is safe. |
+| `OPENGET_SCORE_SALT` | Recommended | — | HMAC input for **deterministic** noise in scoring (set on `openget-api` only; not in the browser). |
+| `OPENGET_JSON_INGEST_SECRET` | For Guardian ingest | — | Authorize **`ingest-openget-json`**; can match **`OPENGET_INDUSTRY_IMPORT_SECRET`** for simplicity. |
+
+**After schema migration:** run **`APPWRITE_API_KEY=… npm run db:sync`**, deploy **`openget-api`**, then **`npm run recompute:percentiles`** to refresh global percentiles and GPS for existing contributors.
 
 **GitHub OAuth (list repos & contributor registration):** In Appwrite Console → **Auth** → **GitHub**, ensure scopes allow the [authenticated user](https://docs.github.com/en/rest/users/users) and [listing repositories](https://docs.github.com/en/rest/repos/repos#list-repositories-for-the-authenticated-user). Include **`repo`** if private repositories should appear. The **browser** reads the GitHub OAuth token from **`account.listIdentities()`** and sends it to **`openget-api`** as `github_access_token` (the Functions admin API often cannot read that token). The function then falls back to the **`users`** document, server-side identities, or **`GITHUB_TOKEN`**.
 
@@ -357,8 +373,6 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 **Execute access:** If the UI shows **`No permissions provided for action 'execute'`** (for example on **List your repo**), the function’s **Execute access** in Appwrite Console → **Functions** → **`openget-api`** → **Settings** must include **`users`** (and usually **`any`**). Older functions may have been created without those roles; [`scripts/deploy-functions.js`](scripts/deploy-functions.js) updates execute permissions from `FUNCTION_CONFIG` after each successful deployment so redeploying **`openget-api`** applies the fix without manual edits.
 
 **PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
-
-**Audit: `Unknown action: audit-dependencies`:** The **Supply-chain Human-Risk** page uses the `audit-dependencies` action. If the UI shows this error, the active **`openget-api` deployment** predates that handler. Run **`npm run deploy:api`**, then confirm the new deployment is active in the Appwrite console.
 
 ### Scheduled jobs
 

@@ -60,14 +60,7 @@ const FUNCTION_CONFIG = {
   /** Legacy standalone cron function. Keep config only for paid-tier / migration scenarios. */
   'fetch-contributors': { name: 'Fetch Contributors', execute: [], events: [], timeout: 300, schedule: '0 2 * * *' },
   'register-contributor': { name: 'Register Contributor', execute: ['users'], events: [], timeout: 30 },
-  /** Deprecated stubs — use `openget-api` actions create-checkout / razorpay-webhook / payout-onboarding. */
-  'create-checkout': { name: 'Create Checkout (deprecated)', execute: ['users'], events: [], timeout: 30 },
-  'stripe-webhook': { name: 'Webhook stub (deprecated)', execute: ['any'], events: [], timeout: 30 },
-  'stripe-connect': { name: 'Connect stub (deprecated)', execute: ['users'], events: [], timeout: 30 },
-  'upi-payment': { name: 'UPI Payment', execute: ['users'], events: [], timeout: 30 },
-  'get-earnings': { name: 'Get Earnings', execute: ['users'], events: [], timeout: 30 },
-  /** Legacy standalone cron function. Keep config only for paid-tier / migration scenarios. */
-  'distribute-pool': { name: 'Distribute Pool', execute: [], events: [], timeout: 300, schedule: '0 0 * * 1' },
+  /** Payment-era functions removed from deploy — use Reputation Oracle (`openget-api` only). */
 };
 
 async function createTarGz(functionDir) {
