@@ -1317,7 +1317,7 @@ export default async ({ req, res, log, error }) => {
           return res.json(
             {
               error:
-                'Session voided: too many tab or document switches. Start again and keep this tab visible until you submit.',
+                'Session voided: tab was hidden or fullscreen was left. Shield allows no retries — start a new session and stay in this tab in fullscreen until you submit.',
             },
             400,
           );

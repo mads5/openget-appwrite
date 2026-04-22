@@ -105,11 +105,11 @@ export default function TermsOfServicePage() {
           <strong className="text-foreground">OpenGet Shield</strong> (if offered) is an{" "}
           <strong className="text-foreground">optional</strong> timed exercise (typically up to about 30 minutes as
           configured) with automated solution checks plus{" "}
-          <strong className="text-foreground">lightweight session rules</strong> (for example: no paste in the answer
-          field, optional fullscreen — including prompts if fullscreen ends, for example with the Escape key — optional
-          in-browser camera/microphone preview that stays on your device and is{" "}
-          <strong className="text-foreground">not</strong> recorded or uploaded by us, and server-side limits when the
-          browser tab is backgrounded). It is <strong className="text-foreground">not</strong> certified webcam or
+          <strong className="text-foreground">strict session rules</strong> (for example: the exercise text may be
+          withheld until fullscreen; no paste in the answer field; leaving fullscreen <strong className="text-foreground">once</strong>{" "}
+          or hiding the document <strong className="text-foreground">once</strong> typically voids the run server-side
+          with no additional “strikes”; optional in-browser camera/microphone preview that stays on your device and is{" "}
+          <strong className="text-foreground">not</strong> recorded or uploaded by us). It is <strong className="text-foreground">not</strong> certified webcam or
           identity proctoring, does not record your screen to our servers, and{" "}
           <strong className="text-foreground">cannot</strong> guarantee that no assistive tools or separate devices were
           used. It is <strong className="text-foreground">not</strong> a substitute for your own interviews. Shield
