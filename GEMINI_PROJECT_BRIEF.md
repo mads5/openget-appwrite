@@ -76,7 +76,7 @@ Notable actions include:
 - `get-my-repos`
 - `get-repo-contributors`
 - `register-contributor`
-- `shield-start` / `shield-submit` (OpenGet Shield — optional timed check; updates `contributors.shield_*`)
+- `shield-start` / `shield-integrity` / `shield-submit` (OpenGet Shield — timed check, tab-visibility strikes, paste off in UI; updates `contributors.shield_*`)
 - `fetch-contributors` (scoring/enrichment; ends with `recompute-percentiles` when a batch completes)
 - `recompute-percentiles`
 - `ingest-openget-json` (stewardship graph)

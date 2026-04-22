@@ -14,6 +14,7 @@ import {
 import { computeF7Entropy } from './f7-entropy.js';
 import {
   getParityChallenge,
+  MAX_INTEGRITY_STRIKES,
   SHIELD_SESSION_TTL_MS,
   validateShieldSolution,
 } from './shield-challenge.js';
@@ -796,6 +797,7 @@ export default async ({ req, res, log, error }) => {
             'fetch-contributors',
             'recompute-percentiles',
             'shield-start',
+            'shield-integrity',
             'shield-submit',
             'ingest-openget-json',
             'import-industry-repos',
@@ -1193,6 +1195,7 @@ export default async ({ req, res, log, error }) => {
           status: 'active',
           started_at: new Date(now).toISOString(),
           expires_at: expiresAt,
+          integrity_strikes: 0,
         });
         return res.json({
           session_id: session.$id,
@@ -1204,6 +1207,52 @@ export default async ({ req, res, log, error }) => {
             instructions: challenge.instructions,
             starter_code: challenge.starter_code,
           },
+        });
+      }
+
+      case 'shield-integrity': {
+        if (!userId) return res.json({ error: 'Authentication required' }, 401);
+        const sid = body.session_id || body.sessionId;
+        if (!sid) return res.json({ error: 'session_id is required' }, 400);
+        let sess;
+        try {
+          sess = await db.getDocument(DATABASE_ID, COL.SHIELD_SESSIONS, String(sid));
+        } catch {
+          return res.json({ error: 'Session not found' }, 404);
+        }
+        if (sess.user_id !== userId) return res.json({ error: 'Forbidden' }, 403);
+        if (sess.status !== 'active') {
+          return res.json({
+            strikes: Number(sess.integrity_strikes || 0),
+            max_strikes: MAX_INTEGRITY_STRIKES,
+            voided: sess.status === 'voided',
+            ignored: true,
+          });
+        }
+        if (Date.now() > new Date(sess.expires_at).getTime()) {
+          try {
+            await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, sess.$id, { status: 'expired' });
+          } catch {
+            /* */
+          }
+          return res.json({ error: 'Session expired', voided: true }, 400);
+        }
+        const prev = Number(sess.integrity_strikes || 0);
+        const strikes = prev + 1;
+        const voided = strikes >= MAX_INTEGRITY_STRIKES;
+        try {
+          await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, sess.$id, {
+            integrity_strikes: strikes,
+            ...(voided ? { status: 'voided' } : {}),
+          });
+        } catch (e) {
+          log(`shield-integrity: ${e.message}`);
+          return res.json({ error: 'Could not record integrity event' }, 500);
+        }
+        return res.json({
+          strikes,
+          max_strikes: MAX_INTEGRITY_STRIKES,
+          voided,
         });
       }
 
@@ -1225,6 +1274,15 @@ export default async ({ req, res, log, error }) => {
         }
         if (session.status !== 'active') {
           return res.json({ error: `Session is ${session.status}` }, 400);
+        }
+        if (Number(session.integrity_strikes || 0) >= MAX_INTEGRITY_STRIKES) {
+          return res.json(
+            {
+              error:
+                'Session voided: too many tab or document switches. Start again and keep this tab visible until you submit.',
+            },
+            400,
+          );
         }
         if (Date.now() > new Date(session.expires_at).getTime()) {
           try {
@@ -1717,6 +1775,7 @@ export default async ({ req, res, log, error }) => {
                 'recompute-percentiles',
                 'register-contributor',
                 'shield-start',
+                'shield-integrity',
                 'shield-submit',
                 'ingest-openget-json',
                 'import-industry-repos',
@@ -1739,6 +1798,7 @@ export default async ({ req, res, log, error }) => {
               'fetch-contributors',
               'recompute-percentiles',
               'shield-start',
+              'shield-integrity',
               'shield-submit',
               'ingest-openget-json',
               'import-industry-repos',

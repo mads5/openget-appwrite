@@ -103,10 +103,13 @@ export default function TermsOfServicePage() {
         </p>
         <p>
           <strong className="text-foreground">OpenGet Shield</strong> (if offered) is an{" "}
-          <strong className="text-foreground">optional</strong> timed exercise with automated checks. It is{" "}
-          <strong className="text-foreground">not</strong> proctored certification, not a guarantee against misuse of
-          assistive tools, and <strong className="text-foreground">not</strong> a substitute for your own interviews.
-          Shield results are separate from Kinetic tier and percentile.
+          <strong className="text-foreground">optional</strong> timed exercise with automated solution checks plus{" "}
+          <strong className="text-foreground">lightweight session rules</strong> (for example: no paste in the answer
+          field, optional fullscreen, and server-side limits when the browser tab is backgrounded). It is{" "}
+          <strong className="text-foreground">not</strong> certified webcam or identity proctoring, does not record your
+          screen, and <strong className="text-foreground">cannot</strong> guarantee that no assistive tools or separate
+          devices were used. It is <strong className="text-foreground">not</strong> a substitute for your own
+          interviews. Shield results are separate from Kinetic tier and percentile.
         </p>
       </Section>
 

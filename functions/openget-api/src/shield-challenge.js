@@ -3,6 +3,9 @@ import vm from 'node:vm';
 /** Time-box for one Shield attempt (ms). */
 export const SHIELD_SESSION_TTL_MS = 30 * 60 * 1000;
 
+/** Tab / document-hidden violations before the session is voided server-side. */
+export const MAX_INTEGRITY_STRIKES = 3;
+
 const FORBIDDEN = /(\brequire\b|\bimport\b|\beval\b|Function\s*\(|fetch\s*\(|process\.|Deno|WebAssembly)/i;
 
 /**

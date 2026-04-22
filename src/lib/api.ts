@@ -467,6 +467,21 @@ export type ShieldSubmitResult =
   | { passed: true; shield_status?: string; shield_passed_at?: string; challenge_slug?: string; warning?: string }
   | { passed: false; error?: string };
 
+export type ShieldIntegrityResult = {
+  strikes: number;
+  max_strikes: number;
+  voided: boolean;
+  ignored?: boolean;
+};
+
+export async function shieldReportIntegrity(sessionId: string): Promise<ShieldIntegrityResult> {
+  const token = await getGithubAccessTokenFromSession();
+  return executeFunctionWithRetry<ShieldIntegrityResult>("shield-integrity", {
+    session_id: sessionId,
+    ...(token ? { github_access_token: token } : {}),
+  });
+}
+
 export async function shieldSubmit(sessionId: string, solution: string): Promise<ShieldSubmitResult> {
   const token = await getGithubAccessTokenFromSession();
   return executeFunctionWithRetry<ShieldSubmitResult>("shield-submit", {

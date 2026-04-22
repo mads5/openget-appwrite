@@ -285,6 +285,7 @@ async function setupShieldSessions() {
   await addStringAttribute(id, 'status', 32, true);
   await addStringAttribute(id, 'started_at', 50, true);
   await addStringAttribute(id, 'expires_at', 50, true);
+  await addIntegerAttribute(id, 'integrity_strikes', false, 0);
 }
 
 async function setupRepoContributions() {
