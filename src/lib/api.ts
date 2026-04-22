@@ -6,7 +6,6 @@ import type {
   ContributorDetail,
   ContributorGps,
   KineticTierId,
-  DependencyAuditResult,
   GitHubRepoInfo,
   RepoContribution,
 } from "@/types";
@@ -418,23 +417,6 @@ export async function registerContributor(): Promise<Contributor> {
     token ? { github_access_token: token } : undefined,
   );
   return mapContributorFromFunctionPayload(data);
-}
-
-/**
- * Supply-chain Human-Risk audit: npm → GitHub → OpenGet repo + top maintainers.
- * Requires a signed-in user (sends session to Appwrite execution).
- */
-export async function runDependencyAudit(body: {
-  package_json: string;
-  include_dev?: boolean;
-  include_peer?: boolean;
-  include_optional?: boolean;
-}): Promise<DependencyAuditResult> {
-  const token = await getGithubAccessTokenFromSession();
-  return executeFunctionWithRetry<DependencyAuditResult>("audit-dependencies", {
-    ...body,
-    ...(token ? { github_access_token: token } : {}),
-  });
 }
 
 // ---- Stats (for homepage) ----

@@ -226,11 +226,11 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>For enterprises</CardTitle>
-          <CardDescription>Dependency Human-Risk reports (MVP) — same scoring engine, B2B packaging next.</CardDescription>
+          <CardDescription>Verification, badges, and B2B talent API — see enterprise overview and README.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline">
-            <Link href="/enterprise/audit">Open supply-chain audit (preview)</Link>
+            <Link href="/enterprise">Enterprise overview</Link>
           </Button>
         </CardContent>
       </Card>

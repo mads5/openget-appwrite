@@ -2,10 +2,10 @@
 
 This document locks product and technical decisions for the Trust-as-a-Service / Kinetic tier pivot. **Do not edit** the plan file; update this file when rules change.
 
-## Enterprise dependency audit
+## Enterprise surfaces
 
-- **Decision: Re-scoped (not removed).** The `audit-dependencies` action remains as a **compliance / supply-chain map** (npm → GitHub → OpenGet index).
-- **Raw `openget_total_score` is never returned to clients.** Responses expose **Kinetic tier**, **percentile band**, and **attestation** status only, matching the public projection model.
+- The **npm → GitHub → OpenGet package audit** product surface and `audit-dependencies` action have been **removed** from the codebase.
+- **Raw `openget_total_score` is never returned to clients** on supported surfaces. Public views expose **Kinetic tier**, **percentile band**, and **attestation** status (and GPS-style factor bands where applicable), matching the public projection model.
 
 ## F7 (Manual Entropy) feasibility
 

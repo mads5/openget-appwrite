@@ -65,7 +65,6 @@ export function Header() {
   const navLinks = [
     { href: "/repos", label: "Repos" },
     { href: "/contributors", label: "Contributors" },
-    { href: "/enterprise/audit", label: "Audit" },
     { href: "/enterprise", label: "For enterprises" },
     ...(user
       ? [

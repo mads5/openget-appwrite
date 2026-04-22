@@ -14,7 +14,7 @@
 
 <p align="center">
   <strong>Trust-as-a-Service:</strong> 7-factor <strong>Kinetic</strong> tiers, percentile rank, GPS-style factor guidance, SVG badges, and
-  enterprise dependency Human-Risk mapping. Internals in <code>internal_reputation</code> (vault). See <code>CONTEXT.md</code> and <code>docs/REPUTATION_ORACLE.md</code>.
+  optional B2B talent and verification APIs. Internals in <code>internal_reputation</code> (vault). See <code>CONTEXT.md</code> and <code>docs/REPUTATION_ORACLE.md</code>.
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@ When AI can generate code at near-zero cost, the scarce signal is **human** judg
 
 ## The solution
 
-OpenGet is a **reputation and supply-chain risk** data platform. The **7-factor engine** (plus **F7** human-rhythm entropy) with **repo criticality weighting** powers **Kinetic tier + percentile** on **public leaderboards** (raw scores stay server-side), **embeddable badges** (`/api/badge/{username}`) showing tier and percentile, **verification JSON** (`/api/verify` returns tier/percentile, not raw floats), **B2B talent** (`GET /api/enterprise/talent` with API key), **Guardian attestation** via `openget.json` ingest, and a **compliance-style audit** at **`/enterprise/audit`** (npm → GitHub → index; **no** raw maintainer score in the API — tier, percentile, attested flag). Sign-in required for audit. See **`docs/REPUTATION_ORACLE.md`** for tier cut rules and engine v2.
+OpenGet is a **reputation and open-source stewardship** data platform. The **7-factor engine** (plus **F7** human-rhythm entropy) with **repo criticality weighting** powers **Kinetic tier + percentile** on **public leaderboards** (raw scores stay server-side), **embeddable badges** (`/api/badge/{username}`) showing tier and percentile, **verification JSON** (`/api/verify` returns tier/percentile, not raw floats), **B2B talent** (`GET /api/enterprise/talent` with API key), and **Guardian attestation** via `openget.json` ingest. See **`docs/REPUTATION_ORACLE.md`** for tier cut rules and engine v2.
 
 **Web UI (v2):** **Outfit** + **JetBrains Mono** (see `src/lib/fonts.ts`), teal-forward theme (`globals.css`), shared `PageHeader` layout, and `/api/health` for the Next app. The **`openget-api`** function exposes `?action=health` / `?action=version` and reads optional **`app_meta.schema_version`** after `db:sync`.
 
@@ -47,7 +47,7 @@ OpenGet is a **reputation and supply-chain risk** data platform. The **7-factor 
 | **1. List** | Sign in with GitHub, pick a repo. OpenGet discovers contributors and runs the **7-factor** + vault pipeline (nightly `fetch-contributors`). |
 | **2. Claim** | Register your handle so the leaderboard and **badge** reflect verified stewardship (Kinetic tier + percentile). |
 | **3. Prove** | **/api/badge/`{github}`** (SVG), **/api/verify?user=`** (JSON), optional `OPENGET_VERIFY_API_KEYS` / `OPENGET_RECRUITMENT_API_KEY` for B2B. |
-| **4. Enterprise** | **/enterprise/audit** — supply-chain map; **/api/enterprise/talent** — filtered tier list. Lockfile graph export on roadmap. |
+| **4. Enterprise** | **/enterprise** — product overview; **/api/enterprise/talent** — filtered contributor list (API key). |
 
 ---
 
@@ -81,7 +81,7 @@ Score = (F1*0.10) + (F2*0.05*merge_penalty) + (F3*0.35) + (F4*0.10) + (F5*0.15) 
 
 ## For enterprises
 
-OSPOs and platform teams can use **Human-Risk**–style views to connect **dependencies** to **verified maintainers**. Product copy and the audit shell live at **`/enterprise`** and **`/enterprise/audit`**.
+OSPOs, security, and talent teams can use **Kinetic** stewardship signals, verification APIs, and optional B2B talent endpoints. Overview and copy live at **`/enterprise`**.
 
 ---
 
@@ -182,7 +182,6 @@ Appwrite Sites handles this automatically on push — see [CI / CD](#-ci--cd).
 | `/list-repo` | GitHub repo picker — one-click listing | Yes |
 | `/dashboard` | Steward profile, registration, and stats | Yes |
 | `/enterprise` | Enterprise messaging | No |
-| `/enterprise/audit` | Human-Risk audit: `package.json` → npm → GitHub → OpenGet (auth) | Yes |
 | `/legal/terms`, `/legal/privacy` | Legal pages | No |
 
 ---
@@ -363,8 +362,6 @@ After you merge changes under [`functions/openget-api/`](functions/openget-api/)
 **Execute access:** If the UI shows **`No permissions provided for action 'execute'`** (for example on **List your repo**), the function’s **Execute access** in Appwrite Console → **Functions** → **`openget-api`** → **Settings** must include **`users`** (and usually **`any`**). Older functions may have been created without those roles; [`scripts/deploy-functions.js`](scripts/deploy-functions.js) updates execute permissions from `FUNCTION_CONFIG` after each successful deployment so redeploying **`openget-api`** applies the fix without manual edits.
 
 **PR preview URLs** (for example `https://*.appwrite.network/`) build the **frontend** from your branch only. They still call the **same** project and the **currently deployed** `openget-api` revision, so backend fixes will not appear on a preview until you deploy that function.
-
-**Audit: `Unknown action: audit-dependencies`:** The **Supply-chain Human-Risk** page uses the `audit-dependencies` action. If the UI shows this error, the active **`openget-api` deployment** predates that handler. Run **`npm run deploy:api`**, then confirm the new deployment is active in the Appwrite console.
 
 ### Scheduled jobs
 

@@ -37,7 +37,7 @@ export default function HomePage() {
             <Link href="/list-repo">List a repository</Link>
           </Button>
           <Button size="lg" variant="outline" className="h-12 border-border/60 bg-card/30 px-8 text-base" asChild>
-            <Link href="/enterprise/audit">Run supply-chain audit</Link>
+            <Link href="/enterprise">For enterprises &amp; B2B</Link>
           </Button>
         </div>
         <div className="mt-20 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/50 bg-border/30 sm:grid-cols-4">
@@ -107,9 +107,8 @@ export default function HomePage() {
               </div>
               <h2 className="text-xl font-semibold font-display sm:text-2xl">Map packages to real maintainers</h2>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                The audit shell is built for <strong className="text-foreground/90">Human-Risk</strong> style decisions:
-                which identities actually steward the deps you run in production. Roadmap: richer package → maintainer
-                resolution.
+                See which contributors actually merge, review, and triage on the repos you care about—Kinetic tier,
+                percentiles, verification APIs, and optional B2B talent endpoints for governed recruiting workflows.
               </p>
               <Button className="mt-6" variant="secondary" asChild>
                 <Link href="/enterprise">View enterprise</Link>
@@ -138,7 +137,7 @@ export default function HomePage() {
 
       <section className="container pb-24 text-center">
         <h2 className="text-xl font-semibold font-display sm:text-2xl">Ready to surface real stewards?</h2>
-        <p className="mt-2 text-muted-foreground">Open your contributor index or take the audit path.</p>
+        <p className="mt-2 text-muted-foreground">Open your contributor index or explore enterprise integrations.</p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button size="lg" asChild>
             <Link href="/contributors">Browse contributors</Link>

@@ -1,12 +1,5 @@
 import { Client, Databases, Query, Users, ID, Functions, ExecutionMethod } from 'node-appwrite';
 import { filterReposForPoolType, computeEligiblePoolTypes } from './pool-eligibility.js';
-import {
-  listDependencyNamesFromPackageJson,
-  listDependencyNamesFromObject,
-  githubFullNameFromNpmRepository,
-  fetchNpmLatest,
-  sleep as auditSleep,
-} from './audit-resolve.js';
 import { INDUSTRY_FULL_NAMES, INDUSTRY_IMPORT_BATCH } from './industry-refs.js';
 import {
   aggregateWeightedInputs,
@@ -796,7 +789,6 @@ export default async ({ req, res, log, error }) => {
             'register-contributor',
             'fetch-contributors',
             'recompute-percentiles',
-            'audit-dependencies',
             'ingest-openget-json',
             'import-industry-repos',
           ],
@@ -1578,209 +1570,6 @@ export default async ({ req, res, log, error }) => {
         return res.json({ ok: true, guardians_written: n, schema: version });
       }
 
-      // ---- B2B: dependency audit (npm → GitHub → OpenGet index) ----
-      case 'audit-dependencies': {
-        if (!userId) return res.json({ error: 'Authentication required' }, 401);
-
-        const MAX_PACKAGES = 50;
-        const NPM_DELAY_MS = 80;
-
-        let names = [];
-        const includeDev = body.include_dev !== false;
-        const includePeer = body.include_peer === true;
-        const includeOptional = body.include_optional === true;
-
-        if (typeof body.package_json === 'string' && body.package_json.trim() !== '') {
-          try {
-            names = listDependencyNamesFromPackageJson(body.package_json.trim(), {
-              includeDev,
-              includePeer,
-              includeOptional,
-            });
-          } catch (e) {
-            return res.json(
-              { error: `Invalid package.json: ${e.message || 'parse error'}` },
-              400,
-            );
-          }
-        } else if (body.dependencies && typeof body.dependencies === 'object' && !Array.isArray(body.dependencies)) {
-          names = listDependencyNamesFromObject(body.dependencies);
-        } else {
-          return res.json(
-            {
-              error:
-                'Send { package_json: "<contents>" } and optional include_dev, or { dependencies: { ... } }.',
-            },
-            400,
-          );
-        }
-
-        if (names.length === 0) {
-          return res.json({ error: 'No dependencies to audit.' }, 400);
-        }
-
-        const totalNames = names.length;
-        if (names.length > MAX_PACKAGES) {
-          names = names.slice(0, MAX_PACKAGES);
-        }
-
-        const items = [];
-        let resolvedGithub = 0;
-        let inIndex = 0;
-
-        for (const pkg of names) {
-          await auditSleep(NPM_DELAY_MS);
-          const meta = await fetchNpmLatest(pkg);
-          if (meta.error) {
-            items.push({
-              package: pkg,
-              npm: { error: meta.error, status: meta.status },
-              github: null,
-              openget: { status: 'npm_error' },
-            });
-            continue;
-          }
-          const gh = githubFullNameFromNpmRepository(meta.repository);
-          const licenseVal =
-            meta.license == null
-              ? null
-              : typeof meta.license === 'string'
-                ? meta.license
-                : Array.isArray(meta.license) && meta.license[0]?.type
-                  ? String(meta.license[0].type)
-                  : null;
-
-          if (!gh) {
-            items.push({
-              package: pkg,
-              npm: {
-                name: meta.name,
-                version: meta.version,
-                license: licenseVal,
-              },
-              github: null,
-              openget: { status: 'no_github', reason: 'no_repository_url_in_npm' },
-            });
-            continue;
-          }
-          resolvedGithub += 1;
-          const fullName = gh.full_name;
-
-          let repoDoc = null;
-          try {
-            const listed = await db.listDocuments(DATABASE_ID, COL.REPOS, [
-              Query.equal('full_name', fullName),
-              Query.limit(1),
-            ]);
-            repoDoc = listed.documents[0] || null;
-          } catch (e) {
-            log(`audit: repo lookup ${fullName}: ${e.message}`);
-          }
-
-          if (!repoDoc) {
-            items.push({
-              package: pkg,
-              npm: {
-                name: meta.name,
-                version: meta.version,
-                license: licenseVal,
-              },
-              github: { full_name: fullName, url: `https://github.com/${fullName}` },
-              openget: {
-                status: 'not_listed',
-                message:
-                  'Not in the OpenGet index. List the repo under “List a repository” to see stewardship scores.',
-              },
-            });
-            continue;
-          }
-
-          inIndex += 1;
-          const repoId = repoDoc.$id;
-          let attestedLogins = new Set();
-          try {
-            const gds = await db.listDocuments(DATABASE_ID, COL.REPO_GUARDIANS, [
-              Query.equal('repo_id', repoId),
-              Query.limit(200),
-            ]);
-            attestedLogins = new Set(
-              (gds.documents || [])
-                .map((d) => d.github_username && String(d.github_username).toLowerCase())
-                .filter(Boolean),
-            );
-          } catch {
-            attestedLogins = new Set();
-          }
-          const rcs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-            Query.equal('repo_id', repoId),
-            Query.limit(2000),
-          ]);
-          const sorted = [...rcs.documents].sort((a, b) => (b.score || 0) - (a.score || 0));
-          const top = sorted.slice(0, 8);
-          const top_maintainers = [];
-          for (const rc of top) {
-            let contributor = {};
-            try {
-              contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
-            } catch {
-              /* */
-            }
-            const u = (contributor.github_username && String(contributor.github_username)) || 'unknown';
-            const attested = attestedLogins.has(u.toLowerCase());
-            top_maintainers.push({
-              contributor_id: rc.contributor_id,
-              github_username: u,
-              is_registered: !!(contributor.user_id),
-              activity_index: rc.score != null ? Math.round(Math.min(99, Math.log1p(rc.score))) : 0,
-              prs_merged: rc.prs_merged || 0,
-              reviews: rc.reviews || 0,
-              openget_tier: contributor.kinetic_tier || 'spark',
-              openget_percentile:
-                contributor.percentile_global != null
-                  ? Math.round(Number(contributor.percentile_global))
-                  : null,
-              attested_guardian: attested,
-            });
-          }
-
-          items.push({
-            package: pkg,
-            npm: {
-              name: meta.name,
-              version: meta.version,
-              license: licenseVal,
-            },
-            github: { full_name: fullName, url: `https://github.com/${fullName}` },
-            openget: {
-              status: 'listed',
-              repo_id: repoId,
-              full_name: fullName,
-              repo_score: repoDoc.repo_score != null ? Number(repoDoc.repo_score) : null,
-              bus_factor: repoDoc.bus_factor != null ? Number(repoDoc.bus_factor) : null,
-              criticality_score:
-                repoDoc.criticality_score != null ? Number(repoDoc.criticality_score) : null,
-              has_security_md: repoDoc.has_security_md === true,
-              stars: repoDoc.stars != null ? Number(repoDoc.stars) : null,
-              forks: repoDoc.forks != null ? Number(repoDoc.forks) : null,
-              top_maintainers,
-            },
-          });
-        }
-
-        return res.json({
-          version: 2,
-          summary: {
-            packages_requested: names.length,
-            packages_total_in_manifest: totalNames,
-            truncated: totalNames > MAX_PACKAGES,
-            max_packages: MAX_PACKAGES,
-            resolved_to_github: resolvedGithub,
-            in_openget_index: inIndex,
-          },
-          items,
-        });
-      }
-
       default: {
         if (!action) {
           return res.json(
@@ -1794,7 +1583,6 @@ export default async ({ req, res, log, error }) => {
                 'fetch-contributors',
                 'recompute-percentiles',
                 'register-contributor',
-                'audit-dependencies',
                 'ingest-openget-json',
                 'import-industry-repos',
               ],
@@ -1815,7 +1603,6 @@ export default async ({ req, res, log, error }) => {
               'register-contributor',
               'fetch-contributors',
               'recompute-percentiles',
-              'audit-dependencies',
               'ingest-openget-json',
               'import-industry-repos',
             ],

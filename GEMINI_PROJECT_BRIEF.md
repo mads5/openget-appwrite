@@ -7,9 +7,8 @@ Use this document as a high-context handoff so Gemini can reason about the codeb
 OpenGet is a Next.js + Appwrite **Trust-as-a-Service / Reputation Oracle** platform for:
 - indexing open source repositories,
 - **7-factor** Kinetic tier + percentile (raw scores in `internal_reputation` vault only; UI sees tier + GPS buckets),
-- `openget.json` Guardian ingest (`ingest-openget-json`) and `repo_guardians` attestation in audits,
-- B2B `GET /api/enterprise/talent` and verification APIs without raw float leakage,
-- dependency **compliance** mapping (`audit-dependencies`) without `openget_total_score` in responses.
+- `openget.json` Guardian ingest (`ingest-openget-json`) and `repo_guardians` attestation,
+- B2B `GET /api/enterprise/talent` and verification APIs without raw float leakage.
 
 The system is split into:
 - a Next.js App Router frontend (`src/app`),
@@ -24,7 +23,6 @@ The system is split into:
 - Data: Appwrite Databases (`openget-db`) and collections created/updated by `scripts/setup-database.js`.
 - Integrations:
   - GitHub REST API (repo stats, contributors, issues/PR signals),
-  - npm registry (dependency audit resolution),
   - optional OpenAI summaries for repo pages.
 - Deploy model:
   - frontend on Appwrite Sites,
@@ -39,7 +37,7 @@ The system is split into:
    - executes Appwrite Function `openget-api` with an action payload.
 3. `openget-api` action router performs:
    - auth checks (when needed),
-   - GitHub/npm external calls,
+   - GitHub external calls,
    - Appwrite DB reads/writes.
 4. UI renders normalized typed models from `src/types/index.ts`.
 5. Scheduled workflows trigger periodic actions (e.g., contributor scoring refresh).
@@ -55,7 +53,6 @@ Main pages:
 - `/list-repo` -> `src/app/list-repo/page.tsx`
 - `/dashboard` -> `src/app/dashboard/page.tsx`
 - `/enterprise` -> `src/app/enterprise/page.tsx`
-- `/enterprise/audit` -> `src/app/enterprise/audit/page.tsx`
 - `/legal/terms` -> `src/app/legal/terms/page.tsx`
 - `/legal/privacy` -> `src/app/legal/privacy/page.tsx`
 
@@ -79,12 +76,11 @@ Notable actions include:
 - `register-contributor`
 - `fetch-contributors` (scoring/enrichment; ends with `recompute-percentiles` when a batch completes)
 - `recompute-percentiles`
-- `audit-dependencies` (no raw maintainer float in JSON)
 - `ingest-openget-json` (stewardship graph)
 - `import-industry-repos`
 
 Auth and protection patterns:
-- Requires `x-appwrite-user-id` for sensitive actions (e.g., listing, registration, audit, delist).
+- Requires `x-appwrite-user-id` for sensitive actions (e.g., listing, registration, delist).
 - `delist-repo` enforces owner-only behavior (`listed_by` match).
 - `import-industry-repos` requires `OPENGET_INDUSTRY_IMPORT_SECRET`.
 
@@ -104,7 +100,6 @@ Major entities:
 - `PlatformFee`
 - `WeeklyDistribution`
 - `User`
-- enterprise audit response types (`DependencyAuditResult`, `AuditItem`, `AuditMaintainerRow`)
 
 Pool constants:
 - `src/lib/pool-types.ts`
@@ -236,7 +231,6 @@ Use this architecture context as ground truth:
 
 Behavior notes:
 - Sensitive backend actions require user context; owner checks exist for delist.
-- Dependency audit is action-based (audit-dependencies).
 - AI repo summaries are optional/cached.
 - Nightly contributor refresh exists via workflow.
 

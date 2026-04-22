@@ -5,7 +5,7 @@ import { getLegalInfo } from "@/lib/legal-info";
 export const metadata: Metadata = {
   title: "Privacy Policy | OpenGet",
   description:
-    "How OpenGet collects, uses, and shares personal data — authentication, GitHub and Appwrite, reputation scoring, and optional verification API access.",
+    "How OpenGet collects, uses, and shares personal data — auth, GitHub, stewardship scoring, optional verification and B2B talent API access, and subprocessor details.",
 };
 
 function Section({
@@ -42,7 +42,7 @@ export default function PrivacyPolicyPage() {
     <div className="container py-10 max-w-3xl mx-auto space-y-10">
       <div className="space-y-3">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground">Last updated: April 22, 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: April 23, 2026</p>
         <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground leading-relaxed">
           This policy describes how <strong className="text-foreground">{legal.entityName}</strong> (&quot;Operator,&quot;
           &quot;we,&quot; &quot;us&quot;) processes personal data when you use OpenGet.{" "}
@@ -76,10 +76,20 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong className="text-foreground">Server-side and API use:</strong> If you or your organization use server
-            routes, Appwrite, or a verification key (for example, <code className="text-xs">APPWRITE_API_KEY</code> in
-            deployment, or <code className="text-xs">OPENGET_VERIFY_API_KEYS</code> where we offer keyed access to public
-            verification endpoints), we process requests, keys (hashed or stored per our implementation), and related
-            logs for security, rate limits, and abuse prevention.
+            routes, Appwrite, a verification key (for example, <code className="text-xs">APPWRITE_API_KEY</code> in
+            deployment, or <code className="text-xs">OPENGET_VERIFY_API_KEYS</code> for keyed public verification), or
+            a B2B recruitment key (for example, <code className="text-xs">OPENGET_RECRUITMENT_API_KEY</code> for{" "}
+            <code className="text-xs">GET /api/enterprise/talent</code>), we process requests, keys (hashed or stored per
+            our implementation), and related logs for security, rate limits, and abuse prevention.
+          </li>
+          <li>
+            <strong className="text-foreground">Recruiting context:</strong> If you use our talent or enterprise APIs, we
+            may process minimal request metadata to deliver filtered lists. We do not run your employment decisions; see
+            the{" "}
+            <Link href="/legal/terms" className="text-primary underline underline-offset-2">
+              Terms of Service
+            </Link>{" "}
+            (including the interview-assessment disclaimer).
           </li>
           <li>
             <strong className="text-foreground">Commercial transactions (if offered):</strong> If you buy a
@@ -99,7 +109,10 @@ export default function PrivacyPolicyPage() {
 
       <Section id="purposes" title="3. How we use data (purposes)">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Provide, operate, and improve the Platform (reputation, profiles, enterprise views, and verification APIs).</li>
+          <li>
+            Provide, operate, and improve the Platform (reputation, profiles, optional B2B talent endpoints, enterprise
+            pages, and verification APIs).
+          </li>
           <li>Authenticate users, prevent fraud and abuse, and secure accounts and API keys.</li>
           <li>Communicate with you about the service, updates, and support.</li>
           <li>Comply with law, enforce our{" "}
