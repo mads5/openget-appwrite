@@ -12,6 +12,7 @@
     "db:sync": "npm ci --prefix scripts --no-audit --no-fund && npm run db:sync --prefix scripts",
     "deploy:api": "npm ci --prefix scripts --no-audit --no-fund && node scripts/deploy-functions.js --openget-api-only",
     "backfill:contributors": "npm ci --prefix scripts --no-audit --no-fund && node scripts/backfill-repo-contributors.js",
+    "recompute:percentiles": "npm ci --prefix scripts --no-audit --no-fund && node scripts/recompute-percentiles.mjs",
     "seed:industry": "npm ci --prefix scripts --no-audit --no-fund && node scripts/seed-industry-repos.mjs"
   },
   "dependencies": {

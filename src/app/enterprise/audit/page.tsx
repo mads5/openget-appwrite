@@ -243,8 +243,9 @@ export default function EnterpriseAuditPage() {
                                     @{m.github_username}
                                   </Link>{" "}
                                   <span className="text-muted-foreground">
-                                    score {m.openget_total_score != null ? m.openget_total_score.toFixed(2) : "—"} ·
-                                    pr {m.prs_merged} · rev {m.reviews}
+                                    {m.openget_tier} · P{m.openget_percentile ?? "—"}
+                                    {m.attested_guardian ? " · attested" : ""} · pr {m.prs_merged} · rev {m.reviews} ·
+                                    act {m.activity_index}
                                   </span>
                                 </li>
                               ))}

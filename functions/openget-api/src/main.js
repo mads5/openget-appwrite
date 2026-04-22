@@ -8,6 +8,17 @@ import {
   sleep as auditSleep,
 } from './audit-resolve.js';
 import { INDUSTRY_FULL_NAMES, INDUSTRY_IMPORT_BATCH } from './industry-refs.js';
+import {
+  aggregateWeightedInputs,
+  applyNoise,
+  buildGpsJson,
+  computeLinearScore7,
+  deterministicNoise,
+  ENGINE_VERSION,
+  recomputeGlobalPercentiles,
+  tierFromPercentile,
+} from './scoring-engine.js';
+import { computeF7Entropy } from './f7-entropy.js';
 
 const DATABASE_ID = 'openget-db';
 
@@ -15,6 +26,8 @@ const COL = {
   REPOS: 'repos',
   CONTRIBUTORS: 'contributors',
   REPO_CONTRIBUTIONS: 'repo_contributions',
+  INTERNAL_REPUTATION: 'internal_reputation',
+  REPO_GUARDIANS: 'repo_guardians',
   POOLS: 'pools',
   DONATIONS: 'donations',
   PAYOUTS: 'payouts',
@@ -24,19 +37,6 @@ const COL = {
   USERS: 'users',
 };
 
-const SCORE_WEIGHTS = {
-  total_contributions: 0.15,
-  prs_raised: 0.10,
-  prs_merged: 0.40,
-  repo_count: 0.10,
-  review_activity: 0.15,
-  release_triage: 0.10,
-};
-const PR_RAISED_CAP = 100;
-const PR_MERGED_CAP = 80;
-const QUALIFIED_REPO_CAP = 20;
-const REVIEW_CAP = 200;
-const RELEASE_CAP = 30;
 const MIN_REPO_SCORE = 5;
 
 const GH_HEADERS_BASE = {
@@ -270,10 +270,26 @@ async function ensureContributorFromGithub(db, ghHeaders, login, snapshotEntry =
     total_score: 0,
     repo_count: 0,
     total_contributions: 0,
+    kinetic_tier: 'spark',
+    gps_json: JSON.stringify(
+      buildGpsJson(
+        { f1: 0, f2: 0, f3: 0, f4: 0, f5: 0, f6: 0, f7: 0.5 },
+        'spark',
+        0,
+      ),
+    ),
   });
 }
 
-async function recomputeContributorAggregate(db, contributorId, monthKey) {
+/**
+ * 7-factor engine + vault. Raw numbers stay in `internal_reputation`; public projection
+ * (tier, gps_json, percentile) is written after a global `recomputeGlobalPercentiles` pass.
+ * @param {{ skipGlobalPercentile?: boolean }} [options]
+ */
+async function recomputeContributorAggregate(db, contributorId, monthKey, ghHeaders, log, options = {}) {
+  const skipGlobal = options.skipGlobalPercentile === true;
+  const salt = process.env.OPENGET_SCORE_SALT || 'openget-engine-v2';
+
   let contributorUsername = null;
   try {
     const contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, contributorId);
@@ -282,73 +298,105 @@ async function recomputeContributorAggregate(db, contributorId, monthKey) {
     contributorUsername = null;
   }
 
-  const allRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
-    Query.equal('contributor_id', contributorId),
-    Query.limit(5000),
-  ]);
-
-  const totalContributions = allRc.documents.reduce(
-    (s, rc) =>
-      s + (rc.commits || 0) + (rc.prs_merged || 0) + (rc.reviews || 0) + (rc.issues_closed || 0),
-    0,
+  const aw = await aggregateWeightedInputs(
+    db,
+    DATABASE_ID,
+    COL,
+    Query,
+    contributorId,
+    monthKey,
+    contributorUsername,
   );
-  const totalReviews = allRc.documents.reduce(
-    (s, rc) => s + (rc.reviews || 0) + (rc.review_comments || 0),
-    0,
-  );
-  const totalReleases = allRc.documents.reduce((s, rc) => s + (rc.releases_count || 0), 0);
 
-  const allMs = await db.listDocuments(DATABASE_ID, COL.MONTHLY_STATS, [
-    Query.equal('contributor_id', contributorId),
-    Query.equal('month', monthKey),
-    Query.limit(5000),
-  ]);
-
-  let prsRaisedMonth = 0;
-  let prsMergedMonth = 0;
-  for (const ms of allMs.documents) {
-    prsRaisedMonth += ms.prs_raised || 0;
-    prsMergedMonth += ms.prs_merged || 0;
-  }
-
-  let qualifiedRepoCount = 0;
-  for (const rc of allRc.documents) {
+  let f7 = 0.5;
+  if (ghHeaders && contributorUsername) {
+    const allRc = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
+      Query.equal('contributor_id', contributorId),
+      Query.limit(5000),
+    ]);
     try {
-      const repo = await db.getDocument(DATABASE_ID, COL.REPOS, rc.repo_id);
-      const repoScore = repo.repo_score ?? ((repo.stars || 0) + (repo.forks || 0));
-      const isOwner =
-        repo.owner &&
-        contributorUsername &&
-        repo.owner.toLowerCase() === contributorUsername.toLowerCase();
-      if (isOwner) continue;
-      if (repoScore < MIN_REPO_SCORE) continue;
-      if ((rc.prs_merged || 0) < 1) continue;
-      qualifiedRepoCount++;
-    } catch {
-      continue;
+      f7 = await computeF7Entropy(contributorUsername, allRc.documents, ghHeaders, log);
+    } catch (e) {
+      if (log) log(`F7: ${e.message}`);
     }
   }
 
-  const result = computeContributorScore(
-    totalContributions,
-    prsRaisedMonth,
-    prsMergedMonth,
-    qualifiedRepoCount,
-    totalReviews,
-    totalReleases,
+  const raw = computeLinearScore7(
+    aw.f1,
+    aw.f2,
+    aw.f3,
+    aw.f4,
+    aw.f5,
+    aw.f6,
+    f7,
+    aw.penalty,
+  );
+  const noise = deterministicNoise(contributorId, salt);
+  const vault = applyNoise(raw, noise);
+
+  const factorsJson = JSON.stringify({
+    f1: aw.f1,
+    f2: aw.f2,
+    f3: aw.f3,
+    f4: aw.f4,
+    f5: aw.f5,
+    f6: aw.f6,
+    f7,
+    penalty: aw.penalty,
+  });
+
+  const vaultData = {
+    contributor_id: contributorId,
+    raw_score: raw,
+    vault_score: vault,
+    factors_json: factorsJson,
+    engine_version: ENGINE_VERSION,
+    updated_at: new Date().toISOString(),
+  };
+
+  const existingVault = await db.listDocuments(DATABASE_ID, COL.INTERNAL_REPUTATION, [
+    Query.equal('contributor_id', contributorId),
+    Query.limit(1),
+  ]);
+  if (existingVault.total > 0) {
+    await db.updateDocument(
+      DATABASE_ID,
+      COL.INTERNAL_REPUTATION,
+      existingVault.documents[0].$id,
+      vaultData,
+    );
+  } else {
+    await db.createDocument(DATABASE_ID, COL.INTERNAL_REPUTATION, ID.unique(), vaultData);
+  }
+
+  const placeholderGps = buildGpsJson(
+    { f1: aw.f1, f2: aw.f2, f3: aw.f3, f4: aw.f4, f5: aw.f5, f6: aw.f6, f7 },
+    tierFromPercentile(0),
+    0,
   );
 
   await db.updateDocument(DATABASE_ID, COL.CONTRIBUTORS, contributorId, {
-    total_score: result.score,
-    total_contributions: totalContributions,
-    repo_count: allRc.total,
-    score_f1: result.factors.f1,
-    score_f2: result.factors.f2,
-    score_f3: result.factors.f3,
-    score_f4: result.factors.f4,
-    score_f5: result.factors.f5,
-    score_f6: result.factors.f6,
+    total_score: 0,
+    total_contributions: aw.totalContributionsRaw,
+    repo_count: aw.repo_count,
+    score_f1: 0,
+    score_f2: 0,
+    score_f3: 0,
+    score_f4: 0,
+    score_f5: 0,
+    score_f6: 0,
+    score_f7: 0,
+    kinetic_tier: placeholderGps.tier,
+    gps_json: JSON.stringify(placeholderGps),
   });
+
+  if (!skipGlobal) {
+    try {
+      await recomputeGlobalPercentiles(db, DATABASE_ID, COL, Query, null, log);
+    } catch (e) {
+      if (log) log(`recomputeGlobalPercentiles: ${e.message}`);
+    }
+  }
 }
 
 async function fetchReleasesForRepoWithHeaders(owner, repo, ghHeaders) {
@@ -357,51 +405,6 @@ async function fetchReleasesForRepoWithHeaders(owner, repo, ghHeaders) {
   const res = await fetch(url, { headers: ghHeaders });
   if (!res.ok) return [];
   return res.json();
-}
-
-/**
- * 6-factor model. Returns raw factor strengths (0–1) for the contributor profile UI.
- * @returns {{ score: number, factors: { f1: number, f2: number, f3: number, f4: number, f5: number, f6: number, mergeRatioPenalty: number } }}
- */
-function computeContributorScore(
-  totalContributions,
-  prsRaised,
-  prsMerged,
-  qualifiedRepoCount,
-  totalReviews,
-  totalReleases,
-) {
-  const f1 = Math.log2(totalContributions + 1) / Math.log2(1001);
-  const f2 = Math.min(prsRaised, PR_RAISED_CAP) / PR_RAISED_CAP;
-  const f3 = Math.min(prsMerged, PR_MERGED_CAP) / PR_MERGED_CAP;
-
-  let mergeRatioPenalty = 1.0;
-  if (prsRaised > 5 && prsMerged > 0) {
-    const ratio = prsMerged / prsRaised;
-    if (ratio < 0.3) mergeRatioPenalty = 0.5;
-    else if (ratio < 0.5) mergeRatioPenalty = 0.75;
-  }
-
-  const f4 =
-    Math.log2(Math.min(qualifiedRepoCount, QUALIFIED_REPO_CAP) + 1) /
-    Math.log2(QUALIFIED_REPO_CAP + 1);
-  const f5 = Math.log2(Math.min(totalReviews || 0, REVIEW_CAP) + 1) / Math.log2(REVIEW_CAP + 1);
-  const f6 =
-    Math.log2(Math.min(totalReleases || 0, RELEASE_CAP) + 1) / Math.log2(RELEASE_CAP + 1);
-
-  const raw =
-    f1 * SCORE_WEIGHTS.total_contributions +
-    f2 * SCORE_WEIGHTS.prs_raised * mergeRatioPenalty +
-    f3 * SCORE_WEIGHTS.prs_merged +
-    f4 * SCORE_WEIGHTS.repo_count +
-    f5 * SCORE_WEIGHTS.review_activity +
-    f6 * SCORE_WEIGHTS.release_triage;
-
-  const score = Math.round(raw * 1000) / 1000;
-  return {
-    score,
-    factors: { f1, f2, f3, f4, f5, f6, mergeRatioPenalty },
-  };
 }
 
 function daysSince(dateLike) {
@@ -465,6 +468,14 @@ async function syncRepoContributorsFromGithub(db, repoDoc, ghHeaders, log) {
         total_score: 0,
         repo_count: 0,
         total_contributions: 0,
+        kinetic_tier: 'spark',
+        gps_json: JSON.stringify(
+          buildGpsJson(
+            { f1: 0, f2: 0, f3: 0, f4: 0, f5: 0, f6: 0, f7: 0.5 },
+            'spark',
+            0,
+          ),
+        ),
       });
     }
 
@@ -496,12 +507,19 @@ async function syncRepoContributorsFromGithub(db, repoDoc, ghHeaders, log) {
       await db.createDocument(DATABASE_ID, COL.REPO_CONTRIBUTIONS, ID.unique(), rcData);
     }
 
-    await recomputeContributorAggregate(db, contribDoc.$id, currentMonthKey());
+    await recomputeContributorAggregate(db, contribDoc.$id, currentMonthKey(), ghHeaders, null, {
+      skipGlobalPercentile: true,
+    });
 
     synced++;
   }
 
   await reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
+  try {
+    await recomputeGlobalPercentiles(db, DATABASE_ID, COL, Query, null, null);
+  } catch {
+    /* ignore */
+  }
   return synced;
 }
 
@@ -766,6 +784,7 @@ export default async ({ req, res, log, error }) => {
         return res.json({
           service: 'openget-api',
           api: 2,
+          engine: ENGINE_VERSION,
           runtime: process.version,
           actions: [
             'health',
@@ -776,7 +795,9 @@ export default async ({ req, res, log, error }) => {
             'get-repo-contributors',
             'register-contributor',
             'fetch-contributors',
+            'recompute-percentiles',
             'audit-dependencies',
+            'ingest-openget-json',
             'import-industry-repos',
           ],
         });
@@ -943,10 +964,19 @@ export default async ({ req, res, log, error }) => {
             if (batch.documents.length < 100) break;
             offset += batch.documents.length;
           }
+          const ghTok = process.env.GITHUB_TOKEN;
+          const delistGh = ghTok ? { ...GH_HEADERS_BASE, Authorization: `Bearer ${ghTok}` } : null;
           for (const contribId of affected) {
             try {
-              await recomputeContributorAggregate(db, contribId, currentMonthKey());
+              await recomputeContributorAggregate(db, contribId, currentMonthKey(), delistGh, log, {
+                skipGlobalPercentile: true,
+              });
             } catch {}
+          }
+          try {
+            await recomputeGlobalPercentiles(db, DATABASE_ID, COL, Query, null, log);
+          } catch {
+            /* ignore */
           }
         } catch (e) {
           log(`delist-repo: cleaning repo_contributions: ${e.message}`);
@@ -970,18 +1000,24 @@ export default async ({ req, res, log, error }) => {
           try {
             contributor = await db.getDocument(DATABASE_ID, COL.CONTRIBUTORS, rc.contributor_id);
           } catch {}
+          const act = rc.score != null ? Math.round(Math.min(99, Math.log1p(rc.score))) : 0;
           return {
             contributor_id: rc.contributor_id,
             github_username: contributor.github_username || 'unknown',
             avatar_url: contributor.avatar_url || null,
             is_registered: !!(contributor.user_id),
+            kinetic_tier: contributor.kinetic_tier || 'spark',
+            percentile:
+              contributor.percentile_global != null
+                ? Math.round(Number(contributor.percentile_global))
+                : null,
             commits: rc.commits || 0,
             prs_merged: rc.prs_merged || 0,
             lines_added: rc.lines_added || 0,
             lines_removed: rc.lines_removed || 0,
             reviews: rc.reviews || 0,
             issues_closed: rc.issues_closed || 0,
-            score: rc.score || 0,
+            activity_index: act,
             last_contribution_at: rc.last_contribution_at || null,
           };
         }));
@@ -1048,6 +1084,14 @@ export default async ({ req, res, log, error }) => {
             total_score: 0,
             repo_count: 0,
             total_contributions: 0,
+            kinetic_tier: 'spark',
+            gps_json: JSON.stringify(
+              buildGpsJson(
+                { f1: 0, f2: 0, f3: 0, f4: 0, f5: 0, f6: 0, f7: 0.5 },
+                'spark',
+                0,
+              ),
+            ),
           });
         }
 
@@ -1086,7 +1130,22 @@ export default async ({ req, res, log, error }) => {
           log(`register-contributor: linking listed repos: ${e.message}`);
         }
 
-        return res.json({ ...contribDoc, is_registered: true });
+        return res.json({
+          id: contribDoc.$id,
+          github_username: contribDoc.github_username,
+          github_id: contribDoc.github_id,
+          avatar_url: contribDoc.avatar_url,
+          user_id: contribDoc.user_id,
+          repo_count: contribDoc.repo_count,
+          total_contributions: contribDoc.total_contributions,
+          kinetic_tier: contribDoc.kinetic_tier || 'spark',
+          percentile_global:
+            contribDoc.percentile_global != null
+              ? Math.round(Number(contribDoc.percentile_global))
+              : 0,
+          gps_json: contribDoc.gps_json || null,
+          is_registered: true,
+        });
       }
 
       // ---- FETCH CONTRIBUTORS (background) ----
@@ -1359,7 +1418,9 @@ export default async ({ req, res, log, error }) => {
             }
 
             for (const contributorId of contributorsNeedingRecompute) {
-              await recomputeContributorAggregate(db, contributorId, monthKey);
+              await recomputeContributorAggregate(db, contributorId, monthKey, ghHeaders, log, {
+                skipGlobalPercentile: true,
+              });
             }
             const reconciledCount = await reconcileRepoContributorCount(db, repoDoc.$id, { touchFetchedAt: true });
 
@@ -1384,6 +1445,13 @@ export default async ({ req, res, log, error }) => {
                   },
                   log,
                 );
+              } else {
+                try {
+                  const pr = await recomputeGlobalPercentiles(db, DATABASE_ID, COL, Query, null, log);
+                  summary.percentiles_recomputed = pr.updated;
+                } catch (e) {
+                  log(`recomputeGlobalPercentiles: ${e.message}`);
+                }
               }
 
               const successPayload = {
@@ -1435,7 +1503,79 @@ export default async ({ req, res, log, error }) => {
           }
         }
 
+        try {
+          const pr = await recomputeGlobalPercentiles(db, DATABASE_ID, COL, Query, null, log);
+          summary.percentiles_recomputed = pr.updated;
+        } catch (e) {
+          log(`recomputeGlobalPercentiles: ${e.message}`);
+        }
         return res.json(summary);
+      }
+
+      // ---- recompute global percentiles (manual / cron) ----
+      case 'recompute-percentiles': {
+        try {
+          const pr = await recomputeGlobalPercentiles(db, DATABASE_ID, COL, Query, null, log);
+          return res.json({ ok: true, ...pr });
+        } catch (e) {
+          return res.json({ error: e.message }, 500);
+        }
+      }
+
+      // ---- Stewardship: ingest openget.json (signed manifest from repo root) ----
+      case 'ingest-openget-json': {
+        const expected =
+          process.env.OPENGET_JSON_INGEST_SECRET || process.env.OPENGET_INDUSTRY_IMPORT_SECRET;
+        if (!expected || String(body.secret || '') !== String(expected)) {
+          return res.json({ error: 'Unauthorized' }, 401);
+        }
+        const repoId = body.repo_id;
+        if (!repoId) return res.json({ error: 'repo_id is required' }, 400);
+        const manifest = body.manifest || body.openget;
+        if (!manifest || typeof manifest !== 'object') {
+          return res.json({ error: 'manifest (or openget) object is required' }, 400);
+        }
+        const list = Array.isArray(manifest.guardians) ? manifest.guardians : [];
+        if (list.length === 0) {
+          return res.json({ error: 'manifest.guardians must be a non-empty array' }, 400);
+        }
+        const ref = body.commit_sha || body.attestation_ref || 'manual-upload';
+        const version = String(manifest.version != null ? manifest.version : '1');
+        let n = 0;
+        for (const g of list) {
+          const login = typeof g === 'string' ? g : g.github_username || g.login;
+          if (!login || typeof login !== 'string') continue;
+          const uname = String(login).trim();
+          if (!uname) continue;
+          const unameLower = uname.toLowerCase();
+          const role = (typeof g === 'object' && g && g.role) || 'guardian';
+          const existing = await db.listDocuments(DATABASE_ID, COL.REPO_GUARDIANS, [
+            Query.equal('repo_id', repoId),
+            Query.equal('github_username', unameLower),
+            Query.limit(1),
+          ]);
+          const payload = {
+            repo_id: String(repoId),
+            github_username: unameLower,
+            role: String(role),
+            attested_at: new Date().toISOString(),
+            attestation_ref: String(ref).slice(0, 200),
+            openget_version: version,
+            source: 'openget.json',
+          };
+          if (existing.total > 0) {
+            await db.updateDocument(
+              DATABASE_ID,
+              COL.REPO_GUARDIANS,
+              existing.documents[0].$id,
+              payload,
+            );
+          } else {
+            await db.createDocument(DATABASE_ID, COL.REPO_GUARDIANS, ID.unique(), payload);
+          }
+          n += 1;
+        }
+        return res.json({ ok: true, guardians_written: n, schema: version });
       }
 
       // ---- B2B: dependency audit (npm → GitHub → OpenGet index) ----
@@ -1557,6 +1697,20 @@ export default async ({ req, res, log, error }) => {
 
           inIndex += 1;
           const repoId = repoDoc.$id;
+          let attestedLogins = new Set();
+          try {
+            const gds = await db.listDocuments(DATABASE_ID, COL.REPO_GUARDIANS, [
+              Query.equal('repo_id', repoId),
+              Query.limit(200),
+            ]);
+            attestedLogins = new Set(
+              (gds.documents || [])
+                .map((d) => d.github_username && String(d.github_username).toLowerCase())
+                .filter(Boolean),
+            );
+          } catch {
+            attestedLogins = new Set();
+          }
           const rcs = await db.listDocuments(DATABASE_ID, COL.REPO_CONTRIBUTIONS, [
             Query.equal('repo_id', repoId),
             Query.limit(2000),
@@ -1571,15 +1725,21 @@ export default async ({ req, res, log, error }) => {
             } catch {
               /* */
             }
+            const u = (contributor.github_username && String(contributor.github_username)) || 'unknown';
+            const attested = attestedLogins.has(u.toLowerCase());
             top_maintainers.push({
               contributor_id: rc.contributor_id,
-              github_username: contributor.github_username || 'unknown',
+              github_username: u,
               is_registered: !!(contributor.user_id),
-              contribution_score: rc.score != null ? Number(rc.score) : 0,
+              activity_index: rc.score != null ? Math.round(Math.min(99, Math.log1p(rc.score))) : 0,
               prs_merged: rc.prs_merged || 0,
               reviews: rc.reviews || 0,
-              openget_total_score:
-                contributor.total_score != null ? Number(contributor.total_score) : null,
+              openget_tier: contributor.kinetic_tier || 'spark',
+              openget_percentile:
+                contributor.percentile_global != null
+                  ? Math.round(Number(contributor.percentile_global))
+                  : null,
+              attested_guardian: attested,
             });
           }
 
@@ -1632,8 +1792,10 @@ export default async ({ req, res, log, error }) => {
                 'version',
                 'list-repo',
                 'fetch-contributors',
+                'recompute-percentiles',
                 'register-contributor',
                 'audit-dependencies',
+                'ingest-openget-json',
                 'import-industry-repos',
               ],
             },
@@ -1652,7 +1814,9 @@ export default async ({ req, res, log, error }) => {
               'get-repo-contributors',
               'register-contributor',
               'fetch-contributors',
+              'recompute-percentiles',
               'audit-dependencies',
+              'ingest-openget-json',
               'import-industry-repos',
             ],
         },

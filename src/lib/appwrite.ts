@@ -9,6 +9,8 @@ export const COLLECTION = {
   REPOS: "repos",
   CONTRIBUTORS: "contributors",
   REPO_CONTRIBUTIONS: "repo_contributions",
+  INTERNAL_REPUTATION: "internal_reputation",
+  REPO_GUARDIANS: "repo_guardians",
   POOLS: "pools",
   DONATIONS: "donations",
   PAYOUTS: "payouts",

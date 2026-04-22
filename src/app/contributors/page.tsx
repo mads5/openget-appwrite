@@ -26,7 +26,7 @@ export default function ContributorsPage() {
     <div>
       <PageHeader
         title="Contributors"
-        description="Ranked by the 6-factor stewardship model (includes people discovered on listed repositories—such as the industry-curated set after a successful import). Claim your handle on the dashboard to link your GitHub identity."
+        description="Ranked by the 7-factor Kinetic stewardship model (includes people discovered on listed repositories—such as the industry-curated set after a successful import). Claim your handle on the dashboard to link your GitHub identity."
       />
       <div className="container py-8">
       {loading ? (

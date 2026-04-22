@@ -8,7 +8,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "OpenGet — Human Verification for Open Source",
   description:
-    "6-factor scores, verified profiles, SVG badges, and supply-chain–oriented risk signals for the AI-code era.",
+    "7-factor Kinetic tier scores, verified profiles, SVG badges, and supply-chain–oriented risk signals for the AI-code era.",
   icons: {
     icon: [
       { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },

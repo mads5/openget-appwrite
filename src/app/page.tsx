@@ -29,7 +29,7 @@ export default function HomePage() {
           <span className="text-primary">your dependencies</span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-muted-foreground leading-relaxed text-pretty">
-          OpenGet turns public Git activity into a <strong className="text-foreground/90">6-factor stewardship model</strong>
+          OpenGet turns public Git activity into a <strong className="text-foreground/90">7-factor Kinetic stewardship model</strong>
           — merges, review load, and triage — so teams see humans behind the graph, not just AI slop and star counts.
         </p>
         <div className="mt-10 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:w-auto sm:flex-row sm:justify-center">
@@ -44,7 +44,7 @@ export default function HomePage() {
           {[
             { label: "Repos listed", value: stats.repos },
             { label: "Contributors", value: stats.contributors },
-            { label: "Model", value: "6 factors" },
+            { label: "Model", value: "7 factors + GPS" },
             { label: "APIs", value: "Verify + badge" },
           ].map((s) => (
             <div key={s.label} className="og-glass flex flex-col items-center justify-center px-4 py-6 sm:py-8">
@@ -70,7 +70,7 @@ export default function HomePage() {
               {
                 icon: BarChart3,
                 title: "Ingest & score",
-                body: "List repos you care about. We pull contributor graphs and run the 6-factor model on merged work, review, and triage.",
+                body: "List repos you care about. We pull contributor graphs and run the 7-factor model on merged work, review, and triage.",
               },
               {
                 icon: Shield,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getContributorByGithubUsername } from "@/lib/appwrite-server";
+import type { KineticTierId } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,16 @@ function isAuthorized(req: NextRequest): boolean {
   return keys.includes(candidate);
 }
 
+function parseTier(s: unknown): KineticTierId {
+  const t = String(s || "spark").toLowerCase();
+  if (
+    ["spark", "current", "kinetic", "reactor", "fusion", "singularity"].includes(t)
+  ) {
+    return t as KineticTierId;
+  }
+  return "spark";
+}
+
 export async function GET(req: NextRequest) {
   const user = req.nextUrl.searchParams.get("user") || req.nextUrl.searchParams.get("github");
   if (!user?.trim()) {
@@ -33,24 +44,27 @@ export async function GET(req: NextRequest) {
     const doc = await getContributorByGithubUsername(user);
     if (!doc) {
       return NextResponse.json(
-        { verified: false, github_username: user.replace(/^@/, ""), openget_score: null, contributor_id: null },
+        {
+          verified: false,
+          github_username: user.replace(/^@/, ""),
+          kinetic_tier: null,
+          percentile: null,
+          contributor_id: null,
+        },
         { status: 404 },
       );
     }
     const d = doc as unknown as Record<string, unknown>;
+    const tier = parseTier(d.kinetic_tier);
+    const pct = d.percentile_global != null ? Number(d.percentile_global) : 0;
     return NextResponse.json({
       verified: true,
       contributor_id: doc.$id,
       github_username: d.github_username,
-      openget_score: Number(d.total_score ?? 0),
+      kinetic_tier: tier,
+      percentile: Math.round(pct),
       repo_count: Number(d.repo_count ?? 0),
       is_registered: d.user_id != null && String(d.user_id) !== "",
-      score_f1: d.score_f1 != null ? Number(d.score_f1) : null,
-      score_f2: d.score_f2 != null ? Number(d.score_f2) : null,
-      score_f3: d.score_f3 != null ? Number(d.score_f3) : null,
-      score_f4: d.score_f4 != null ? Number(d.score_f4) : null,
-      score_f5: d.score_f5 != null ? Number(d.score_f5) : null,
-      score_f6: d.score_f6 != null ? Number(d.score_f6) : null,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "error";

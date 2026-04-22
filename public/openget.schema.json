@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openget.app/openget.schema.json",
+  "title": "openget.json",
+  "description": "Stewardship graph manifest: lists Guardian accounts authorized to attest maintainer status for a repository. Submit via openget-api action `ingest-openget-json` with a shared secret.",
+  "type": "object",
+  "required": ["version", "guardians"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1"
+    },
+    "guardians": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          {
+            "type": "object",
+            "required": ["github_username"],
+            "properties": {
+              "github_username": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

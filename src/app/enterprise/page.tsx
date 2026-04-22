@@ -36,7 +36,7 @@ export default function EnterprisePage() {
         <h2 className="text-xl font-semibold">What you get</h2>
         <ul className="list-disc pl-5 space-y-2 text-muted-foreground leading-relaxed">
           <li>
-            <span className="text-foreground">Stewardship signal</span>: a 6-factor view of who actually merges, reviews, and
+            <span className="text-foreground">Stewardship signal</span>: a 7-factor view of who actually merges, reviews, and
             triages on the repos you care about.
           </li>
           <li>

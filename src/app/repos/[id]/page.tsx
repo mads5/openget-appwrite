@@ -188,7 +188,7 @@ export default function RepoDetailPage() {
                   Reviews
                 </th>
                 <th className="text-right px-4 py-3 text-sm font-medium">
-                  Score
+                  Tier
                 </th>
                 <th className="text-right px-4 py-3 text-sm font-medium hidden sm:table-cell">
                   Status
@@ -229,9 +229,14 @@ export default function RepoDetailPage() {
                     {c.reviews}
                   </td>
                   <td className="text-right px-4 py-3">
-                    <Badge variant="secondary">
-                      {(c.score || 0).toFixed(0)}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {c.kinetic_tier || "—"}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        P{c.percentile != null ? c.percentile : "—"} · act {c.activity_index ?? "—"}
+                      </span>
+                    </div>
                   </td>
                   <td className="text-right px-4 py-3 hidden sm:table-cell">
                     {c.is_registered ? (

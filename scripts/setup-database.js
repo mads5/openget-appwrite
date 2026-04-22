@@ -94,6 +94,30 @@ async function ensureCollection(collectionId, displayName) {
 }
 
 /**
+ * Vault: no Role.any() read — only server (API key / functions) should access.
+ * In Appwrite Cloud, the server API key can still read and write; browsers must not use this collection.
+ */
+async function ensureVaultCollection(collectionId, displayName) {
+  try {
+    await databases.createCollection(
+      DATABASE_ID,
+      collectionId,
+      displayName,
+      [],
+      true,
+      true,
+    );
+    console.log('[ok] Created vault collection', collectionId);
+  } catch (err) {
+    if (isConflict(err)) {
+      console.log('[skip] Collection already exists:', collectionId);
+    } else {
+      throw err;
+    }
+  }
+}
+
+/**
  * @param {string} collectionId
  * @param {string} key
  * @param {number} size
@@ -242,7 +266,10 @@ async function setupContributors() {
   await addFloatAttribute(id, 'score_f4', false, 0);
   await addFloatAttribute(id, 'score_f5', false, 0);
   await addFloatAttribute(id, 'score_f6', false, 0);
+  await addFloatAttribute(id, 'score_f7', false, 0);
   await addFloatAttribute(id, 'percentile_global', false, 0);
+  await addStringAttribute(id, 'kinetic_tier', 32, false, 'Spark');
+  await addStringAttribute(id, 'gps_json', 4000, false, '{}');
 }
 
 async function setupRepoContributions() {
@@ -336,7 +363,7 @@ async function setupWeeklyDistributions() {
 async function setupAppMeta() {
   const id = 'app_meta';
   await ensureCollection(id, 'App metadata');
-  await addIntegerAttribute(id, 'schema_version', false, 2);
+  await addIntegerAttribute(id, 'schema_version', false, 3);
 }
 
 /**
@@ -350,11 +377,34 @@ async function seedAppMeta() {
       console.log('[skip] app_meta already seeded');
       return;
     }
-    await databases.createDocument(DATABASE_ID, id, ID.unique(), { schema_version: 2 });
-    console.log('[ok] Seeded app_meta (schema_version=2)');
+    await databases.createDocument(DATABASE_ID, id, ID.unique(), { schema_version: 3 });
+    console.log('[ok] Seeded app_meta (schema_version=3)');
   } catch (e) {
     console.log('[warn] app_meta seed:', /** @type {Error} */ (e).message);
   }
+}
+
+async function setupInternalReputation() {
+  const id = 'internal_reputation';
+  await ensureVaultCollection(id, 'Internal reputation (vault)');
+  await addStringAttribute(id, 'contributor_id', 100, true);
+  await addFloatAttribute(id, 'raw_score', false, 0);
+  await addFloatAttribute(id, 'vault_score', false, 0);
+  await addStringAttribute(id, 'factors_json', 8000, false, '{}');
+  await addStringAttribute(id, 'engine_version', 20, false, '2');
+  await addStringAttribute(id, 'updated_at', 50, false);
+}
+
+async function setupRepoGuardians() {
+  const id = 'repo_guardians';
+  await ensureCollection(id, 'Repo guardians (stewardship graph)');
+  await addStringAttribute(id, 'repo_id', 100, true);
+  await addStringAttribute(id, 'github_username', 100, true);
+  await addStringAttribute(id, 'role', 40, false, 'guardian');
+  await addStringAttribute(id, 'attested_at', 50, false);
+  await addStringAttribute(id, 'attestation_ref', 200, false);
+  await addStringAttribute(id, 'openget_version', 20, false);
+  await addStringAttribute(id, 'source', 32, false, 'openget.json');
 }
 
 async function setupUsers() {
@@ -386,6 +436,8 @@ async function main() {
 
   const steps = [
     ['app_meta', setupAppMeta],
+    ['internal_reputation', setupInternalReputation],
+    ['repo_guardians', setupRepoGuardians],
     ['repos', setupRepos],
     ['contributors', setupContributors],
     ['repo_contributions', setupRepoContributions],

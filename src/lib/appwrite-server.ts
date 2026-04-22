@@ -6,7 +6,7 @@ type AppwriteDoc = { $id: string; [k: string]: unknown };
 /**
  * List documents via Appwrite REST (server API key). Browser `Client` has no `setKey` in this SDK version.
  */
-async function listDocumentsRest(
+export async function listDocumentsRest(
   collectionId: string,
   queries: string[],
 ): Promise<{ documents: AppwriteDoc[]; total: number }> {
