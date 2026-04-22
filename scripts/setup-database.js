@@ -281,7 +281,8 @@ async function setupShieldSessions() {
   await addStringAttribute(id, 'user_id', 100, true);
   await addStringAttribute(id, 'contributor_id', 100, true);
   await addStringAttribute(id, 'challenge_slug', 64, true);
-  await addStringAttribute(id, 'status', 32, true, 'active');
+  /** Required string; no DB default (Appwrite rejects default on required attributes). Always set in code. */
+  await addStringAttribute(id, 'status', 32, true);
   await addStringAttribute(id, 'started_at', 50, true);
   await addStringAttribute(id, 'expires_at', 50, true);
 }
@@ -476,7 +477,22 @@ async function main() {
   console.log('\n[done] All collections and attributes processed.');
 }
 
-main().catch((err) => {
+async function shieldSchemaOnly() {
+  if (!process.env.APPWRITE_API_KEY) {
+    console.error('Error: APPWRITE_API_KEY is required.');
+    process.exit(1);
+  }
+  console.log('OpenGet shield schema only (skips full migration)…');
+  console.log('Endpoint:', process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1');
+  console.log('Project:', process.env.APPWRITE_PROJECT_ID || '69cd72ef00259a9a29b9');
+  await ensureDatabase();
+  console.log('\n--- shield_sessions ---');
+  await setupShieldSessions();
+  console.log('\n[done] shield_sessions ready.');
+}
+
+const shieldOnly = process.argv.includes('--shield-only');
+(shieldOnly ? shieldSchemaOnly() : main()).catch((err) => {
   console.error('Setup failed:', err);
   process.exit(1);
 });

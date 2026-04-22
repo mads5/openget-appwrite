@@ -115,7 +115,7 @@ Central IDs:
   - collection IDs for repos, contributors, contributions, pools, etc.
 
 Schema bootstrap/sync:
-- `scripts/setup-database.js`
+- `scripts/setup-database.js` (full `npm run db:sync`; if attribute limits block the run, use `npm run db:sync:shield` for Shield-only collections/attributes)
 
 Important implementation detail:
 - `repos.eligible_pool_types` is stored as JSON string in DB and parsed to string[] in frontend mapping (`src/lib/api.ts`).

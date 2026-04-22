@@ -104,6 +104,9 @@ cp .env.example .env.local
 # 4. Set up database (one-time, idempotent)
 APPWRITE_API_KEY=your_key npm run db:sync
 
+# If full `db:sync` fails (e.g. Appwrite attribute limit on `internal_reputation`), apply Shield schema only:
+# APPWRITE_API_KEY=your_key npm run db:sync:shield
+
 # 5. Run
 npm run dev
 # Open http://localhost:3000
