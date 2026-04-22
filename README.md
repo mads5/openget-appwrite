@@ -250,6 +250,7 @@ openget-appwrite/
 | `NEXT_PUBLIC_CURRENCY` | No | `usd` | Display currency. Supports: `usd`, `eur`, `gbp`, `inr`, `jpy`, `cad`, `aud`, `sgd`, `brl` |
 | `APPWRITE_API_KEY` | For server routes / `db:sync` | — | **Server only.** Used by Next.js API routes (`/api/verify`, `/api/badge/...`) and `npm run db:sync`. Never expose to the client. |
 | `OPENGET_VERIFY_API_KEYS` | No | — | Comma-separated keys for optional keyed access to verification JSON (if enforced in your deployment). |
+| `OPENGET_ADMIN_API_KEYS` | No | — | **Server only.** If set, enables `GET /api/admin/reputation?user=` or `?contributor_id=` with `?key=` or `Authorization: Bearer` — returns **vault** `raw_score`, `vault_score`, and factor floats next to public **tier / percentile** for operator accountability. Never expose these keys in the browser. |
 | `OPENGET_RECRUITMENT_API_KEY` | No | — | If set, required for `GET /api/enterprise/talent` (otherwise verify keys are accepted). |
 
 > Appwrite endpoint and project ID are set in `src/lib/appwrite.ts`. Change them there if using a different project.
@@ -267,6 +268,8 @@ openget-appwrite/
 | `APPWRITE_ENDPOINT` | No | `https://sgp.cloud.appwrite.io/v1` | Appwrite API endpoint |
 | `APPWRITE_PROJECT_ID` | No | `69cd72ef00259a9a29b9` | Appwrite project ID |
 | `GITHUB_TOKEN` | **Yes** | — | GitHub PAT for `openget-api` scoring, repo listing, and other server-side GitHub calls. The **`openget-api` `get-my-repos`** action prefers each signed-in user’s OAuth token from Appwrite (GitHub identity); if none is available, it falls back to this variable (so it lists repos for the **PAT owner**—useful for local dev, not multi-user production). |
+| `OPENAI_API_KEY` | No | — | If set on **`openget-api`**, each Shield session can receive a unique AI-written `shieldFix` exercise; validation still uses **server-side** test vectors (no model-supplied ground truth). If unset, Shield uses the static parity fallback. |
+| `OPENAI_SHIELD_MODEL` | No | `gpt-4o-mini` | Chat completion model for Shield prompt generation. |
 | `OPENGET_INDUSTRY_IMPORT_SECRET` | For bulk seed | — | Shared secret to authorize **`import-industry-repos`**: add the same value to the function env, then set it locally in `.env.local` and run **`npm run seed:industry`** to ingest 20 public benchmark repos (`listed_by`: `industry-curated`). Chains in batches; re-run is safe. |
 | `OPENGET_SCORE_SALT` | Recommended | — | HMAC input for **deterministic** noise in scoring (set on `openget-api` only; not in the browser). |
 | `OPENGET_JSON_INGEST_SECRET` | For Guardian ingest | — | Authorize **`ingest-openget-json`**; can match **`OPENGET_INDUSTRY_IMPORT_SECRET`** for simplicity. |

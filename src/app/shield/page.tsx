@@ -302,6 +302,12 @@ export default function ShieldPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">{session.challenge.title}</CardTitle>
+            {session.challenge_source === "openai" && (
+              <p className="text-xs text-muted-foreground">
+                This prompt is generated for your session only. Passing is checked against hidden server tests, not a
+                single shared answer key.
+              </p>
+            )}
             <div
               className="select-none"
               onCopy={(e) => e.preventDefault()}

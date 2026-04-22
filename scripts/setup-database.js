@@ -281,6 +281,8 @@ async function setupShieldSessions() {
   await addStringAttribute(id, 'user_id', 100, true);
   await addStringAttribute(id, 'contributor_id', 100, true);
   await addStringAttribute(id, 'challenge_slug', 64, true);
+  /** JSON: formulaKey + fnName for server-side validation (never trust client). */
+  await addStringAttribute(id, 'challenge_meta', 4000, false);
   /** Required string; no DB default (Appwrite rejects default on required attributes). Always set in code. */
   await addStringAttribute(id, 'status', 32, true);
   await addStringAttribute(id, 'started_at', 50, true);

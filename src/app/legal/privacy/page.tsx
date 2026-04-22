@@ -79,7 +79,10 @@ export default function PrivacyPolicyPage() {
             routes, Appwrite, a verification key (for example, <code className="text-xs">APPWRITE_API_KEY</code> in
             deployment, or <code className="text-xs">OPENGET_VERIFY_API_KEYS</code> for keyed public verification), or
             a B2B recruitment key (for example, <code className="text-xs">OPENGET_RECRUITMENT_API_KEY</code> for{" "}
-            <code className="text-xs">GET /api/enterprise/talent</code>), we process requests, keys (hashed or stored per
+            <code className="text-xs">GET /api/enterprise/talent</code>), or an optional{" "}
+            <strong className="text-foreground">operator-only</strong> admin key (
+            <code className="text-xs">OPENGET_ADMIN_API_KEYS</code> for <code className="text-xs">GET /api/admin/reputation</code>{" "}
+            — vault scores for tier accountability, never for public pages), we process requests, keys (hashed or stored per
             our implementation), and related logs for security, rate limits, and abuse prevention.
           </li>
           <li>

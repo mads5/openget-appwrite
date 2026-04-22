@@ -15,9 +15,11 @@ import { computeF7Entropy } from './f7-entropy.js';
 import {
   getParityChallenge,
   MAX_INTEGRITY_STRIKES,
+  parseShieldChallengeMeta,
   SHIELD_SESSION_TTL_MS,
   validateShieldSolution,
 } from './shield-challenge.js';
+import { generateShieldChallenge } from './shield-ai.js';
 
 const DATABASE_ID = 'openget-db';
 
@@ -1186,12 +1188,31 @@ export default async ({ req, res, log, error }) => {
             log(`shield-start expire old: ${e.message}`);
           }
         }
-        const challenge = getParityChallenge();
+        const parityMeta = JSON.stringify({ formulaKey: 'parity_is_even', fnName: 'isEven' });
+        let challenge;
+        let challengeMeta = parityMeta;
+        let challengeSource = 'static';
+
+        const ai = await generateShieldChallenge(log);
+        if (ai) {
+          challenge = {
+            slug: `ai-${ai.formulaKey}-${ID.unique().slice(0, 12)}`,
+            title: ai.title,
+            instructions: ai.instructions,
+            starter_code: ai.starter_code,
+          };
+          challengeMeta = JSON.stringify({ formulaKey: ai.formulaKey, fnName: 'shieldFix' });
+          challengeSource = 'openai';
+        } else {
+          challenge = getParityChallenge();
+        }
+
         const expiresAt = new Date(now + SHIELD_SESSION_TTL_MS).toISOString();
         const session = await db.createDocument(DATABASE_ID, COL.SHIELD_SESSIONS, ID.unique(), {
           user_id: userId,
           contributor_id: contributorId,
           challenge_slug: challenge.slug,
+          challenge_meta: challengeMeta,
           status: 'active',
           started_at: new Date(now).toISOString(),
           expires_at: expiresAt,
@@ -1201,6 +1222,7 @@ export default async ({ req, res, log, error }) => {
           session_id: session.$id,
           expires_at: expiresAt,
           ttl_ms: SHIELD_SESSION_TTL_MS,
+          challenge_source: challengeSource,
           challenge: {
             slug: challenge.slug,
             title: challenge.title,
@@ -1294,7 +1316,8 @@ export default async ({ req, res, log, error }) => {
           }
           return res.json({ error: 'Session expired' }, 400);
         }
-        const v = validateShieldSolution(solution);
+        const meta = parseShieldChallengeMeta(session.challenge_meta);
+        const v = validateShieldSolution(solution, meta);
         if (!v.ok) {
           try {
             await db.updateDocument(DATABASE_ID, COL.SHIELD_SESSIONS, session.$id, { status: 'failed' });

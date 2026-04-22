@@ -452,6 +452,8 @@ export type ShieldStartResult = {
   session_id: string;
   expires_at: string;
   ttl_ms: number;
+  /** Present when API generated a unique challenge via OpenAI; otherwise static parity fallback. */
+  challenge_source?: "openai" | "static";
   challenge: ShieldChallengePayload;
 };
 
